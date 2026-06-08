@@ -14,13 +14,365 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chapters: {
+        Row: {
+          chapter_label: string
+          chapter_url: string
+          detected_at: string
+          id: string
+          published_at: string | null
+          site_id: string | null
+          title_id: string
+        }
+        Insert: {
+          chapter_label: string
+          chapter_url: string
+          detected_at?: string
+          id?: string
+          published_at?: string | null
+          site_id?: string | null
+          title_id: string
+        }
+        Update: {
+          chapter_label?: string
+          chapter_url?: string
+          detected_at?: string
+          id?: string
+          published_at?: string | null
+          site_id?: string | null
+          title_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapters_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imports: {
+        Row: {
+          created_at: string
+          id: string
+          raw_json: Json | null
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          raw_json?: Json | null
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          raw_json?: Json | null
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          channel: string
+          chapter_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sent_at: string | null
+          title_id: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          chapter_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sent_at?: string | null
+          title_id: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sent_at?: string | null
+          title_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "titles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      reading_progress: {
+        Row: {
+          id: string
+          last_chapter_read: string | null
+          last_read_at: string
+          notes: string | null
+          title_id: string
+        }
+        Insert: {
+          id?: string
+          last_chapter_read?: string | null
+          last_read_at?: string
+          notes?: string | null
+          title_id: string
+        }
+        Update: {
+          id?: string
+          last_chapter_read?: string | null
+          last_read_at?: string
+          notes?: string | null
+          title_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_progress_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: true
+            referencedRelation: "titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sites: {
+        Row: {
+          base_url: string
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          priority: number
+          user_id: string
+        }
+        Insert: {
+          base_url: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          priority?: number
+          user_id: string
+        }
+        Update: {
+          base_url?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          priority?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      title_sources: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          last_seen_chapter: string | null
+          site_id: string | null
+          title_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          last_seen_chapter?: string | null
+          site_id?: string | null
+          title_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          last_seen_chapter?: string | null
+          site_id?: string | null
+          title_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "title_sources_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "title_sources_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      titles: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          id: string
+          name: string
+          status: string | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          status?: string | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "titles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          bookmarks_domain_whitelist: string[] | null
+          bookmarks_group_by_domain: boolean
+          bookmarks_ignore_duplicates: boolean
+          chapter_format: string
+          check_frequency_hours: number | null
+          default_status: string
+          default_type: string
+          email_notifications_enabled: boolean
+          in_app_notifications_enabled: boolean
+          last_global_check_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bookmarks_domain_whitelist?: string[] | null
+          bookmarks_group_by_domain?: boolean
+          bookmarks_ignore_duplicates?: boolean
+          chapter_format?: string
+          check_frequency_hours?: number | null
+          default_status?: string
+          default_type?: string
+          email_notifications_enabled?: boolean
+          in_app_notifications_enabled?: boolean
+          last_global_check_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bookmarks_domain_whitelist?: string[] | null
+          bookmarks_group_by_domain?: boolean
+          bookmarks_ignore_duplicates?: boolean
+          chapter_format?: string
+          check_frequency_hours?: number | null
+          default_status?: string
+          default_type?: string
+          email_notifications_enabled?: boolean
+          in_app_notifications_enabled?: boolean
+          last_global_check_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      owns_title: { Args: { _title_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
