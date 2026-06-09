@@ -57,20 +57,30 @@ function AddTitles() {
         // ── 1. Parse title + chapter from URL ──────────────────────────────
         let name = url;
         let chapterNum: string | null = null;
+        let sourceUrl = url; // URL stored as source (main manga page, not chapter page)
         try {
           const u = new URL(url);
           const segments = u.pathname.split("/").filter(Boolean);
           const chapterRe = /^(?:chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)/i;
           let titleSeg: string | null = null;
+          let chapterIdx = -1;
 
           for (let i = 0; i < segments.length; i++) {
             const m = segments[i].match(chapterRe);
             if (m) {
               chapterNum = m[1];
+              chapterIdx = i;
               titleSeg = i > 0 ? segments[i - 1] : null;
               break;
             }
           }
+
+          // If a chapter segment was found, truncate URL to the title page
+          if (chapterIdx >= 0) {
+            const titlePath = "/" + segments.slice(0, chapterIdx).join("/") + "/";
+            sourceUrl = `${u.protocol}//${u.host}${titlePath}`;
+          }
+
           // Fallback: last segment if no chapter pattern found
           if (!titleSeg) titleSeg = segments[segments.length - 1] ?? u.hostname;
 
@@ -99,7 +109,7 @@ function AddTitles() {
         // ── 4. Match site by domain, or create it ──────────────────────────
         let siteId: string | null = null;
         try {
-          const u = new URL(url);
+          const u = new URL(sourceUrl);
           const host = u.hostname;
           const existing = (sites ?? []).find((s) => {
             try { return new URL(s.base_url).hostname === host; } catch { return false; }
@@ -122,8 +132,8 @@ function AddTitles() {
           }
         } catch (e) { throw e; }
 
-        // ── 5. Insert source ────────────────────────────────────────────────
-        await supabase.from("title_sources").insert({ title_id: title.id, site_id: siteId, url, is_primary: true });
+        // ── 5. Insert source (main manga page, not chapter page) ───────────
+        await supabase.from("title_sources").insert({ title_id: title.id, site_id: siteId, url: sourceUrl, is_primary: true });
       }
 
       toast.success(`${lines.length} URL(s) importée(s) ✓`);
