@@ -2,12 +2,146 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-// Heuristic: extract last chapter from HTML
+// ── Title matching helper ──────────────────────────────────────────────────
+function normalize(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function findBestMatch<T>(items: T[], query: string, getTitle: (item: T) => string): T | null {
+  if (!items.length) return null;
+  const q = normalize(query);
+  // 1. Exact match
+  for (const item of items) {
+    if (normalize(getTitle(item)) === q) return item;
+  }
+  // 2. One contains the other
+  for (const item of items) {
+    const t = normalize(getTitle(item));
+    if (t.includes(q) || q.includes(t)) return item;
+  }
+  // 3. First result as fallback
+  return items[0];
+}
+
+// ── Comick.io API ──────────────────────────────────────────────────────────
+async function fetchComick(titleName: string): Promise<{ chapter: string; url: string } | null> {
+  const BASES = ["https://api.comick.fun", "https://api.comick.io"];
+  for (const base of BASES) {
+    try {
+      const searchRes = await fetch(
+        `${base}/v1.0/search?q=${encodeURIComponent(titleName)}&limit=5&tachiyomi=true`,
+        { headers: { "User-Agent": "Tachiyomi/1.0" }, signal: AbortSignal.timeout(10000) }
+      );
+      if (!searchRes.ok) continue;
+      const results = await searchRes.json() as any[];
+      if (!Array.isArray(results) || !results.length) continue;
+
+      const match = findBestMatch(results, titleName, (r) => r.title ?? r.slug ?? "");
+      if (!match) continue;
+
+      // last_chapter is often already available in search result
+      if (match.last_chapter != null) {
+        return {
+          chapter: String(match.last_chapter),
+          url: `https://comick.io/comic/${match.slug}`,
+        };
+      }
+
+      // Otherwise fetch chapter list
+      const hid = match.hid;
+      if (!hid) continue;
+      const chapRes = await fetch(
+        `${base}/comic/${hid}/chapters?page=1&order=desc&limit=3&tachiyomi=true`,
+        { headers: { "User-Agent": "Tachiyomi/1.0" }, signal: AbortSignal.timeout(10000) }
+      );
+      if (!chapRes.ok) continue;
+      const chapData = await chapRes.json();
+      const chapters: any[] = chapData.chapters ?? (Array.isArray(chapData) ? chapData : []);
+      if (!chapters.length) continue;
+
+      // Pick highest chapter number
+      const sorted = chapters
+        .map((c: any) => ({ num: parseFloat(c.chap ?? c.chapter ?? ""), raw: c }))
+        .filter((c) => !isNaN(c.num))
+        .sort((a, b) => b.num - a.num);
+      if (!sorted.length) continue;
+
+      const top = sorted[0];
+      const chapHid = top.raw.hid ?? "";
+      const chapNum = String(top.num);
+      return {
+        chapter: chapNum,
+        url: chapHid
+          ? `https://comick.io/comic/${match.slug}/${chapHid}-chapter-${chapNum}-en`
+          : `https://comick.io/comic/${match.slug}`,
+      };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+// ── MangaDex API ───────────────────────────────────────────────────────────
+async function fetchMangaDex(titleName: string): Promise<{ chapter: string; url: string } | null> {
+  try {
+    const searchRes = await fetch(
+      `https://api.mangadex.org/manga?title=${encodeURIComponent(titleName)}&limit=10&order[relevance]=desc`,
+      { headers: { "User-Agent": "ReadingTK/0.1" }, signal: AbortSignal.timeout(10000) }
+    );
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const items: any[] = searchData.data ?? [];
+    if (!items.length) return null;
+
+    const match = findBestMatch(items, titleName, (item) => {
+      const titles = item.attributes?.title ?? {};
+      return (titles["en"] ?? Object.values(titles)[0] ?? "") as string;
+    });
+    if (!match) return null;
+
+    const mangaId = match.id;
+    const latestChapId = match.attributes?.latestUploadedChapter;
+
+    // Fast path: use latestUploadedChapter UUID
+    if (latestChapId) {
+      const chapRes = await fetch(
+        `https://api.mangadex.org/chapter/${latestChapId}`,
+        { headers: { "User-Agent": "ReadingTK/0.1" }, signal: AbortSignal.timeout(8000) }
+      );
+      if (chapRes.ok) {
+        const chapData = await chapRes.json();
+        const chapNum = chapData.data?.attributes?.chapter;
+        if (chapNum) {
+          return { chapter: String(chapNum), url: `https://mangadex.org/chapter/${latestChapId}` };
+        }
+      }
+    }
+
+    // Fallback: query chapter endpoint sorted by chapter desc
+    const chapRes = await fetch(
+      `https://api.mangadex.org/chapter?manga=${mangaId}&order[chapter]=desc&limit=1`,
+      { headers: { "User-Agent": "ReadingTK/0.1" }, signal: AbortSignal.timeout(8000) }
+    );
+    if (!chapRes.ok) return null;
+    const chapData = await chapRes.json();
+    const chapter = chapData.data?.[0];
+    if (!chapter) return null;
+
+    const chapNum = chapter.attributes?.chapter;
+    if (!chapNum) return null;
+    return { chapter: String(chapNum), url: `https://mangadex.org/chapter/${chapter.id}` };
+  } catch {
+    return null;
+  }
+}
+
+// ── HTML scraping fallback ─────────────────────────────────────────────────
 function parseLastChapter(html: string, baseUrl: string, format: "numeric" | "text"): { label: string; url: string } | null {
   const candidates: { num: number; label: string; url: string }[] = [];
   const chapterNumRe = /(chapter|chapitre|chap|ch\.?|episode|ep\.?)[-_\s]?(\d+(?:\.\d+)?)/i;
 
-  // ── Strategy 1: anchor tags with chapter keyword in text or href ──────────
+  // Strategy 1: anchor tags
   const anchorRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m: RegExpExecArray | null;
   while ((m = anchorRe.exec(html)) !== null) {
@@ -24,19 +158,15 @@ function parseLastChapter(html: string, baseUrl: string, format: "numeric" | "te
     }
   }
 
-  // ── Strategy 2: scan ALL href attributes for slug/chapter-NN pattern ──────
-  // Works even on JS-rendered pages that embed URLs in static HTML/JSON
+  // Strategy 2: slug-based URL scan
   if (!candidates.length) {
     try {
       const base = new URL(baseUrl);
-      // Build a pattern from the source URL path: e.g. /manga/the-shepherd-wizard/
       const pathParts = base.pathname.replace(/\/$/, "").split("/").filter(Boolean);
       if (pathParts.length >= 1) {
         const slug = pathParts[pathParts.length - 1];
-        // Match any URL containing the slug followed by /chapter-NN/ or /chap-NN/
         const slugChapterRe = new RegExp(
-          slug.replace(/[-]/g, "[-_]") +
-          /\/(chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)/.source,
+          slug.replace(/[-]/g, "[-_]") + /\/(chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)/.source,
           "gi"
         );
         const hrefRe = /href=["']([^"']+)["']/gi;
@@ -44,7 +174,7 @@ function parseLastChapter(html: string, baseUrl: string, format: "numeric" | "te
         while ((hm = hrefRe.exec(html)) !== null) {
           const href = hm[1];
           const sm = slugChapterRe.exec(href);
-          slugChapterRe.lastIndex = 0; // reset for next iteration
+          slugChapterRe.lastIndex = 0;
           if (sm) {
             const num = parseFloat(sm[2]);
             if (!isNaN(num)) {
@@ -58,16 +188,13 @@ function parseLastChapter(html: string, baseUrl: string, format: "numeric" | "te
     } catch { /* ignore */ }
   }
 
-  // ── Strategy 3: scan raw text / JSON blobs for chapter numbers ───────────
-  // Handles sites that embed chapter lists as JSON in <script> tags
+  // Strategy 3: raw JSON/script blobs
   if (!candidates.length) {
     const rawNumRe = /["'\/](chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)["'\/]/gi;
     let rm: RegExpExecArray | null;
     while ((rm = rawNumRe.exec(html)) !== null) {
       const num = parseFloat(rm[2]);
-      if (!isNaN(num)) {
-        candidates.push({ num, label: `Chapter ${num}`, url: baseUrl });
-      }
+      if (!isNaN(num)) candidates.push({ num, label: `Chapter ${num}`, url: baseUrl });
     }
   }
 
@@ -77,6 +204,7 @@ function parseLastChapter(html: string, baseUrl: string, format: "numeric" | "te
   return { label: format === "numeric" ? String(top.num) : top.label.slice(0, 120), url: top.url };
 }
 
+// ── Main server function ───────────────────────────────────────────────────
 export const checkNow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { titleId?: string }) => z.object({ titleId: z.string().uuid().optional() }).parse(d))
@@ -100,72 +228,106 @@ export const checkNow = createServerFn({ method: "POST" })
     let errors = 0;
 
     for (const title of titles ?? []) {
-      const { data: sources } = await supabase
-        .from("title_sources").select("*").eq("title_id", title.id);
-      if (!sources?.length) continue;
+      try {
+        const { data: progress } = await supabase
+          .from("reading_progress").select("last_chapter_read").eq("title_id", title.id).maybeSingle();
 
-      const ordered = [...sources].sort((a, b) => {
-        const pa = siteMap.get(a.site_id ?? "")?.priority ?? -999;
-        const pb = siteMap.get(b.site_id ?? "")?.priority ?? -999;
-        return pb - pa;
-      }).filter((s) => !s.site_id || siteMap.has(s.site_id));
+        // ── 1. Try Comick.io ─────────────────────────────────────────────
+        let found: { label: string; url: string } | null = null;
+        let apiSource: "comick" | "mangadex" | "scrape" | null = null;
 
-      const { data: progress } = await supabase
-        .from("reading_progress").select("last_chapter_read").eq("title_id", title.id).maybeSingle();
-
-      for (const src of ordered) {
-        try {
-          const res = await fetch(src.url, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-              "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
-              "Accept-Encoding": "gzip, deflate, br",
-              "Cache-Control": "no-cache",
-              "Pragma": "no-cache",
-              "Sec-Fetch-Dest": "document",
-              "Sec-Fetch-Mode": "navigate",
-              "Sec-Fetch-Site": "none",
-              "Upgrade-Insecure-Requests": "1",
-            },
-            signal: AbortSignal.timeout(15000),
-          });
-          if (!res.ok) { errors++; continue; }
-          const html = await res.text();
-          const found = parseLastChapter(html, src.url, format);
-          if (!found) continue;
-
-          // Update title_source last_seen
-          await supabase.from("title_sources").update({ last_seen_chapter: found.label }).eq("id", src.id);
-
-          // Check if chapter already recorded
-          const { data: exists } = await supabase
-            .from("chapters").select("id").eq("title_id", title.id).eq("chapter_label", found.label).maybeSingle();
-
-          if (!exists) {
-            const { data: chap } = await supabase.from("chapters").insert({
-              title_id: title.id, site_id: src.site_id, chapter_label: found.label, chapter_url: found.url,
-            }).select("id").single();
-
-            // Compare with reading progress
-            const lastRead = progress?.last_chapter_read ? parseFloat(progress.last_chapter_read) : -1;
-            const foundNum = parseFloat(found.label);
-            const isNew = isNaN(foundNum) || isNaN(lastRead) ? !progress?.last_chapter_read : foundNum > lastRead;
-            if (isNew && notifyEnabled && chap) {
-              await supabase.from("notifications").insert({
-                user_id: userId, title_id: title.id, chapter_id: chap.id, channel: "in_app", sent_at: new Date().toISOString(),
-              });
-              detected++;
-            }
-          }
-          break; // success: stop trying other sources for this title
-        } catch {
-          errors++;
+        const comick = await fetchComick(title.name);
+        if (comick) {
+          found = { label: format === "numeric" ? comick.chapter : `Chapter ${comick.chapter}`, url: comick.url };
+          apiSource = "comick";
         }
-      }
+
+        // ── 2. Try MangaDex ──────────────────────────────────────────────
+        if (!found) {
+          const mdex = await fetchMangaDex(title.name);
+          if (mdex) {
+            found = { label: format === "numeric" ? mdex.chapter : `Chapter ${mdex.chapter}`, url: mdex.url };
+            apiSource = "mangadex";
+          }
+        }
+
+        // ── 3. Fall back to URL scraping ─────────────────────────────────
+        if (!found) {
+          const { data: sources } = await supabase
+            .from("title_sources").select("*").eq("title_id", title.id);
+
+          const ordered = [...(sources ?? [])].sort((a, b) => {
+            const pa = siteMap.get(a.site_id ?? "")?.priority ?? -999;
+            const pb = siteMap.get(b.site_id ?? "")?.priority ?? -999;
+            return pb - pa;
+          }).filter((s) => !s.site_id || siteMap.has(s.site_id));
+
+          for (const src of ordered) {
+            try {
+              const res = await fetch(src.url, {
+                headers: {
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                  "Accept-Language": "en-US,en;q=0.9",
+                  "Cache-Control": "no-cache",
+                },
+                signal: AbortSignal.timeout(15000),
+              });
+              if (!res.ok) { errors++; continue; }
+              const html = await res.text();
+              const scraped = parseLastChapter(html, src.url, format);
+              if (scraped) {
+                found = scraped;
+                apiSource = "scrape";
+                // Update last_seen on source
+                await supabase.from("title_sources").update({ last_seen_chapter: scraped.label }).eq("id", src.id);
+                break;
+              }
+            } catch { errors++; }
+          }
+        }
+
+        if (!found) continue;
+
+        // ── Update title_sources last_seen if from API ───────────────────
+        if (apiSource !== "scrape") {
+          await supabase.from("title_sources")
+            .update({ last_seen_chapter: found.label })
+            .eq("title_id", title.id)
+            .eq("is_primary", true);
+        }
+
+        // ── Check if chapter already recorded ────────────────────────────
+        const { data: exists } = await supabase
+          .from("chapters").select("id").eq("title_id", title.id).eq("chapter_label", found.label).maybeSingle();
+
+        if (!exists) {
+          const { data: chap } = await supabase.from("chapters").insert({
+            title_id: title.id,
+            site_id: null,
+            chapter_label: found.label,
+            chapter_url: found.url,
+          }).select("id").single();
+
+          // Compare with reading progress
+          const lastRead = progress?.last_chapter_read ? parseFloat(progress.last_chapter_read) : -1;
+          const foundNum = parseFloat(found.label);
+          const isNew = isNaN(foundNum) || isNaN(lastRead) ? !progress?.last_chapter_read : foundNum > lastRead;
+
+          if (isNew && notifyEnabled && chap) {
+            await supabase.from("notifications").insert({
+              user_id: userId, title_id: title.id, chapter_id: chap.id,
+              channel: "in_app", sent_at: new Date().toISOString(),
+            });
+            detected++;
+          }
+        }
+      } catch { errors++; }
     }
 
-    await supabase.from("user_settings").update({ last_global_check_at: new Date().toISOString() }).eq("user_id", userId);
+    await supabase.from("user_settings")
+      .update({ last_global_check_at: new Date().toISOString() })
+      .eq("user_id", userId);
 
     return { detected, errors, titlesChecked: titles?.length ?? 0 };
   });
