@@ -15,18 +15,18 @@ export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
 });
 
-const LOGO_STYLE = { mixBlendMode: "lighten" as const, clipPath: "inset(3px 3px 3px 3px)" };
+const BLEND: React.CSSProperties = { mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" };
 
 function AuthedLayout() {
-  const router = useRouter();
+  const router     = useRouter();
   const queryClient = useQueryClient();
-  const location = useLocation();
-  const { user } = Route.useRouteContext();
+  const location   = useLocation();
+  const { user }   = Route.useRouteContext();
 
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("sidebar-collapsed") === "true"
   );
-  const [showLogoutPopup, setShowLogoutPopup] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   const { data: unreadCount } = useQuery({
     queryKey: ["notifications-unread"],
@@ -40,7 +40,7 @@ function AuthedLayout() {
     refetchInterval: 30000,
   });
 
-  function toggleCollapsed() {
+  function toggle() {
     setCollapsed(prev => {
       const next = !prev;
       localStorage.setItem("sidebar-collapsed", String(next));
@@ -49,6 +49,7 @@ function AuthedLayout() {
   }
 
   async function signOut() {
+    setShowPopup(false);
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
@@ -63,31 +64,47 @@ function AuthedLayout() {
     { to: "/settings",      label: "Paramètres",    icon: Settings },
   ] as const;
 
+  const extraItems = [
+    { to: "/titles/add", label: "Ajouter un titre",   icon: Plus },
+    { to: "/import",     label: "Importer bookmarks", icon: Upload },
+  ] as const;
+
   const avatarLetter = (user?.email?.[0] ?? "U").toUpperCase();
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <aside className={`hidden shrink-0 border-r border-border/60 bg-sidebar transition-all duration-200 md:flex md:flex-col ${collapsed ? "w-16 items-center p-2 pt-4" : "w-60 p-4"}`}>
 
-        {/* Logo + toggle */}
-        <div className={`mb-6 flex items-center ${collapsed ? "w-full flex-col gap-3" : "justify-between px-2"}`}>
-          <Link to="/dashboard">
-            {collapsed
-              ? <img src="/very small logo.png" alt="ReadingTK" style={{ width: 32, height: "auto", ...LOGO_STYLE }} />
-              : <img src="/Logo RTK.png"        alt="ReadingTK" style={{ width: 130, height: "auto", ...LOGO_STYLE }} />
-            }
+      {/* ── Sidebar ── */}
+      <aside
+        className="hidden shrink-0 border-r border-border bg-sidebar py-4 md:flex md:flex-col"
+        style={{ width: collapsed ? 52 : 200, transition: "width 0.2s ease", overflow: "visible" }}
+      >
+
+        {/* Logo zone */}
+        <div
+          className="mb-2 flex shrink-0 items-center border-b border-border pb-4"
+          style={{
+            padding: collapsed ? "12px 0 16px" : "0 12px 16px",
+            justifyContent: collapsed ? "center" : "space-between",
+          }}
+        >
+          <Link to="/dashboard" style={{ display: collapsed ? "none" : undefined }}>
+            <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 130, height: "auto", ...BLEND }} />
           </Link>
+          {collapsed && (
+            <img src="/very small logo.png" alt="RTK" style={{ width: 28, height: "auto", ...BLEND }} />
+          )}
           <button
-            onClick={toggleCollapsed}
+            onClick={toggle}
             title={collapsed ? "Agrandir" : "Réduire"}
-            className="rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            className="shrink-0 rounded px-1.5 py-1 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
           >
             {collapsed ? "»" : "«"}
           </button>
         </div>
 
         {/* Nav */}
-        <nav className={`flex flex-1 flex-col gap-1 ${collapsed ? "w-full items-center" : ""}`}>
+        <nav className="flex flex-1 flex-col gap-0.5 px-2">
           {navItems.map((it) => {
             const active = location.pathname.startsWith(it.to);
             return (
@@ -95,77 +112,107 @@ function AuthedLayout() {
                 key={it.to}
                 to={it.to}
                 title={collapsed ? it.label : undefined}
-                className={`flex items-center rounded-md text-sm font-medium transition
-                  ${collapsed ? "w-full justify-center p-2" : "justify-between px-3 py-2"}
-                  ${active ? "bg-accent/15 text-foreground" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"}`}
+                className="flex items-center overflow-hidden whitespace-nowrap rounded text-[13px] font-medium no-underline transition-colors"
+                style={{
+                  gap: 8,
+                  padding: collapsed ? "8px 0" : "8px 10px",
+                  justifyContent: collapsed ? "center" : undefined,
+                  background: active ? "var(--color-primary-glow, oklch(0.55 0.18 268 / 0.18))" : undefined,
+                  color: active ? "var(--color-accent, oklch(0.70 0.20 268))" : undefined,
+                  border: active ? "1px solid rgba(28,52,133,0.4)" : "1px solid transparent",
+                }}
               >
-                <span className={`relative flex items-center ${collapsed ? "" : "gap-2"}`}>
-                  <it.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && it.label}
+                <span className="relative shrink-0" style={{ width: 18, textAlign: "center" }}>
+                  <it.icon style={{ width: 15, height: 15 }} />
                   {collapsed && "badge" in it && it.badge ? (
-                    <span className="absolute -right-1 -top-1 rounded-full bg-accent px-1 text-[9px] font-semibold text-accent-foreground">{it.badge}</span>
+                    <span className="absolute -right-1 -top-1 rounded-full bg-accent px-1 text-[9px] font-bold text-accent-foreground">
+                      {it.badge}
+                    </span>
                   ) : null}
                 </span>
-                {!collapsed && "badge" in it && it.badge ? (
-                  <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">{it.badge}</span>
-                ) : null}
+                {!collapsed && (
+                  <span className="flex flex-1 items-center justify-between">
+                    {it.label}
+                    {"badge" in it && it.badge ? (
+                      <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
+                        {it.badge}
+                      </span>
+                    ) : null}
+                  </span>
+                )}
               </Link>
             );
           })}
 
           {/* Extra links */}
-          <div className={`mt-2 border-t border-border/40 pt-2 ${collapsed ? "flex w-full flex-col items-center gap-1" : ""}`}>
-            <Link
-              to="/titles/add"
-              title={collapsed ? "Ajouter un titre" : undefined}
-              className={`flex items-center rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground ${collapsed ? "w-full justify-center p-2" : "gap-2 px-3 py-2"}`}
-            >
-              <Plus className="h-4 w-4 shrink-0" />
-              {!collapsed && "Ajouter un titre"}
-            </Link>
-            <Link
-              to="/import"
-              title={collapsed ? "Importer bookmarks" : undefined}
-              className={`flex items-center rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground ${collapsed ? "w-full justify-center p-2" : "gap-2 px-3 py-2"}`}
-            >
-              <Upload className="h-4 w-4 shrink-0" />
-              {!collapsed && "Importer bookmarks"}
-            </Link>
+          <div className="mt-2 border-t border-border/40 pt-2">
+            {extraItems.map((it) => (
+              <Link
+                key={it.to}
+                to={it.to}
+                title={collapsed ? it.label : undefined}
+                className="flex items-center overflow-hidden whitespace-nowrap rounded text-[13px] text-muted-foreground no-underline transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                style={{
+                  gap: 8,
+                  padding: collapsed ? "8px 0" : "8px 10px",
+                  justifyContent: collapsed ? "center" : undefined,
+                }}
+              >
+                <span className="shrink-0" style={{ width: 18, textAlign: "center" }}>
+                  <it.icon style={{ width: 15, height: 15 }} />
+                </span>
+                {!collapsed && it.label}
+              </Link>
+            ))}
           </div>
         </nav>
 
-        {/* Bottom — user info */}
-        <div className={`relative mt-2 border-t border-border/40 pt-3 ${collapsed ? "flex w-full flex-col items-center" : ""}`}>
-          {/* Avatar */}
-          <div
-            onClick={collapsed ? () => setShowLogoutPopup(p => !p) : undefined}
-            title={collapsed ? user?.email : undefined}
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${collapsed ? "cursor-pointer" : ""}`}
-            style={{ background: "var(--gradient-primary)" }}
-          >
-            {avatarLetter}
+        {/* Bottom — user */}
+        <div
+          className="relative mt-auto border-t border-border"
+          style={{
+            padding: collapsed ? "12px 0 0" : "12px 16px 0",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            alignItems: collapsed ? "center" : undefined,
+          }}
+        >
+          {/* Avatar row */}
+          <div className="flex items-center gap-2">
+            <div
+              onClick={collapsed ? () => setShowPopup(p => !p) : undefined}
+              title={collapsed ? user?.email : undefined}
+              className={`flex shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${collapsed ? "cursor-pointer hover:opacity-80" : ""}`}
+              style={{ width: 26, height: 26, background: "var(--gradient-primary)" }}
+            >
+              {avatarLetter}
+            </div>
+            {!collapsed && (
+              <span className="truncate text-[11px] text-muted-foreground">{user?.email}</span>
+            )}
           </div>
 
-          {/* Expanded: email + logout */}
+          {/* Logout button (expanded only) */}
           {!collapsed && (
-            <div className="mt-2 flex flex-col gap-1 px-1">
-              <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
-              <button
-                onClick={signOut}
-                className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-left text-xs text-muted-foreground transition hover:border-destructive hover:text-destructive"
-              >
-                Déconnexion
-              </button>
-            </div>
+            <button
+              onClick={signOut}
+              className="w-full rounded border border-border px-2 py-1 text-left text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+            >
+              Déconnexion
+            </button>
           )}
 
-          {/* Collapsed: popup */}
-          {collapsed && showLogoutPopup && (
-            <div className="absolute bottom-0 left-14 z-50 min-w-[180px] rounded-lg border border-border bg-card p-3 shadow-xl">
-              <div className="mb-2 truncate text-xs text-muted-foreground">{user?.email}</div>
+          {/* Popup (collapsed) */}
+          {collapsed && showPopup && (
+            <div
+              className="flex flex-col gap-1.5 rounded border border-border bg-card p-2 shadow-xl"
+              style={{ position: "fixed", left: 60, bottom: 16, minWidth: 160, zIndex: 1000 }}
+            >
+              <div className="truncate px-1 text-[11px] text-muted-foreground">{user?.email}</div>
               <button
                 onClick={signOut}
-                className="w-full rounded-md border border-border px-2 py-1.5 text-xs text-muted-foreground transition hover:border-destructive hover:text-destructive"
+                className="rounded border border-border px-2 py-1 text-left text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
               >
                 Déconnexion
               </button>
