@@ -1,10 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { checkNow } from "@/lib/scrape.functions";
-import { Search, Plus, Upload, Globe, Bell, RefreshCw, Settings, X, Sparkles, ExternalLink } from "lucide-react";
+import { Search, Plus, Upload, Globe, Bell, Settings, X, Sparkles, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -27,8 +25,6 @@ function Dashboard() {
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
-  const check = useServerFn(checkNow);
-
   const { data: titles, isLoading } = useQuery({
     queryKey: ["titles"],
     queryFn: async (): Promise<Title[]> => {
@@ -39,22 +35,6 @@ function Dashboard() {
       if (error) throw error;
       return (data as unknown as Title[]) ?? [];
     },
-  });
-
-  const checkMutation = useMutation({
-    mutationFn: () => check({ data: {} }),
-    onSuccess: (r) => {
-      console.log("[CheckNow] résultats:", r.logs);
-      if (r.detected > 0) {
-        toast.success(`${r.detected} nouveau(x) chapitre(s) détecté(s) !`);
-      } else {
-        const info = (r.logs ?? []).map((l: any) => `${l.title}: ${l.reason}`).join("\n");
-        toast.info(`Aucun nouveau chapitre · ${r.titlesChecked} titre(s)`, { description: info || undefined, duration: 8000 });
-      }
-      qc.invalidateQueries({ queryKey: ["titles"] });
-      qc.invalidateQueries({ queryKey: ["notifications-unread"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const incrementMutation = useMutation({
@@ -90,14 +70,7 @@ function Dashboard() {
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
-        <button
-          onClick={() => checkMutation.mutate()} disabled={checkMutation.isPending}
-          className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-          style={{ background: "var(--gradient-primary)" }}
-        >
-          <RefreshCw className={`h-4 w-4 ${checkMutation.isPending ? "animate-spin" : ""}`} /> Check now
-        </button>
-        <Link to="/titles/add" className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent/10">
+<Link to="/titles/add" className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent/10">
           <Plus className="h-4 w-4" /> Ajouter
         </Link>
         <Link to="/import" className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent/10">
