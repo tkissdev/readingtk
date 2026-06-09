@@ -57,11 +57,11 @@ function AuthedLayout() {
         <div className={`mb-6 flex items-center ${collapsed ? "justify-center w-full" : "justify-between px-2"}`}>
           {collapsed ? (
             <Link to="/dashboard">
-              <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 28, height: "auto", mixBlendMode: "lighten" }} />
+              <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 28, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
             </Link>
           ) : (
             <Link to="/dashboard">
-              <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 130, height: "auto", mixBlendMode: "lighten" }} />
+              <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 130, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
             </Link>
           )}
           <button

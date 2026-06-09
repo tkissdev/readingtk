@@ -27,7 +27,7 @@ function Landing() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-10 py-4">
         <Link to="/">
-          <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 140, height: "auto", mixBlendMode: "lighten" }} />
+          <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 140, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
         </Link>
         <nav className="flex items-center gap-3">
           <Link to="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">

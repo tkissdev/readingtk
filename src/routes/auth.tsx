@@ -94,7 +94,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4" style={{ backgroundImage: "var(--gradient-hero)" }}>
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex justify-center">
-          <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 180, height: "auto", mixBlendMode: "lighten" }} />
+          <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 180, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
         </Link>
         <div className="rounded-2xl border border-border/60 bg-card/80 p-8 backdrop-blur" style={{ boxShadow: "var(--shadow-card)" }}>
           <h1 className="text-2xl font-semibold">{isSignup ? "Créer un compte" : "Connexion"}</h1>
