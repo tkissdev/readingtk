@@ -74,7 +74,7 @@ function Dashboard() {
     (t.title_sources || []).map((s) => s.last_seen_chapter).filter(Boolean)[0] ?? null;
 
   return (
-    <div className="p-6">
+    <div className="p-6" onClick={() => { if (openId) setOpenId(null); }}>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-card/60 px-3 py-2 min-w-64">
           <Search className="h-4 w-4 text-muted-foreground" />
@@ -143,10 +143,12 @@ function Dashboard() {
                 const lastSeen = lastSeenOf(t);
                 const isNew = lastSeen && (!lastRead || parseFloat(lastSeen) > parseFloat(lastRead || "0"));
                 return (
-                  <tr key={t.id} className="border-t border-border/40 hover:bg-secondary/30">
-                    <td className="px-4 py-3 font-medium">
-                      <button onClick={() => setOpenId(t.id)} className="text-left hover:text-accent">{t.name}</button>
-                    </td>
+                  <tr
+                    key={t.id}
+                    onClick={() => setOpenId(t.id)}
+                    className={`cursor-pointer border-t border-border/40 transition-colors hover:bg-secondary/30 ${openId === t.id ? "bg-secondary/40" : ""}`}
+                  >
+                    <td className="px-4 py-3 font-medium">{t.name}</td>
                     <td className="px-3 py-3 text-xs text-muted-foreground">{t.type ?? "—"}</td>
                     <td className="px-3 py-3 text-xs">
                       <span className="rounded-full bg-secondary/60 px-2 py-0.5 text-muted-foreground">{t.status ?? "—"}</span>
@@ -156,7 +158,7 @@ function Dashboard() {
                       {lastSeen ?? "—"}
                       {isNew && <span className="ml-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">NEW</span>}
                     </td>
-                    <td className="px-3 py-3 text-right">
+                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => incrementMutation.mutate({ titleId: t.id, current: lastRead })}
                         className="rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/10"
@@ -248,8 +250,8 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   if (!data?.title) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="h-full w-full max-w-xl overflow-y-auto border-l border-border/60 bg-card p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="pointer-events-none fixed inset-0 z-40 flex justify-end">
+      <div className="pointer-events-auto h-full w-full max-w-xl overflow-y-auto border-l border-border/60 bg-card p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div>
             <div className="text-xs uppercase tracking-wide text-muted-foreground">{data.title.type ?? "titre"}</div>
