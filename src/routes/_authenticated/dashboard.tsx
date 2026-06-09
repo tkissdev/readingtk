@@ -44,7 +44,13 @@ function Dashboard() {
   const checkMutation = useMutation({
     mutationFn: () => check({ data: {} }),
     onSuccess: (r) => {
-      toast.success(`Check terminé : ${r.detected} nouveau(x) · ${r.titlesChecked} titres`);
+      console.log("[CheckNow] résultats:", r.logs);
+      if (r.detected > 0) {
+        toast.success(`${r.detected} nouveau(x) chapitre(s) détecté(s) !`);
+      } else {
+        const info = (r.logs ?? []).map((l: any) => `${l.title}: ${l.reason}`).join("\n");
+        toast.info(`Aucun nouveau chapitre · ${r.titlesChecked} titre(s)`, { description: info || undefined, duration: 8000 });
+      }
       qc.invalidateQueries({ queryKey: ["titles"] });
       qc.invalidateQueries({ queryKey: ["notifications-unread"] });
     },

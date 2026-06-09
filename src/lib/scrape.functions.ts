@@ -25,7 +25,7 @@ function findBestMatch<T>(items: T[], query: string, getTitle: (item: T) => stri
 
 // ── Comick.io API ──────────────────────────────────────────────────────────
 async function fetchComick(titleName: string): Promise<{ chapter: string; url: string } | null> {
-  const BASES = ["https://api.comick.fun", "https://api.comick.io"];
+  const BASES = ["https://api.comick.fun", "https://api.comick.dev", "https://api.comick.io"];
   for (const base of BASES) {
     try {
       const searchRes = await fetch(
@@ -226,6 +226,7 @@ export const checkNow = createServerFn({ method: "POST" })
 
     let detected = 0;
     let errors = 0;
+    const logs: { title: string; source: string | null; chapter: string | null; reason: string }[] = [];
 
     for (const title of titles ?? []) {
       try {
@@ -252,6 +253,7 @@ export const checkNow = createServerFn({ method: "POST" })
         }
 
         // ── 3. Fall back to URL scraping ─────────────────────────────────
+        let scrapeStatus = "";
         if (!found) {
           const { data: sources } = await supabase
             .from("title_sources").select("*").eq("title_id", title.id);
@@ -273,21 +275,27 @@ export const checkNow = createServerFn({ method: "POST" })
                 },
                 signal: AbortSignal.timeout(15000),
               });
-              if (!res.ok) { errors++; continue; }
+              if (!res.ok) { errors++; scrapeStatus = `HTTP ${res.status}`; continue; }
               const html = await res.text();
               const scraped = parseLastChapter(html, src.url, format);
               if (scraped) {
                 found = scraped;
                 apiSource = "scrape";
+                scrapeStatus = "ok";
                 // Update last_seen on source
                 await supabase.from("title_sources").update({ last_seen_chapter: scraped.label }).eq("id", src.id);
                 break;
+              } else {
+                scrapeStatus = "no chapter pattern found";
               }
-            } catch { errors++; }
+            } catch (e: any) { errors++; scrapeStatus = e?.message ?? "fetch error"; }
           }
         }
 
-        if (!found) continue;
+        if (!found) {
+          logs.push({ title: title.name, source: null, chapter: null, reason: `comick=null, mangadex=null, scrape=${scrapeStatus || "no sources"}` });
+          continue;
+        }
 
         // ── Update title_sources last_seen if from API ───────────────────
         if (apiSource !== "scrape") {
@@ -321,13 +329,16 @@ export const checkNow = createServerFn({ method: "POST" })
             });
             detected++;
           }
+          logs.push({ title: title.name, source: apiSource, chapter: found.label, reason: isNew ? "new chapter" : "already recorded" });
+        } else {
+          logs.push({ title: title.name, source: apiSource, chapter: found.label, reason: "chapter already in db" });
         }
-      } catch { errors++; }
+      } catch (e: any) { errors++; logs.push({ title: title.name, source: null, chapter: null, reason: `exception: ${e?.message}` }); }
     }
 
     await supabase.from("user_settings")
       .update({ last_global_check_at: new Date().toISOString() })
       .eq("user_id", userId);
 
-    return { detected, errors, titlesChecked: titles?.length ?? 0 };
+    return { detected, errors, titlesChecked: titles?.length ?? 0, logs };
   });
