@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useRouter, useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, LayoutGrid, Globe, Bell, Settings, LogOut, Upload, Plus } from "lucide-react";
+import { LayoutGrid, Globe, Bell, Settings, LogOut, Upload, Plus } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -49,11 +49,8 @@ function AuthedLayout() {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-sidebar p-4 md:flex md:flex-col">
-        <Link to="/dashboard" className="mb-6 flex items-center gap-2 px-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md text-white" style={{ background: "var(--gradient-primary)" }}>
-            <BookOpen className="h-4 w-4" />
-          </div>
-          <span className="text-base font-bold">ReadingTK</span>
+        <Link to="/dashboard" className="mb-6 px-2">
+          <img src="/very small logo.png" alt="ReadingTK" className="h-9 w-auto" />
         </Link>
         <nav className="flex flex-1 flex-col gap-1">
           {navItems.map((it) => {

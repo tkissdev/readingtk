@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
 const searchSchema = z.object({ mode: z.enum(["login", "signup"]).optional() });
@@ -94,11 +93,8 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4" style={{ backgroundImage: "var(--gradient-hero)" }}>
       <div className="w-full max-w-md">
-        <Link to="/" className="mb-8 flex items-center justify-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md text-white" style={{ background: "var(--gradient-primary)" }}>
-            <BookOpen className="h-5 w-5" />
-          </div>
-          <span className="text-xl font-bold">ReadingTK</span>
+        <Link to="/" className="mb-8 flex justify-center">
+          <img src="/Small logo.png" alt="ReadingTK" className="h-14 w-auto" />
         </Link>
         <div className="rounded-2xl border border-border/60 bg-card/80 p-8 backdrop-blur" style={{ boxShadow: "var(--shadow-card)" }}>
           <h1 className="text-2xl font-semibold">{isSignup ? "Créer un compte" : "Connexion"}</h1>
