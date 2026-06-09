@@ -50,7 +50,7 @@ function AuthedLayout() {
     <div className="flex min-h-screen bg-background text-foreground">
       <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-sidebar p-4 md:flex md:flex-col">
         <Link to="/dashboard" className="mb-6 px-2">
-          <img src="/very small logo.png" alt="ReadingTK" className="h-9 w-auto" />
+          <img src="/Logo RTK.png" alt="ReadingTK" className="h-9 w-auto" />
         </Link>
         <nav className="flex flex-1 flex-col gap-1">
           {navItems.map((it) => {
