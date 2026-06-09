@@ -4,15 +4,16 @@ import { z } from "zod";
 
 // Heuristic: extract last chapter from HTML
 function parseLastChapter(html: string, baseUrl: string, format: "numeric" | "text"): { label: string; url: string } | null {
-  // Find anchor tags containing chapter-like keywords
-  const re = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   const candidates: { num: number; label: string; url: string }[] = [];
-  const keywordRe = /(chapter|chapitre|ch\.?|episode|ep\.?)\s*[-_]?\s*(\d+(?:\.\d+)?)/i;
+  const chapterNumRe = /(chapter|chapitre|chap|ch\.?|episode|ep\.?)[-_\s]?(\d+(?:\.\d+)?)/i;
+
+  // ── Strategy 1: anchor tags with chapter keyword in text or href ──────────
+  const anchorRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
+  while ((m = anchorRe.exec(html)) !== null) {
     const href = m[1];
     const text = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    const km = keywordRe.exec(text) || keywordRe.exec(href);
+    const km = chapterNumRe.exec(text) || chapterNumRe.exec(href);
     if (km) {
       const num = parseFloat(km[2]);
       if (!isNaN(num)) {
@@ -22,6 +23,54 @@ function parseLastChapter(html: string, baseUrl: string, format: "numeric" | "te
       }
     }
   }
+
+  // ── Strategy 2: scan ALL href attributes for slug/chapter-NN pattern ──────
+  // Works even on JS-rendered pages that embed URLs in static HTML/JSON
+  if (!candidates.length) {
+    try {
+      const base = new URL(baseUrl);
+      // Build a pattern from the source URL path: e.g. /manga/the-shepherd-wizard/
+      const pathParts = base.pathname.replace(/\/$/, "").split("/").filter(Boolean);
+      if (pathParts.length >= 1) {
+        const slug = pathParts[pathParts.length - 1];
+        // Match any URL containing the slug followed by /chapter-NN/ or /chap-NN/
+        const slugChapterRe = new RegExp(
+          slug.replace(/[-]/g, "[-_]") +
+          /\/(chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)/.source,
+          "gi"
+        );
+        const hrefRe = /href=["']([^"']+)["']/gi;
+        let hm: RegExpExecArray | null;
+        while ((hm = hrefRe.exec(html)) !== null) {
+          const href = hm[1];
+          const sm = slugChapterRe.exec(href);
+          slugChapterRe.lastIndex = 0; // reset for next iteration
+          if (sm) {
+            const num = parseFloat(sm[2]);
+            if (!isNaN(num)) {
+              let url = href;
+              try { url = new URL(href, baseUrl).toString(); } catch { /* ignore */ }
+              candidates.push({ num, label: `Chapter ${num}`, url });
+            }
+          }
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ── Strategy 3: scan raw text / JSON blobs for chapter numbers ───────────
+  // Handles sites that embed chapter lists as JSON in <script> tags
+  if (!candidates.length) {
+    const rawNumRe = /["'\/](chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)["'\/]/gi;
+    let rm: RegExpExecArray | null;
+    while ((rm = rawNumRe.exec(html)) !== null) {
+      const num = parseFloat(rm[2]);
+      if (!isNaN(num)) {
+        candidates.push({ num, label: `Chapter ${num}`, url: baseUrl });
+      }
+    }
+  }
+
   if (!candidates.length) return null;
   candidates.sort((a, b) => b.num - a.num);
   const top = candidates[0];
