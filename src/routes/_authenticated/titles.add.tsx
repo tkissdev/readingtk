@@ -112,14 +112,15 @@ function AddTitles() {
             const raw = host.replace(/^www\./, "").split(".")[0];
             const siteName = raw.charAt(0).toUpperCase() + raw.slice(1);
             const base_url = `${u.protocol}//${host}`;
-            const { data: newSite } = await supabase
+            const { data: newSite, error: siteErr } = await supabase
               .from("sites")
-              .insert({ name: siteName, base_url })
+              .insert({ user_id: userId, name: siteName, base_url, priority: 0, enabled: true })
               .select("id")
               .single();
+            if (siteErr) throw siteErr;
             siteId = newSite?.id ?? null;
           }
-        } catch { /* ignore */ }
+        } catch (e) { throw e; }
 
         // ── 5. Insert source ────────────────────────────────────────────────
         await supabase.from("title_sources").insert({ title_id: title.id, site_id: siteId, url, is_primary: true });
