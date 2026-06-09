@@ -145,7 +145,7 @@ function Dashboard() {
                 return (
                   <tr
                     key={t.id}
-                    onClick={() => setOpenId(t.id)}
+                    onClick={(e) => { e.stopPropagation(); setOpenId(t.id); }}
                     className={`cursor-pointer border-t border-border/40 transition-colors hover:bg-secondary/30 ${openId === t.id ? "bg-secondary/40" : ""}`}
                   >
                     <td className="px-4 py-3 font-medium">{t.name}</td>
