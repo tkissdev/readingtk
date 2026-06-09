@@ -60,7 +60,7 @@ function AddTitles() {
         try {
           const u = new URL(url);
           const segments = u.pathname.split("/").filter(Boolean);
-          const chapterRe = /^(?:chapter|chap|ch|episode|ep)[_-]?(\d+(?:\.\d+)?)/i;
+          const chapterRe = /^(?:chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)/i;
           let titleSeg: string | null = null;
 
           for (let i = 0; i < segments.length; i++) {
@@ -126,7 +126,7 @@ function AddTitles() {
         await supabase.from("title_sources").insert({ title_id: title.id, site_id: siteId, url, is_primary: true });
       }
 
-      toast.success(`${lines.length} URL(s) importée(s)`);
+      toast.success(`${lines.length} URL(s) importée(s) ✓`);
       navigate({ to: "/dashboard" });
     } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); }
   }
