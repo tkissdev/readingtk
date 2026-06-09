@@ -39,25 +39,36 @@ async function fetchComick(titleName: string): Promise<{ chapter: string; url: s
       const match = findBestMatch(results, titleName, (r) => r.title ?? r.slug ?? "");
       if (!match) continue;
 
-      // last_chapter is often already available in search result
-      if (match.last_chapter != null) {
-        return {
-          chapter: String(match.last_chapter),
-          url: `https://comick.io/comic/${match.slug}`,
-        };
-      }
-
-      // Otherwise fetch chapter list
       const hid = match.hid;
       if (!hid) continue;
+
+      // Always fetch chapter list to get the direct chapter link
       const chapRes = await fetch(
         `${base}/comic/${hid}/chapters?page=1&order=desc&limit=3&tachiyomi=true`,
         { headers: { "User-Agent": "Tachiyomi/1.0" }, signal: AbortSignal.timeout(10000) }
       );
-      if (!chapRes.ok) continue;
+      if (!chapRes.ok) {
+        // Fallback: use last_chapter from search result if chapter fetch fails
+        if (match.last_chapter != null) {
+          return {
+            chapter: String(match.last_chapter),
+            url: `https://comick.io/comic/${match.slug}`,
+          };
+        }
+        continue;
+      }
       const chapData = await chapRes.json();
       const chapters: any[] = chapData.chapters ?? (Array.isArray(chapData) ? chapData : []);
-      if (!chapters.length) continue;
+      if (!chapters.length) {
+        // Fallback: use last_chapter from search result
+        if (match.last_chapter != null) {
+          return {
+            chapter: String(match.last_chapter),
+            url: `https://comick.io/comic/${match.slug}`,
+          };
+        }
+        continue;
+      }
 
       // Pick highest chapter number
       const sorted = chapters
