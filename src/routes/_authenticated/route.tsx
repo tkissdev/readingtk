@@ -55,9 +55,13 @@ function AuthedLayout() {
       >
         {/* Logo + toggle */}
         <div className={`mb-6 flex items-center ${collapsed ? "justify-center w-full" : "justify-between px-2"}`}>
-          {!collapsed && (
+          {collapsed ? (
             <Link to="/dashboard">
-              <img src="/Logo RTK.png" alt="ReadingTK" className="h-9 w-auto" />
+              <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 28, height: "auto", mixBlendMode: "lighten" }} />
+            </Link>
+          ) : (
+            <Link to="/dashboard">
+              <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 130, height: "auto", mixBlendMode: "lighten" }} />
             </Link>
           )}
           <button

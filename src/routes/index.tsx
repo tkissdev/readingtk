@@ -18,7 +18,7 @@ function Landing() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
         <Link to="/">
-          <img src="/Logo RTK.png" alt="ReadingTK" className="h-10 w-auto" />
+          <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 140, height: "auto", mixBlendMode: "lighten" }} />
         </Link>
         <nav className="flex items-center gap-2">
           <Link to="/auth" className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">Connexion</Link>
