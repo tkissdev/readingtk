@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { checkNow } from "@/lib/scrape.functions";
-import { Search, Plus, Upload, Globe, Bell, RefreshCw, Settings, X, Sparkles } from "lucide-react";
+import { Search, Plus, Upload, Globe, Bell, RefreshCw, Settings, X, Sparkles, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -313,7 +313,10 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
           <ul className="mt-2 space-y-1.5">
             {data.chapters.map((c) => (
               <li key={c.id} className="flex items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-xs">
-                <a href={c.chapter_url} target="_blank" rel="noopener noreferrer" className="hover:text-accent">{c.chapter_label}</a>
+                <a href={c.chapter_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-accent hover:underline">
+                  <ExternalLink style={{ width: 11, height: 11 }} />
+                  {c.chapter_label}
+                </a>
                 <span className="text-muted-foreground">{new Date(c.detected_at).toLocaleDateString()}</span>
               </li>
             ))}
