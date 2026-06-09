@@ -53,30 +53,78 @@ function AddTitles() {
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user!.id;
 
-      // create titles named from URL last segment, attach source
       for (const url of lines) {
+        // ── 1. Parse title + chapter from URL ──────────────────────────────
         let name = url;
+        let chapterNum: string | null = null;
         try {
           const u = new URL(url);
-          name = decodeURIComponent(u.pathname.split("/").filter(Boolean).pop() ?? u.hostname).replace(/[-_]+/g, " ");
-        } catch { /* keep url */ }
-        const { data: title, error } = await supabase.from("titles").insert({
-          user_id: userId, name,
-          type: settings?.default_type ?? "manga",
-          status: settings?.default_status ?? "ongoing",
-        }).select("id").single();
-        if (error) throw error;
-        // match site by domain
+          const segments = u.pathname.split("/").filter(Boolean);
+          const chapterRe = /^(?:chapter|chap|ch|episode|ep)[_-]?(\d+(?:\.\d+)?)/i;
+          let titleSeg: string | null = null;
+
+          for (let i = 0; i < segments.length; i++) {
+            const m = segments[i].match(chapterRe);
+            if (m) {
+              chapterNum = m[1];
+              titleSeg = i > 0 ? segments[i - 1] : null;
+              break;
+            }
+          }
+          // Fallback: last segment if no chapter pattern found
+          if (!titleSeg) titleSeg = segments[segments.length - 1] ?? u.hostname;
+
+          name = decodeURIComponent(titleSeg)
+            .replace(/[-_]+/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+            .trim();
+        } catch { /* keep url as name */ }
+
+        // ── 2. Insert title ─────────────────────────────────────────────────
+        const { data: title, error: titleErr } = await supabase
+          .from("titles")
+          .insert({ user_id: userId, name, type: settings?.default_type ?? "manga", status: settings?.default_status ?? "ongoing" })
+          .select("id")
+          .single();
+        if (titleErr) throw titleErr;
+
+        // ── 3. Save chapter read if extracted ──────────────────────────────
+        if (chapterNum) {
+          await supabase.from("reading_progress").upsert(
+            { title_id: title.id, last_chapter_read: chapterNum, last_read_at: new Date().toISOString() },
+            { onConflict: "title_id" }
+          );
+        }
+
+        // ── 4. Match site by domain, or create it ──────────────────────────
         let siteId: string | null = null;
         try {
-          const host = new URL(url).hostname;
-          const match = (sites ?? []).find((s) => {
+          const u = new URL(url);
+          const host = u.hostname;
+          const existing = (sites ?? []).find((s) => {
             try { return new URL(s.base_url).hostname === host; } catch { return false; }
           });
-          siteId = match?.id ?? null;
+
+          if (existing) {
+            siteId = existing.id;
+          } else {
+            // Build a clean site name from hostname: "manhuaus.com" → "Manhuaus"
+            const raw = host.replace(/^www\./, "").split(".")[0];
+            const siteName = raw.charAt(0).toUpperCase() + raw.slice(1);
+            const base_url = `${u.protocol}//${host}`;
+            const { data: newSite } = await supabase
+              .from("sites")
+              .insert({ name: siteName, base_url })
+              .select("id")
+              .single();
+            siteId = newSite?.id ?? null;
+          }
         } catch { /* ignore */ }
+
+        // ── 5. Insert source ────────────────────────────────────────────────
         await supabase.from("title_sources").insert({ title_id: title.id, site_id: siteId, url, is_primary: true });
       }
+
       toast.success(`${lines.length} URL(s) importée(s)`);
       navigate({ to: "/dashboard" });
     } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); }
