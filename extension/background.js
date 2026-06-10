@@ -346,6 +346,61 @@ function fetchViaTab(url) {
   });
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+// Convertit un nom de titre en slug URL (ex: "The Shepherd Wizard" → "the-shepherd-wizard")
+function titleToSlug(name) {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+// Enregistre un chapitre trouvé et envoie les notifications si nécessaire
+async function recordChapter({ titleId, siteId, chapLabel, chapUrl, lastRead, notifiedLabels, notifyInApp, notifyBrowser, titleName, userId, detected }) {
+  const existing = await sbGet(
+    `/chapters?title_id=eq.${titleId}&chapter_label=eq.${encodeURIComponent(chapLabel)}&site_id=eq.${siteId}&select=id`
+  );
+  if (existing.length) return detected;
+
+  const newChap = await sbPost("/chapters", {
+    title_id: titleId,
+    site_id: siteId || null,
+    chapter_label: chapLabel,
+    chapter_url: chapUrl,
+  });
+
+  const num = parseFloat(chapLabel);
+  const isNew = isNaN(num) || isNaN(lastRead) ? lastRead < 0 : num > lastRead;
+
+  if (isNew && !notifiedLabels.has(chapLabel)) {
+    notifiedLabels.add(chapLabel);
+    detected++;
+
+    if (notifyInApp && newChap[0]?.id) {
+      await sbPost("/notifications", {
+        user_id: userId,
+        title_id: titleId,
+        chapter_id: newChap[0].id,
+        channel: "in_app",
+        sent_at: new Date().toISOString(),
+      });
+    }
+
+    if (notifyBrowser) {
+      chrome.notifications.create(`rtk-${titleId}-${chapLabel}`, {
+        type: "basic",
+        iconUrl: "icons/icon-128.png",
+        title: "Nouveau chapitre · ReadingTK",
+        message: `${titleName} — ${chapLabel}`,
+      });
+    }
+  }
+  return detected;
+}
+
 // ── Check principal ────────────────────────────────────────────────────────────
 
 async function runCheck() {
@@ -370,9 +425,13 @@ async function runCheck() {
       `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,title_sources(id,url,site_id,last_seen_chapter)`
     );
 
+    // Sites globaux avec un template URL (pour l'auto-découverte)
+    const globalSites = await sbGet(
+      `/sites?user_id=eq.${user_id}&url_template=not.is.null&enabled=eq.true&select=id,name,url_template`
+    );
+
     for (const title of titles) {
       const sources = (title.title_sources || []).filter(s => s.url);
-      if (!sources.length) continue;
 
       try {
         const progress = await sbGet(`/reading_progress?title_id=eq.${title.id}&select=last_chapter_read`);
@@ -380,59 +439,63 @@ async function runCheck() {
 
         const notifiedLabels = new Set();
 
+        // ── 1. Scraper les sources existantes ──────────────────────────────────
         for (const src of sources) {
           try {
             const result = await fetchViaTab(src.url);
-            // Si le script injecté a trouvé directement via DOM, utiliser ça
-            // Sinon, parser le HTML brut avec les regex
-            const found = result.found ?? parseLastChapter(result.html ?? "", src.url);
+            const found = result?.found ?? parseLastChapter(result?.html ?? "", src.url);
             if (!found) continue;
 
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel });
 
-            // Vérifier si cette source a déjà une ligne pour ce chapitre
-            const existing = await sbGet(
-              `/chapters?title_id=eq.${title.id}&chapter_label=eq.${encodeURIComponent(chapLabel)}&site_id=eq.${src.site_id}&select=id`
-            );
-
-            if (!existing.length) {
-              const newChap = await sbPost("/chapters", {
-                title_id: title.id,
-                site_id: src.site_id || null,
-                chapter_label: chapLabel,
-                chapter_url: found.url,
-              });
-
-              const isNew = isNaN(found.num) || isNaN(lastRead) ? lastRead < 0 : found.num > lastRead;
-
-              // Notifier une seule fois par chapitre (même si plusieurs sources)
-              if (isNew && !notifiedLabels.has(chapLabel)) {
-                notifiedLabels.add(chapLabel);
-                detected++;
-
-                if (notifyInApp && newChap[0]?.id) {
-                  await sbPost("/notifications", {
-                    user_id,
-                    title_id: title.id,
-                    chapter_id: newChap[0].id,
-                    channel: "in_app",
-                    sent_at: new Date().toISOString(),
-                  });
-                }
-
-                if (notifyBrowser) {
-                  chrome.notifications.create(`rtk-${title.id}-${chapLabel}`, {
-                    type: "basic",
-                    iconUrl: "icons/icon-128.png",
-                    title: "Nouveau chapitre · ReadingTK",
-                    message: `${title.name} — ${chapLabel}`,
-                  });
-                }
-              }
-            }
+            detected = await recordChapter({
+              titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url,
+              lastRead, notifiedLabels, notifyInApp, notifyBrowser,
+              titleName: title.name, userId: user_id, detected,
+            });
           } catch { errors++; }
         }
+
+        // ── 2. Auto-découverte : sites globaux non encore liés à ce titre ──────
+        for (const site of (globalSites || [])) {
+          const alreadyLinked = sources.some(s => s.site_id === site.id);
+          if (alreadyLinked) continue;
+
+          const slug = titleToSlug(title.name);
+          const templateUrl = site.url_template.replace("{slug}", slug);
+
+          try {
+            const result = await fetchViaTab(templateUrl);
+            const found = result?.found ?? parseLastChapter(result?.html ?? "", templateUrl);
+            if (!found) continue;
+
+            // Chapitre trouvé → ajouter comme source du titre
+            console.log(`[RTK] Auto-découverte: "${title.name}" sur ${site.name} (${templateUrl})`);
+
+            const newSrcArr = await sbPost("/title_sources", {
+              title_id: title.id,
+              site_id: site.id,
+              url: templateUrl,
+              is_primary: false,
+            });
+            const newSrc = newSrcArr[0];
+
+            const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
+
+            if (newSrc?.id) {
+              await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
+              sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
+            }
+
+            detected = await recordChapter({
+              titleId: title.id, siteId: site.id, chapLabel, chapUrl: found.url,
+              lastRead, notifiedLabels, notifyInApp, notifyBrowser,
+              titleName: title.name, userId: user_id, detected,
+            });
+          } catch (e) { console.error("[RTK] Auto-discover error:", e?.message); errors++; }
+        }
+
       } catch { errors++; }
     }
 
