@@ -1,5 +1,3 @@
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
 function $(id) { return document.getElementById(id); }
 
 function showScreen(name) {
@@ -26,67 +24,45 @@ function send(type, payload = {}) {
 
 async function init() {
   const status = await send("GET_STATUS");
-
   if (!status.access_token) {
     showScreen("login");
     return;
   }
-
   showScreen("main");
   updateStatus(status);
 }
 
 function updateStatus(status) {
   $("last-check").textContent = formatTime(status.last_check);
-
   if (status.last_detected !== undefined) {
     const d = status.last_detected;
     $("last-detected").textContent = d > 0 ? `${d} nouveau(x)` : "Aucun";
     $("last-detected").style.color = d > 0 ? "#818cf8" : "";
   }
-
-  const interval = status.check_interval || 60;
-  $("interval-select").value = String(interval);
-
+  $("interval-select").value = String(status.check_interval || 60);
   $("notif-toggle").checked = status.browser_notifications !== false;
 }
 
 // ── Login ──────────────────────────────────────────────────────────────────────
 
 $("login-btn").addEventListener("click", async () => {
-  const email = $("email").value.trim();
-  const password = $("password").value;
   const errEl = $("login-error");
-
-  if (!email || !password) {
-    errEl.textContent = "Veuillez remplir tous les champs.";
-    errEl.classList.remove("hidden");
-    return;
-  }
-
-  $("login-btn").disabled = true;
-  $("login-btn").textContent = "Connexion...";
   errEl.classList.add("hidden");
+  $("login-btn").disabled = true;
+  $("login-btn").textContent = "Connexion en cours...";
 
-  const res = await send("LOGIN", { email, password });
+  const res = await send("LOGIN");
 
   if (res?.ok) {
     showScreen("main");
     const status = await send("GET_STATUS");
     updateStatus(status);
   } else {
-    errEl.textContent = res?.error || "Erreur de connexion";
+    errEl.textContent = res?.error || "Erreur — assurez-vous d'être connecté sur readingtk.net";
     errEl.classList.remove("hidden");
     $("login-btn").disabled = false;
-    $("login-btn").textContent = "Se connecter";
+    $("login-btn").textContent = "Se connecter via ReadingTK";
   }
-});
-
-// Allow Enter key on login form
-[$("email"), $("password")].forEach(el => {
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") $("login-btn").click();
-  });
 });
 
 // ── Logout ─────────────────────────────────────────────────────────────────────
@@ -94,8 +70,6 @@ $("login-btn").addEventListener("click", async () => {
 $("logout-btn").addEventListener("click", async () => {
   await send("LOGOUT");
   showScreen("login");
-  $("email").value = "";
-  $("password").value = "";
 });
 
 // ── Check Now ──────────────────────────────────────────────────────────────────
@@ -112,9 +86,7 @@ $("check-btn").addEventListener("click", async () => {
   const status = await send("GET_STATUS");
   updateStatus(status);
 
-  if (res?.error) {
-    console.error("[ReadingTK]", res.error);
-  }
+  if (res?.error) console.error("[ReadingTK]", res.error);
 });
 
 // ── Interval ───────────────────────────────────────────────────────────────────
@@ -126,18 +98,7 @@ $("interval-select").addEventListener("change", async (e) => {
 // ── Notifications ──────────────────────────────────────────────────────────────
 
 $("notif-toggle").addEventListener("change", async (e) => {
-  const enabled = e.target.checked;
-
-  if (enabled) {
-    // Demander la permission si nécessaire
-    const permission = await chrome.permissions?.request?.({ permissions: ["notifications"] }).catch(() => null);
-    if (permission === false) {
-      e.target.checked = false;
-      return;
-    }
-  }
-
-  await send("SET_NOTIFICATIONS", { enabled });
+  await send("SET_NOTIFICATIONS", { enabled: e.target.checked });
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────────

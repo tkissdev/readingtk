@@ -3,7 +3,7 @@
   "name": "ReadingTK",
   "version": "1.0.0",
   "description": "Détection automatique de nouveaux chapitres manga/manhua",
-  "permissions": ["alarms", "storage", "notifications"],
+  "permissions": ["alarms", "storage", "notifications", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

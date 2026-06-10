@@ -1,26 +1,82 @@
 const SUPABASE_URL = "https://jjjfphkvwtruckxygwal.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqamZwaGt2d3RydWNreHlnd2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjY2MDksImV4cCI6MjA5NjUwMjYwOX0.VEGbnT2qOQ2nr82Lpki8ppQS5jQymPMj6rMZ7gFc9zA";
+const STORAGE_KEY = "sb-jjjfphkvwtruckxygwal-auth-token";
+const SITE_URL = "https://readingtk.net";
 
-// ── Auth ───────────────────────────────────────────────────────────────────────
+// ── Auth — lecture de session depuis readingtk.net ─────────────────────────────
 
-async function login(email, password) {
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error_description || err.msg || "Connexion échouée");
+async function extractSessionFromTab(tabId) {
+  try {
+    // MV3 Chrome
+    if (chrome.scripting) {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (key) => {
+          const raw = localStorage.getItem(key);
+          if (!raw) return null;
+          try { return JSON.parse(raw); } catch { return null; }
+        },
+        args: [STORAGE_KEY],
+      });
+      return results?.[0]?.result ?? null;
+    }
+    // MV2 Firefox
+    const results = await chrome.tabs.executeScript(tabId, {
+      code: `
+        (function() {
+          const raw = localStorage.getItem("${STORAGE_KEY}");
+          if (!raw) return null;
+          try { return JSON.parse(raw); } catch { return null; }
+        })()
+      `,
+    });
+    return results?.[0] ?? null;
+  } catch (e) {
+    console.error("[RTK] extractSession error:", e);
+    return null;
   }
-  const data = await res.json();
-  await chrome.storage.local.set({
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    user_id: data.user.id,
-    token_expires_at: Date.now() + data.expires_in * 1000,
+}
+
+async function loginViaWebApp() {
+  // 1. Chercher un onglet readingtk.net déjà ouvert
+  const existing = await chrome.tabs.query({ url: `${SITE_URL}/*` });
+
+  if (existing.length > 0) {
+    const session = await extractSessionFromTab(existing[0].id);
+    if (session?.access_token) {
+      await storeSession(session);
+      return { ok: true };
+    }
+  }
+
+  // 2. Ouvrir readingtk.net et attendre le chargement
+  return new Promise((resolve) => {
+    chrome.tabs.create({ url: `${SITE_URL}/dashboard` }, (tab) => {
+      const listener = (tabId, changeInfo) => {
+        if (tabId !== tab.id || changeInfo.status !== "complete") return;
+        chrome.tabs.onUpdated.removeListener(listener);
+
+        extractSessionFromTab(tabId).then(async (session) => {
+          if (session?.access_token) {
+            await storeSession(session);
+            resolve({ ok: true });
+          } else {
+            resolve({ error: "Pas de session trouvée. Connectez-vous sur readingtk.net d'abord." });
+          }
+        });
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+    });
   });
-  return data;
+}
+
+async function storeSession(session) {
+  await chrome.storage.local.set({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    user_id: session.user?.id,
+    token_expires_at: (session.expires_at ?? 0) * 1000,
+  });
 }
 
 async function refreshToken() {
@@ -36,7 +92,7 @@ async function refreshToken() {
   await chrome.storage.local.set({
     access_token: data.access_token,
     refresh_token: data.refresh_token,
-    token_expires_at: Date.now() + data.expires_in * 1000,
+    token_expires_at: (data.expires_at ?? 0) * 1000,
   });
   return data.access_token;
 }
@@ -99,7 +155,6 @@ function parseLastChapter(html, baseUrl) {
   const candidates = [];
   const chapterNumRe = /(chapter|chapitre|chap|ch\.?|episode|ep\.?)[-_\s]?(\d+(?:\.\d+)?)/i;
 
-  // Stratégie 1 : balises <a>
   const anchorRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = anchorRe.exec(html)) !== null) {
@@ -116,7 +171,6 @@ function parseLastChapter(html, baseUrl) {
     }
   }
 
-  // Stratégie 2 : URLs basées sur le slug
   if (!candidates.length) {
     try {
       const base = new URL(baseUrl);
@@ -146,7 +200,6 @@ function parseLastChapter(html, baseUrl) {
     } catch {}
   }
 
-  // Stratégie 3 : blobs JSON/script bruts
   if (!candidates.length) {
     const rawRe = /["'\/](chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)["'\/]/gi;
     let rm;
@@ -211,7 +264,6 @@ async function runCheck() {
             if (!found) continue;
 
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
-
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel });
 
             const existing = await sbGet(
@@ -252,7 +304,7 @@ async function runCheck() {
               }
             }
 
-            break; // source OK, on passe au titre suivant
+            break;
           } catch { errors++; }
         }
       } catch { errors++; }
@@ -262,12 +314,7 @@ async function runCheck() {
       last_global_check_at: new Date().toISOString(),
     });
 
-    await chrome.storage.local.set({
-      last_check: Date.now(),
-      last_detected: detected,
-      last_errors: errors,
-    });
-
+    await chrome.storage.local.set({ last_check: Date.now(), last_detected: detected, last_errors: errors });
     return { detected, errors };
   } catch (e) {
     return { error: e.message };
@@ -291,9 +338,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "LOGIN") {
-    login(msg.email, msg.password)
-      .then(() => { setupAlarm(); sendResponse({ ok: true }); })
-      .catch(e => sendResponse({ error: e.message }));
+    loginViaWebApp().then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;
   }
   if (msg.type === "LOGOUT") {
