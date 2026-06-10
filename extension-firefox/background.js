@@ -247,27 +247,49 @@ function parseLastChapter(html, baseUrl) {
   return candidates[0];
 }
 
-// ── Fetch via onglet réel (bypass Cloudflare) ──────────────────────────────────
+// ── Fetch silencieux (aucun onglet ouvert, invisible pour l'utilisateur) ──────────
+
+async function fetchSilent(url) {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+    },
+  });
+
+  // 404 / 410 via code HTTP — le plus fiable
+  if (res.status === 404 || res.status === 410) {
+    return { found: null, is404: true, html: null, debug: { status: res.status } };
+  }
+
+  const html = await res.text();
+
+  // 404 soft : page renvoie 200 mais affiche une erreur dans le titre ou le contenu
+  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const pageTitle = titleMatch ? titleMatch[1].toLowerCase() : "";
+  const bodySnippet = html.slice(0, 2000).toLowerCase();
+  const is404 = /\b404\b/.test(pageTitle) || /not.?found/i.test(pageTitle) || /introuvable/i.test(pageTitle)
+    || (/\b404\b/.test(bodySnippet) && /\b(not.?found|error|erreur)\b/i.test(bodySnippet));
+  if (is404) return { found: null, is404: true, html: null, debug: { pageTitle } };
+
+  const found = parseLastChapter(html, url);
+  return { found, is404: false, html: found ? null : html, debug: { pageTitle } };
+}
+
+// ── Fetch via onglet réel (fallback pour les sites JS-only) ────────────────────
 
 function injectedExtract() {
   return new Promise((resolve) => {
     const chapterNumRe = /(chapter|chapitre|chap|ch|episode|ep)[-_\/\s]?(\d+(?:\.\d+)?)/i;
-
     const SELECTORS = [
-      ".wp-manga-chapter a",
-      ".listing-chapters_wrap a",
-      ".chapter-list a",
-      ".chapters a",
-      ".chapter-li a",
-      ".row-content-chapter li a",
-      "ul.main.version-chap li a",
-      ".eph-num a",
-      "li.wp-manga-chapter a",
+      ".wp-manga-chapter a", ".listing-chapters_wrap a", ".chapter-list a",
+      ".chapters a", ".chapter-li a", ".row-content-chapter li a",
+      "ul.main.version-chap li a", ".eph-num a", "li.wp-manga-chapter a",
     ];
 
     function tryExtract() {
       const candidates = [];
-
       for (const sel of SELECTORS) {
         const els = document.querySelectorAll(sel);
         if (els.length > 0) {
@@ -275,27 +297,19 @@ function injectedExtract() {
             const text = (el.textContent || "").trim();
             const href = el.href || el.getAttribute("href") || "";
             const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
-            if (m) {
-              const num = parseFloat(m[2]);
-              if (!isNaN(num)) candidates.push({ num, url: el.href || href });
-            }
+            if (m) { const num = parseFloat(m[2]); if (!isNaN(num)) candidates.push({ num, url: el.href || href }); }
           }
           if (candidates.length) break;
         }
       }
-
       if (!candidates.length) {
         document.querySelectorAll("a[href]").forEach((el) => {
           const text = (el.textContent || "").trim();
           const href = el.href || "";
           const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
-          if (m) {
-            const num = parseFloat(m[2]);
-            if (!isNaN(num)) candidates.push({ num, url: href });
-          }
+          if (m) { const num = parseFloat(m[2]); if (!isNaN(num)) candidates.push({ num, url: href }); }
         });
       }
-
       return candidates;
     }
 
@@ -306,23 +320,16 @@ function injectedExtract() {
       if (candidates.length > 0 || elapsed >= 8000) {
         clearInterval(interval);
         const pageTitle = document.title;
-        const isCF = document.querySelector("#challenge-running, #challenge-form") !== null
-          || pageTitle === "Just a moment...";
-        const allLinks = document.querySelectorAll("a[href]").length;
         const titleLower = pageTitle.toLowerCase();
         const bodySnippet = (document.body?.innerText || "").slice(0, 500).toLowerCase();
         const is404 = /\b404\b/.test(titleLower) || /not.?found/i.test(titleLower) || /introuvable/i.test(titleLower)
           || (/\b404\b/.test(bodySnippet) && /\b(not.?found|error|erreur)\b/i.test(bodySnippet));
         if (!candidates.length) {
-          resolve({
-            found: null, is404,
-            html: document.documentElement.outerHTML,
-            debug: { title: pageTitle, isCF, allLinks, elapsed }
-          });
+          resolve({ found: null, is404, html: document.documentElement.outerHTML, debug: { title: pageTitle, elapsed } });
           return;
         }
         candidates.sort((a, b) => b.num - a.num);
-        resolve({ found: candidates[0], is404: false, html: null, debug: { title: pageTitle, isCF, allLinks, elapsed } });
+        resolve({ found: candidates[0], is404: false, html: null, debug: { title: pageTitle, elapsed } });
       }
     }, 500);
   });
@@ -330,59 +337,55 @@ function injectedExtract() {
 
 function fetchViaTab(url) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timeout")), 35000);
-
+    const timeout = setTimeout(() => reject(new Error("Timeout fetchViaTab")), 35000);
     chrome.tabs.create({ url, active: false }, (tab) => {
-      if (chrome.runtime.lastError) {
-        clearTimeout(timeout);
-        return reject(new Error(chrome.runtime.lastError.message));
-      }
-
+      if (chrome.runtime.lastError) { clearTimeout(timeout); return reject(new Error(chrome.runtime.lastError.message)); }
       function onUpdated(tabId, changeInfo) {
         if (tabId !== tab.id || changeInfo.status !== "complete") return;
         chrome.tabs.onUpdated.removeListener(onUpdated);
         clearTimeout(timeout);
-
-        // Utiliser callback pour remove (Firefox MV2 : chrome.tabs.remove ne retourne pas de Promise)
-        const removeTab = () => {
-          chrome.tabs.remove(tab.id, () => { if (chrome.runtime.lastError) {} });
-        };
-
-        const done = (result) => {
-          console.log("[RTK] Résultat extraction pour", url, result);
-          removeTab();
-          resolve(result);
-        };
-        const fail = (e) => {
-          removeTab();
-          reject(e);
-        };
-
-        if (chrome.scripting) {
-          // MV3 Chrome
-          chrome.scripting.executeScript(
-            { target: { tabId: tab.id }, func: injectedExtract },
-            (results) => {
-              if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
-              done(results?.[0]?.result ?? { found: null, html: "" });
-            }
-          );
-        } else {
-          // MV2 Firefox — injecter la fonction comme string
-          const code = `(${injectedExtract.toString()})()`;
-          chrome.tabs.executeScript(tab.id, { code }, (results) => {
-            if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
-            // Firefox résout automatiquement la Promise retournée par injectedExtract
-            Promise.resolve(results?.[0])
-              .then(r => done(r ?? { found: null, html: null }))
-              .catch(fail);
-          });
-        }
+        const removeTab = () => { chrome.tabs.remove(tab.id, () => {}); };
+        const done = (result) => { removeTab(); resolve(result); };
+        const fail = (e) => { removeTab(); reject(e); };
+        // MV2 Firefox — injecter la fonction comme string
+        const code = `(${injectedExtract.toString()})()`;
+        chrome.tabs.executeScript(tab.id, { code }, (results) => {
+          if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
+          Promise.resolve(results?.[0])
+            .then(r => done(r ?? { found: null, html: null }))
+            .catch(fail);
+        });
       }
-
       chrome.tabs.onUpdated.addListener(onUpdated);
     });
   });
+}
+
+// Récupère le contenu d'un site : silent en priorité, fallback onglet si JS-only.
+// siteId et currentNeedsTab permettent de mémoriser les sites JS-only en base.
+async function fetchForSite(url, siteId, currentNeedsTab) {
+  if (currentNeedsTab) {
+    return { result: await fetchViaTab(url), markedNeedsTab: false };
+  }
+
+  const silent = await fetchSilent(url);
+
+  // Si on a trouvé quelque chose, ou si c'est une 404 → pas besoin d'aller plus loin
+  if (silent.found || silent.is404) return { result: silent, markedNeedsTab: false };
+
+  // Rien trouvé, pas de 404 → peut-être un site JS-only : tenter via onglet une fois
+  try {
+    const tabResult = await fetchViaTab(url);
+    if (tabResult?.found) {
+      // Le site charge ses chapitres en JS → mémoriser pour les prochaines fois
+      if (siteId) await sbPatch(`/sites?id=eq.${siteId}`, { needs_tab: true });
+      return { result: tabResult, markedNeedsTab: true };
+    }
+  } catch (e) {
+    console.warn("[RTK] fetchViaTab fallback échoué pour", url, e?.message);
+  }
+
+  return { result: silent, markedNeedsTab: false };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -455,12 +458,12 @@ async function runCheck() {
     const notifyInApp = settings[0]?.in_app_notifications_enabled !== false;
 
     const titles = await sbGet(
-      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,title_sources(id,url,site_id,last_seen_chapter,last_error)`
+      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab))`
     );
 
     // Sites globaux avec un template URL (pour l'auto-découverte)
     const globalSites = await sbGet(
-      `/sites?user_id=eq.${user_id}&url_template=not.is.null&enabled=eq.true&select=id,name,url_template`
+      `/sites?user_id=eq.${user_id}&url_template=not.is.null&enabled=eq.true&select=id,name,url_template,needs_tab`
     );
 
     for (const title of titles) {
@@ -476,7 +479,8 @@ async function runCheck() {
         // ── 1. Scraper les sources existantes ──────────────────────────────────
         for (const src of sources) {
           try {
-            const result = await fetchViaTab(src.url);
+            const siteNeedsTab = src.sites?.needs_tab === true;
+            const { result } = await fetchForSite(src.url, src.site_id, siteNeedsTab);
             if (!result) continue;
 
             // Détecter les pages 404 : marquer la source et désactiver le site
@@ -512,7 +516,7 @@ async function runCheck() {
           const templateUrl = site.url_template.replace("{slug}", slug);
 
           try {
-            const result = await fetchViaTab(templateUrl);
+            const { result } = await fetchForSite(templateUrl, site.id, site.needs_tab === true);
             if (!result) continue;
             const found = result.found ?? parseLastChapter(result.html ?? "", templateUrl);
             if (!found) continue;

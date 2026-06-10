@@ -53,20 +53,8 @@ function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-bold">Paramètres</h1>
-      {form.last_global_check_at && (
-        <p className="mt-1 text-xs text-muted-foreground">Dernière vérification : {new Date(form.last_global_check_at).toLocaleString()}</p>
-      )}
 
-      <Section title="Fréquence de check">
-        <label className="text-xs text-muted-foreground">Toutes les X heures (vide = manuel uniquement)</label>
-        <input
-          type="number" min={0} value={form.check_frequency_hours ?? ""}
-          onChange={(e) => update("check_frequency_hours", e.target.value ? parseInt(e.target.value) : null)}
-          className="mt-1 w-32 rounded-md border border-input bg-input/50 px-3 py-2 text-sm"
-        />
-      </Section>
-
-      <Section title="Notifications">
+<Section title="Notifications">
         <Toggle label="Notifications in-app" value={form.in_app_notifications_enabled} onChange={(v) => update("in_app_notifications_enabled", v)} />
         <div className="mt-3 flex items-center justify-between opacity-50">
           <span className="text-sm">Notifications Email <span className="ml-2 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] uppercase">Coming soon</span></span>
@@ -107,8 +95,6 @@ function SettingsPage() {
 
       <Section title="Import bookmarks">
         <Toggle label="Ignorer les doublons" value={form.bookmarks_ignore_duplicates} onChange={(v) => update("bookmarks_ignore_duplicates", v)} />
-        <div className="mt-3"></div>
-        <Toggle label="Regrouper par domaine" value={form.bookmarks_group_by_domain} onChange={(v) => update("bookmarks_group_by_domain", v)} />
       </Section>
     </div>
   );

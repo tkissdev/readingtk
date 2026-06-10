@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useRouter, useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutGrid, Globe, Bell, Settings, Upload, Plus } from "lucide-react";
+import { LayoutGrid, Globe, Bell, Settings, Upload, Download, Plus } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -65,8 +65,9 @@ function AuthedLayout() {
   ] as const;
 
   const extraItems = [
-    { to: "/titles/add", label: "Ajouter un titre",   icon: Plus },
-    { to: "/import",     label: "Importer bookmarks", icon: Upload },
+    { to: "/titles/add", label: "Ajouter un titre",    icon: Plus },
+    { to: "/import",     label: "Importer bookmarks",  icon: Upload },
+    { to: "/export",     label: "Exporter bookmarks",  icon: Download },
   ] as const;
 
   const avatarLetter = (user?.email?.[0] ?? "U").toUpperCase();

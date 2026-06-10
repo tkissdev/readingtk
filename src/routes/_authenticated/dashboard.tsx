@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw } from "lucide-react";
@@ -116,6 +116,14 @@ function Dashboard() {
   }
 
   // ── Data ─────────────────────────────────────────────────────────────────────
+  const { data: lastCheck } = useQuery({
+    queryKey: ["last-check"],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_settings").select("last_global_check_at").maybeSingle();
+      return data?.last_global_check_at ?? null;
+    },
+  });
+
   const { data: titles, isLoading } = useQuery({
     queryKey: ["titles"],
     queryFn: async (): Promise<Title[]> => {
@@ -193,6 +201,11 @@ function Dashboard() {
         </div>
         {!mergeMode ? (
           <div className="flex items-center gap-2">
+            {lastCheck && (
+              <span className="text-muted-foreground/60">
+                Dernier scraping : {new Date(lastCheck).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+              </span>
+            )}
             <button onClick={() => qc.invalidateQueries({ queryKey: ["titles"] })}
               className="flex items-center gap-1.5 rounded-full bg-secondary/40 px-3 py-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition">
               <RefreshCw className="h-3 w-3" /> Actualiser
@@ -393,6 +406,10 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
     },
   });
   const [lastRead, setLastRead] = useState("");
+  // Initialiser avec la valeur sauvegardée dès que les données arrivent
+  const savedChapter = data?.progress?.last_chapter_read ?? "";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (savedChapter) setLastRead(savedChapter); }, [savedChapter]);
 
   const saveProgress = useMutation({
     mutationFn: async (value: string) => {
@@ -412,6 +429,14 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
       const { error } = await supabase.from("titles").update({ status }).eq("id", titleId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["titles"] }),
+  });
+
+  const updateType = useMutation({
+    mutationFn: async (type: string) => {
+      const { error } = await supabase.from("titles").update({ type }).eq("id", titleId);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["titles"] }),
@@ -454,25 +479,59 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
         <div className="mt-6">
           <label className="text-xs font-medium text-muted-foreground">Dernier chapitre lu</label>
           <div className="mt-1 flex gap-2">
-            <input defaultValue={data.progress?.last_chapter_read ?? ""}
+            <button
+              onClick={() => {
+                const cur = parseFloat(lastRead) || 0;
+                const next = String(Math.max(0, parseFloat((cur - 1).toFixed(2))));
+                setLastRead(next);
+                saveProgress.mutate(next);
+              }}
+              className="rounded-md border border-input bg-secondary/60 px-3 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition">
+              −1
+            </button>
+            <input
+              value={lastRead}
               onChange={(e) => setLastRead(e.target.value)}
-              className="flex-1 rounded-md border border-input bg-input/50 px-3 py-2 text-sm" />
-            <button onClick={() => saveProgress.mutate(lastRead || data.progress?.last_chapter_read || "")}
+              className="w-0 flex-1 rounded-md border border-input bg-input/50 px-3 py-2 text-center text-sm" />
+            <button
+              onClick={() => {
+                const cur = parseFloat(lastRead) || 0;
+                const next = String(parseFloat((cur + 1).toFixed(2)));
+                setLastRead(next);
+                saveProgress.mutate(next);
+              }}
+              className="rounded-md border border-input bg-secondary/60 px-3 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition">
+              +1
+            </button>
+            <button onClick={() => saveProgress.mutate(lastRead)}
               className="rounded-md px-4 text-sm font-medium text-primary-foreground" style={{ background: "var(--gradient-primary)" }}>
               Enregistrer
             </button>
           </div>
         </div>
 
-        <div className="mt-6">
-          <label className="text-xs font-medium text-muted-foreground">Statut</label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {["ongoing", "paused", "dropped", "completed"].map((s) => (
-              <button key={s} onClick={() => updateStatus.mutate(s)}
-                className={`rounded-full px-3 py-1 text-xs ${data.title?.status === s ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground hover:bg-secondary"}`}>
-                {s}
-              </button>
-            ))}
+        <div className="mt-6 flex gap-6">
+          <div className="flex-1">
+            <label className="text-xs font-medium text-muted-foreground">Type</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {["manga", "manhua", "manhwa", "novel", "autre"].map((t) => (
+                <button key={t} onClick={() => updateType.mutate(t)}
+                  className={`rounded-full px-3 py-1 text-xs ${data.title?.type === t ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground hover:bg-secondary"}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1">
+            <label className="text-xs font-medium text-muted-foreground">Statut</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {["ongoing", "paused", "dropped", "completed"].map((s) => (
+                <button key={s} onClick={() => updateStatus.mutate(s)}
+                  className={`rounded-full px-3 py-1 text-xs ${data.title?.status === s ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground hover:bg-secondary"}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

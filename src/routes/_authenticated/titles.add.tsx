@@ -74,7 +74,7 @@ function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
 
 function AddTitles() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"manual" | "urls">("manual");
+  const [tab, setTab] = useState<"manual" | "urls">("urls");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -227,7 +227,7 @@ function AddTitles() {
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-bold">Ajouter des titres</h1>
       <div className="mt-6 flex gap-2 border-b border-border/60">
-        {(["manual", "urls"] as const).map((t) => (
+        {(["urls", "manual"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium ${tab === t ? "border-b-2 border-accent text-foreground" : "text-muted-foreground"}`}>
             {t === "manual" ? "Ajout manuel" : "Ajout via URLs"}

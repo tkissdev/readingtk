@@ -17,6 +17,7 @@ import { Route as AuthenticatedSitesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTitlesAddRouteImport } from './routes/_authenticated/titles.add'
 
@@ -60,6 +61,11 @@ const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
   path: '/import',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedExportRoute = AuthenticatedExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/export': typeof AuthenticatedExportRoute
   '/import': typeof AuthenticatedImportRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/export': typeof AuthenticatedExportRoute
   '/import': typeof AuthenticatedImportRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/export': typeof AuthenticatedExportRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/dashboard'
+    | '/export'
     | '/import'
     | '/notifications'
     | '/settings'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/dashboard'
+    | '/export'
     | '/import'
     | '/notifications'
     | '/settings'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/_authenticated/dashboard'
+    | '/_authenticated/export'
     | '/_authenticated/import'
     | '/_authenticated/notifications'
     | '/_authenticated/settings'
@@ -208,6 +220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/export': {
+      id: '/_authenticated/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof AuthenticatedExportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -227,6 +246,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedExportRoute: typeof AuthenticatedExportRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -236,6 +256,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedExportRoute: AuthenticatedExportRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
