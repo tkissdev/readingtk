@@ -216,9 +216,81 @@ function parseLastChapter(html, baseUrl) {
 
 // ── Fetch via onglet réel (bypass Cloudflare) ──────────────────────────────────
 
+// Fonction injectée dans l'onglet — cherche les chapitres dans le DOM réel
+function injectedExtract() {
+  return new Promise((resolve) => {
+    const chapterNumRe = /(chapter|chapitre|chap|ch|episode|ep)[-_\s]?(\d+(?:\.\d+)?)/i;
+
+    // Sélecteurs CSS connus pour les sites manga (MadaraWP et variantes)
+    const SELECTORS = [
+      ".wp-manga-chapter a",
+      ".listing-chapters_wrap a",
+      ".chapter-list a",
+      ".chapters a",
+      ".chapter-li a",
+      ".row-content-chapter li a",
+      "ul.main.version-chap li a",
+      ".eph-num a",
+      "li.wp-manga-chapter a",
+    ];
+
+    function tryExtract() {
+      const candidates = [];
+
+      // 1. Essayer les sélecteurs DOM connus
+      for (const sel of SELECTORS) {
+        const els = document.querySelectorAll(sel);
+        if (els.length > 0) {
+          for (const el of els) {
+            const text = (el.textContent || "").trim();
+            const href = el.href || el.getAttribute("href") || "";
+            const m = chapterNumRe.exec(text) || chapterNumRe.exec(href);
+            if (m) {
+              const num = parseFloat(m[2]);
+              if (!isNaN(num)) candidates.push({ num, url: el.href || href });
+            }
+          }
+          if (candidates.length) break;
+        }
+      }
+
+      // 2. Fallback : tous les liens de la page
+      if (!candidates.length) {
+        document.querySelectorAll("a[href]").forEach((el) => {
+          const text = (el.textContent || "").trim();
+          const href = el.href || "";
+          const m = chapterNumRe.exec(text) || chapterNumRe.exec(href);
+          if (m) {
+            const num = parseFloat(m[2]);
+            if (!isNaN(num)) candidates.push({ num, url: href });
+          }
+        });
+      }
+
+      return candidates;
+    }
+
+    // Attendre jusqu'à 8s que le contenu dynamique apparaisse
+    let elapsed = 0;
+    const interval = setInterval(() => {
+      const candidates = tryExtract();
+      elapsed += 500;
+      if (candidates.length > 0 || elapsed >= 8000) {
+        clearInterval(interval);
+        if (!candidates.length) {
+          resolve({ found: null, html: document.documentElement.outerHTML });
+          return;
+        }
+        candidates.sort((a, b) => b.num - a.num);
+        resolve({ found: candidates[0], html: null });
+      }
+    }, 500);
+  });
+}
+
 function fetchViaTab(url) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timeout")), 25000);
+    const timeout = setTimeout(() => reject(new Error("Timeout")), 35000);
 
     chrome.tabs.create({ url, active: false }, (tab) => {
       if (chrome.runtime.lastError) {
@@ -231,12 +303,9 @@ function fetchViaTab(url) {
         chrome.tabs.onUpdated.removeListener(onUpdated);
         clearTimeout(timeout);
 
-        // Extraire le HTML dans le contexte réel du navigateur
-        const extract = () => document.documentElement.outerHTML;
-
-        const done = (html) => {
+        const done = (result) => {
           chrome.tabs.remove(tab.id).catch(() => {});
-          resolve(html);
+          resolve(result);
         };
         const fail = (e) => {
           chrome.tabs.remove(tab.id).catch(() => {});
@@ -246,17 +315,19 @@ function fetchViaTab(url) {
         if (chrome.scripting) {
           // MV3 Chrome
           chrome.scripting.executeScript(
-            { target: { tabId: tab.id }, func: extract },
+            { target: { tabId: tab.id }, func: injectedExtract },
             (results) => {
               if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
-              done(results?.[0]?.result ?? "");
+              done(results?.[0]?.result ?? { found: null, html: "" });
             }
           );
         } else {
-          // MV2 Firefox
-          chrome.tabs.executeScript(tab.id, { code: "document.documentElement.outerHTML" }, (results) => {
+          // MV2 Firefox — injecter la fonction comme string
+          const code = `(${injectedExtract.toString()})()`;
+          chrome.tabs.executeScript(tab.id, { code }, (results) => {
             if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
-            done(results?.[0] ?? "");
+            // Firefox retourne une Promise non résolue — attendre
+            Promise.resolve(results?.[0]).then(done).catch(fail);
           });
         }
       }
@@ -300,8 +371,10 @@ async function runCheck() {
 
         for (const src of sources) {
           try {
-            const html = await fetchViaTab(src.url);
-            const found = parseLastChapter(html, src.url);
+            const result = await fetchViaTab(src.url);
+            // Si le script injecté a trouvé directement via DOM, utiliser ça
+            // Sinon, parser le HTML brut avec les regex
+            const found = result.found ?? parseLastChapter(result.html ?? "", src.url);
             if (!found) continue;
 
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
