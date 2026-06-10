@@ -10,7 +10,14 @@ export const Route = createFileRoute("/_authenticated/import")({
   component: ImportPage,
 });
 
-type ParsedItem = { url: string; title: string; selected: boolean; domain: string };
+type ParsedItem = {
+  url: string;             // URL originale (page chapitre)
+  sourceUrl: string;       // URL page manga (segment chapitre retiré)
+  title: string;           // titre propre (éditable)
+  chapterNum: string | null;
+  selected: boolean;
+  domain: string;
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,17 +30,10 @@ function computeSlug(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/**
- * Déduit un template d'URL depuis une URL de titre ou de chapitre.
- * Ex: "https://vortexscans.org/series/the-shepherd-wizard/chapter-23" + "The Shepherd Wizard"
- *   → "https://vortexscans.org/series/{slug}/"
- */
 function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
   try {
     const u = new URL(rawUrl);
     const parts = u.pathname.split("/").filter(Boolean);
-
-    // Supprimer les segments "chapitre" à la fin
     const chapterCombinedRe = /^(?:chapter|chap|ch|episode|ep)[-_]?\d/i;
     const chapterWordRe = /^(?:chapter|chapitre|chap|ch|episode|ep)$/i;
     let end = parts.length;
@@ -41,17 +41,11 @@ function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
       if (
         chapterCombinedRe.test(parts[i]) ||
         (chapterWordRe.test(parts[i]) && i + 1 < parts.length && /^\d/.test(parts[i + 1]))
-      ) {
-        end = i;
-        break;
-      }
+      ) { end = i; break; }
     }
     const titleParts = parts.slice(0, end);
     if (!titleParts.length) return null;
-
     const slug = computeSlug(titleName);
-
-    // Chercher le segment qui correspond au slug du titre
     for (let i = 0; i < titleParts.length; i++) {
       const part = titleParts[i].toLowerCase();
       if (slug && (part === slug || part.startsWith(slug + "-") || part.startsWith(slug + "_"))) {
@@ -59,15 +53,89 @@ function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
         return `${u.origin}/${prefix ? prefix + "/" : ""}{slug}/`;
       }
     }
-
-    // Fallback : remplacer le dernier segment
     if (titleParts.length >= 1) {
       const prefix = titleParts.slice(0, -1).join("/");
       return `${u.origin}/${prefix ? prefix + "/" : ""}{slug}/`;
     }
-
     return null;
   } catch { return null; }
+}
+
+/** Extrait titre propre, numéro de chapitre et URL manga depuis une URL de chapitre.
+ *  Ex: "https://asurascans.com/series/nano-machine/chapter-315"
+ *  → { cleanTitle: "Nano Machine", chapterNum: "315", sourceUrl: "https://asurascans.com/series/nano-machine/" }
+ */
+function extractFromUrl(rawUrl: string): { cleanTitle: string | null; chapterNum: string | null; sourceUrl: string } {
+  try {
+    const u = new URL(rawUrl);
+    const segments = u.pathname.split("/").filter(Boolean);
+    const chapterRe = /^(?:chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)/i;
+    const chapterWordRe = /^(?:chapter|chapitre|chap|ch|episode|ep)$/i;
+    let titleSeg: string | null = null;
+    let chapterNum: string | null = null;
+    let chapterIdx = -1;
+
+    for (let i = 0; i < segments.length; i++) {
+      const m = segments[i].match(chapterRe);
+      if (m) {
+        chapterNum = m[1]; chapterIdx = i;
+        titleSeg = i > 0 ? segments[i - 1] : null;
+        break;
+      }
+      if (chapterWordRe.test(segments[i]) && i + 1 < segments.length && /^\d+(\.\d+)?$/.test(segments[i + 1])) {
+        chapterNum = segments[i + 1]; chapterIdx = i;
+        titleSeg = i > 0 ? segments[i - 1] : null;
+        break;
+      }
+    }
+
+    let sourceUrl = rawUrl;
+    if (chapterIdx >= 0) {
+      sourceUrl = `${u.origin}/${segments.slice(0, chapterIdx).join("/")}/`;
+    }
+
+    if (!titleSeg) titleSeg = segments[segments.length - 1] ?? null;
+    if (!titleSeg) return { cleanTitle: null, chapterNum, sourceUrl };
+
+    const cleanTitle = decodeURIComponent(titleSeg)
+      .replace(/-[a-f0-9]{6,}$/i, "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .trim();
+
+    return { cleanTitle, chapterNum, sourceUrl };
+  } catch {
+    return { cleanTitle: null, chapterNum: null, sourceUrl: rawUrl };
+  }
+}
+
+/** Extrait titre propre et numéro de chapitre depuis le texte d'ancre d'un favori.
+ *  Ex: "Nano Machine Chapter 315 - Read Online | Asura Scans"
+ *  → { cleanTitle: "Nano Machine", chapterNum: "315" }
+ */
+function parseTitleFromText(rawText: string): { cleanTitle: string; chapterNum: string | null } {
+  let t = rawText
+    .replace(/^Read\s+/i, "")
+    .replace(/\s*\[[^\]]*\]\s*$/, "")
+    .trim();
+
+  const chapRe = /\s*[-–—]?\s*(?:chapter|chapitre|chap|ch\.?|episode|ep\.?)[\s\-_\/]?(\d+(?:\.\d+)?)/i;
+  const m = chapRe.exec(t);
+  if (m) {
+    const cleanTitle = t.slice(0, m.index).trim().replace(/\s*[-–—]\s*$/, "").trim();
+    return { cleanTitle: cleanTitle || t, chapterNum: m[1] };
+  }
+  return { cleanTitle: t, chapterNum: null };
+}
+
+function unescapeHtml(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)));
 }
 
 // ── Composant ─────────────────────────────────────────────────────────────────
@@ -93,6 +161,7 @@ function ImportPage() {
     let m: RegExpExecArray | null;
     const whitelist: string[] | null = settings?.bookmarks_domain_whitelist ?? null;
     const ignoreDup = settings?.bookmarks_ignore_duplicates ?? true;
+
     while ((m = re.exec(html)) !== null) {
       const url = m[1];
       if (!/^https?:/i.test(url)) continue;
@@ -101,8 +170,18 @@ function ImportPage() {
       let domain = "";
       try { domain = new URL(url).hostname; } catch { continue; }
       if (whitelist?.length && !whitelist.some((w) => domain.includes(w))) continue;
-      const title = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || url;
-      out.push({ url, title, selected: true, domain });
+
+      const rawText = unescapeHtml(m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || url);
+
+      // Extraction depuis l'URL (plus fiable — slugs normalisés)
+      const { cleanTitle: urlTitle, chapterNum: urlChapter, sourceUrl } = extractFromUrl(url);
+      // Extraction depuis le texte (fallback)
+      const { cleanTitle: textTitle, chapterNum: textChapter } = parseTitleFromText(rawText);
+
+      const title = urlTitle || textTitle;
+      const chapterNum = urlChapter ?? textChapter;
+
+      out.push({ url, sourceUrl, title, chapterNum, selected: true, domain });
     }
     setItems(out);
     toast.success(`${out.length} liens trouvés`);
@@ -120,65 +199,99 @@ function ImportPage() {
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user!.id;
 
-      // Cache des sites créés pendant cet import (pour ne pas recréer le même site plusieurs fois)
+      // Regrouper par titre normalisé (fusion des sources du même manga)
+      const groups = new Map<string, ParsedItem[]>();
+      for (const it of selected) {
+        const key = it.title.toLowerCase().trim();
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(it);
+      }
+
       const siteCache = new Map<string, string>(); // hostname → site_id
 
-      for (const it of selected) {
-        // ── 1. Créer le titre ───────────────────────────────────────────────
-        const { data: title } = await supabase.from("titles").insert({
-          user_id: userId,
-          name: it.title.slice(0, 200),
-          type: settings?.default_type ?? "manga",
-          status: settings?.default_status ?? "ongoing",
-        }).select("id").single();
-        if (!title) continue;
+      for (const [, groupItems] of groups) {
+        const titleName = groupItems[0].title;
 
-        // ── 2. Trouver ou créer le site, et inférer le template ─────────────
-        let siteId: string | null = null;
-        try {
-          const u = new URL(it.url);
-          const host = u.hostname;
+        // Trouver un titre existant ou en créer un
+        const { data: existing } = await supabase
+          .from("titles").select("id")
+          .eq("user_id", userId).ilike("name", titleName).maybeSingle();
 
-          if (siteCache.has(host)) {
-            siteId = siteCache.get(host)!;
-          } else {
-            const matchedSite = (sites ?? []).find((s) => {
-              try { return new URL(s.base_url).hostname === host; } catch { return false; }
-            });
+        let titleId: string;
+        if (existing) {
+          titleId = existing.id;
+        } else {
+          const { data: newTitle } = await supabase.from("titles").insert({
+            user_id: userId,
+            name: titleName,
+            type: settings?.default_type ?? "manga",
+            status: settings?.default_status ?? "ongoing",
+          }).select("id").single();
+          if (!newTitle) continue;
+          titleId = newTitle.id;
+        }
 
-            if (matchedSite) {
-              siteId = matchedSite.id;
-              // Mettre à jour le template si pas encore défini
-              if (!(matchedSite as { url_template?: string | null }).url_template) {
-                const template = inferUrlTemplate(it.url, it.title);
-                if (template) {
-                  await supabase.from("sites").update({ url_template: template }).eq("id", siteId);
-                }
-              }
-            } else {
-              // Créer le site avec le template inféré
-              const raw = host.replace(/^www\./, "").split(".")[0];
-              const siteName = raw.charAt(0).toUpperCase() + raw.slice(1);
-              const base_url = `${u.protocol}//${host}`;
-              const template = inferUrlTemplate(it.url, it.title);
-              const { data: newSite } = await supabase
-                .from("sites")
-                .insert({ user_id: userId, name: siteName, base_url, url_template: template, priority: 0, enabled: true })
-                .select("id").single();
-              siteId = newSite?.id ?? null;
-            }
-
-            if (siteId) siteCache.set(host, siteId);
+        // Sauvegarder le chapitre le plus élevé comme progression de lecture
+        const chapNums = groupItems
+          .map(it => parseFloat(it.chapterNum ?? ""))
+          .filter(n => !isNaN(n));
+        if (chapNums.length > 0) {
+          const maxChapter = Math.max(...chapNums);
+          // Ne mettre à jour que si supérieur à la progression existante
+          const { data: existingProg } = await supabase
+            .from("reading_progress").select("last_chapter_read").eq("title_id", titleId).maybeSingle();
+          const existingNum = parseFloat(existingProg?.last_chapter_read ?? "");
+          if (!existingProg || isNaN(existingNum) || maxChapter > existingNum) {
+            await supabase.from("reading_progress").upsert(
+              { title_id: titleId, last_chapter_read: String(maxChapter), last_read_at: new Date().toISOString() },
+              { onConflict: "title_id" }
+            );
           }
-        } catch { /* ignore site errors */ }
+        }
 
-        // ── 3. Ajouter la source ────────────────────────────────────────────
-        await supabase.from("title_sources").insert({
-          title_id: title.id,
-          site_id: siteId,
-          url: it.url,
-          is_primary: true,
-        });
+        // Ajouter les sources — une par URL unique (un seul enregistrement par site)
+        const seenSourceUrls = new Set<string>();
+        for (const it of groupItems) {
+          if (seenSourceUrls.has(it.sourceUrl)) continue;
+          seenSourceUrls.add(it.sourceUrl);
+
+          let siteId: string | null = null;
+          try {
+            const u = new URL(it.sourceUrl);
+            const host = u.hostname;
+
+            if (siteCache.has(host)) {
+              siteId = siteCache.get(host)!;
+            } else {
+              const matchedSite = (sites ?? []).find((s) => {
+                try { return new URL(s.base_url).hostname === host; } catch { return false; }
+              });
+
+              if (matchedSite) {
+                siteId = matchedSite.id;
+                if (!(matchedSite as { url_template?: string | null }).url_template) {
+                  const template = inferUrlTemplate(it.sourceUrl, titleName);
+                  if (template) await supabase.from("sites").update({ url_template: template }).eq("id", siteId);
+                }
+              } else {
+                const raw = host.replace(/^www\./, "").split(".")[0];
+                const siteName = raw.charAt(0).toUpperCase() + raw.slice(1);
+                const base_url = `${u.protocol}//${host}`;
+                const template = inferUrlTemplate(it.sourceUrl, titleName);
+                const { data: newSite } = await supabase
+                  .from("sites")
+                  .insert({ user_id: userId, name: siteName, base_url, url_template: template, priority: 0, enabled: true })
+                  .select("id").single();
+                siteId = newSite?.id ?? null;
+              }
+              if (siteId) siteCache.set(host, siteId);
+            }
+          } catch { /* ignore site errors */ }
+
+          await supabase.from("title_sources").insert({
+            title_id: titleId, site_id: siteId, url: it.sourceUrl, is_primary: true,
+          });
+        }
       }
 
       await supabase.from("imports").insert({
@@ -186,7 +299,7 @@ function ImportPage() {
         source: "html_bookmarks",
         raw_json: { count: selected.length },
       });
-      toast.success(`${selected.length} titre(s) importé(s)`);
+      toast.success(`${groups.size} titre(s) importé(s) depuis ${selected.length} favoris`);
       navigate({ to: "/dashboard" });
     } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); }
   }
@@ -228,6 +341,9 @@ function ImportPage() {
                       <input className="w-full rounded border border-input bg-input/30 px-2 py-1 text-xs"
                         value={it.title}
                         onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} />
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                      {it.chapterNum ? `ch. ${it.chapterNum}` : ""}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{it.domain}</td>
                   </tr>
