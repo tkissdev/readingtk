@@ -214,6 +214,58 @@ function parseLastChapter(html, baseUrl) {
   return candidates[0];
 }
 
+// ── Fetch via onglet réel (bypass Cloudflare) ──────────────────────────────────
+
+function fetchViaTab(url) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Timeout")), 25000);
+
+    chrome.tabs.create({ url, active: false }, (tab) => {
+      if (chrome.runtime.lastError) {
+        clearTimeout(timeout);
+        return reject(new Error(chrome.runtime.lastError.message));
+      }
+
+      function onUpdated(tabId, changeInfo) {
+        if (tabId !== tab.id || changeInfo.status !== "complete") return;
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        clearTimeout(timeout);
+
+        // Extraire le HTML dans le contexte réel du navigateur
+        const extract = () => document.documentElement.outerHTML;
+
+        const done = (html) => {
+          chrome.tabs.remove(tab.id).catch(() => {});
+          resolve(html);
+        };
+        const fail = (e) => {
+          chrome.tabs.remove(tab.id).catch(() => {});
+          reject(e);
+        };
+
+        if (chrome.scripting) {
+          // MV3 Chrome
+          chrome.scripting.executeScript(
+            { target: { tabId: tab.id }, func: extract },
+            (results) => {
+              if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
+              done(results?.[0]?.result ?? "");
+            }
+          );
+        } else {
+          // MV2 Firefox
+          chrome.tabs.executeScript(tab.id, { code: "document.documentElement.outerHTML" }, (results) => {
+            if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
+            done(results?.[0] ?? "");
+          });
+        }
+      }
+
+      chrome.tabs.onUpdated.addListener(onUpdated);
+    });
+  });
+}
+
 // ── Check principal ────────────────────────────────────────────────────────────
 
 async function runCheck() {
@@ -248,18 +300,7 @@ async function runCheck() {
 
         for (const src of sources) {
           try {
-            const res = await fetch(src.url, {
-              headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8",
-                "Cache-Control": "no-cache",
-              },
-              credentials: "omit",
-            });
-            if (!res.ok) { errors++; continue; }
-
-            const html = await res.text();
+            const html = await fetchViaTab(src.url);
             const found = parseLastChapter(html, src.url);
             if (!found) continue;
 
