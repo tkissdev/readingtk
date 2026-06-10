@@ -283,8 +283,13 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
 
         <div className="mt-8">
           {(() => {
-            // Trouver le dernier chapitre détecté et ses liens par source
-            if (data.chapters.length === 0) {
+            // Construire la liste des last_seen_chapter par source
+            const sourceValues = data.sources
+              .filter((s) => s.last_seen_chapter)
+              .map((s) => ({ source: s, num: parseFloat(s.last_seen_chapter!) }))
+              .filter((x) => !isNaN(x.num));
+
+            if (sourceValues.length === 0) {
               return (
                 <div>
                   <h3 className="text-sm font-semibold">Dernier chapitre détecté</h3>
@@ -292,21 +297,37 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                 </div>
               );
             }
-            const groups: Record<string, { label: string; date: string; links: { url: string; siteName: string }[] }> = {};
-            for (const c of data.chapters) {
-              const key = c.chapter_label;
-              if (!groups[key]) groups[key] = { label: key, date: c.detected_at, links: [] };
-              groups[key].links.push({ url: c.chapter_url, siteName: (c as { sites?: { name?: string } }).sites?.name ?? "Source" });
-            }
-            const sorted = Object.values(groups).sort((a, b) => parseFloat(b.label) - parseFloat(a.label));
-            const latest = sorted[0];
+
+            // Trouver la valeur la plus fréquente, à égalité prendre la plus petite (évite les faux positifs)
+            const counts: Record<number, number> = {};
+            for (const { num } of sourceValues) counts[num] = (counts[num] || 0) + 1;
+            const maxCount = Math.max(...Object.values(counts));
+            const topNums = Object.entries(counts)
+              .filter(([, c]) => c === maxCount)
+              .map(([n]) => parseFloat(n));
+            const selectedNum = Math.min(...topNums);
+            const selectedLabel = String(selectedNum);
+
+            // Pour chaque source : chercher un lien spécifique dans chapters, sinon utiliser l'URL de base
+            const links = data.sources.map((s) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const chap = (data.chapters as any[]).find(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (c: any) => c.chapter_label === selectedLabel && c.site_id === (s as any).site_id
+              );
+              return {
+                siteName: (s as { sites?: { name?: string } }).sites?.name ?? "Source",
+                url: (chap?.chapter_url as string | undefined) ?? s.url,
+              };
+            });
+
             return (
               <div>
                 <h3 className="text-sm font-semibold">
-                  Dernier chapitre détecté : <span className="text-accent">{latest.label}</span>
+                  Dernier chapitre détecté : <span className="text-accent">{selectedLabel}</span>
                 </h3>
                 <div className="mt-2 space-y-1.5">
-                  {latest.links.map((link, i) => (
+                  {links.map((link, i) => (
                     <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs text-accent hover:underline break-all">
                       <ExternalLink className="shrink-0" style={{ width: 11, height: 11 }} />
