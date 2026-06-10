@@ -61,14 +61,25 @@ function AddTitles() {
         try {
           const u = new URL(url);
           const segments = u.pathname.split("/").filter(Boolean);
+          // Matches "chapter-23", "ch23", etc. in a single segment
           const chapterRe = /^(?:chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)/i;
+          // Matches a bare chapter keyword segment (e.g. "chapter", "ch", "episode")
+          const chapterWordRe = /^(?:chapter|chapitre|chap|ch|episode|ep)$/i;
           let titleSeg: string | null = null;
           let chapterIdx = -1;
 
           for (let i = 0; i < segments.length; i++) {
+            // Case 1: "chapter-23" in one segment
             const m = segments[i].match(chapterRe);
             if (m) {
               chapterNum = m[1];
+              chapterIdx = i;
+              titleSeg = i > 0 ? segments[i - 1] : null;
+              break;
+            }
+            // Case 2: "/chapter/23" as two separate segments
+            if (chapterWordRe.test(segments[i]) && i + 1 < segments.length && /^\d+(\.\d+)?$/.test(segments[i + 1])) {
+              chapterNum = segments[i + 1];
               chapterIdx = i;
               titleSeg = i > 0 ? segments[i - 1] : null;
               break;
@@ -85,23 +96,37 @@ function AddTitles() {
           if (!titleSeg) titleSeg = segments[segments.length - 1] ?? u.hostname;
 
           name = decodeURIComponent(titleSeg)
+            .replace(/-[a-f0-9]{6,}$/i, "") // strip hash suffixes like -89829cb7
             .replace(/[-_]+/g, " ")
             .replace(/\b\w/g, (c) => c.toUpperCase())
             .trim();
         } catch { /* keep url as name */ }
 
-        // ── 2. Insert title ─────────────────────────────────────────────────
-        const { data: title, error: titleErr } = await supabase
+        // ── 2. Find existing title or create new one ────────────────────────
+        const { data: existingTitle } = await supabase
           .from("titles")
-          .insert({ user_id: userId, name, type: settings?.default_type ?? "manga", status: settings?.default_status ?? "ongoing" })
           .select("id")
-          .single();
-        if (titleErr) throw titleErr;
+          .eq("user_id", userId)
+          .ilike("name", name)
+          .maybeSingle();
+
+        let titleId: string;
+        if (existingTitle) {
+          titleId = existingTitle.id;
+        } else {
+          const { data: newTitle, error: titleErr } = await supabase
+            .from("titles")
+            .insert({ user_id: userId, name, type: settings?.default_type ?? "manga", status: settings?.default_status ?? "ongoing" })
+            .select("id")
+            .single();
+          if (titleErr) throw titleErr;
+          titleId = newTitle.id;
+        }
 
         // ── 3. Save chapter read if extracted ──────────────────────────────
         if (chapterNum) {
           await supabase.from("reading_progress").upsert(
-            { title_id: title.id, last_chapter_read: chapterNum, last_read_at: new Date().toISOString() },
+            { title_id: titleId, last_chapter_read: chapterNum, last_read_at: new Date().toISOString() },
             { onConflict: "title_id" }
           );
         }
@@ -133,7 +158,7 @@ function AddTitles() {
         } catch (e) { throw e; }
 
         // ── 5. Insert source (main manga page, not chapter page) ───────────
-        await supabase.from("title_sources").insert({ title_id: title.id, site_id: siteId, url: sourceUrl, is_primary: true });
+        await supabase.from("title_sources").insert({ title_id: titleId, site_id: siteId, url: sourceUrl, is_primary: true });
       }
 
       toast.success(`${lines.length} URL(s) importée(s) ✓`);
