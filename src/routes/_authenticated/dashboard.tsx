@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, Upload, Globe, Bell, Settings, X, Sparkles, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
@@ -61,7 +61,7 @@ function Dashboard() {
   };
 
   return (
-    <div className="p-6" onClick={() => { if (openId) setOpenId(null); }}>
+    <div className={`p-6 transition-all duration-300 ${openId ? "mr-[520px]" : ""}`} onClick={() => { if (openId) setOpenId(null); }}>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-card/60 px-3 py-2 min-w-64">
           <Search className="h-4 w-4 text-muted-foreground" />
