@@ -277,12 +277,20 @@ function injectedExtract() {
       elapsed += 500;
       if (candidates.length > 0 || elapsed >= 8000) {
         clearInterval(interval);
+        const pageTitle = document.title;
+        const isCF = document.querySelector("#challenge-running, #challenge-form") !== null
+          || pageTitle === "Just a moment...";
+        const allLinks = document.querySelectorAll("a[href]").length;
         if (!candidates.length) {
-          resolve({ found: null, html: document.documentElement.outerHTML });
+          resolve({
+            found: null,
+            html: document.documentElement.outerHTML,
+            debug: { title: pageTitle, isCF, allLinks, elapsed }
+          });
           return;
         }
         candidates.sort((a, b) => b.num - a.num);
-        resolve({ found: candidates[0], html: null });
+        resolve({ found: candidates[0], html: null, debug: { title: pageTitle, isCF, allLinks, elapsed } });
       }
     }, 500);
   });
@@ -304,6 +312,7 @@ function fetchViaTab(url) {
         clearTimeout(timeout);
 
         const done = (result) => {
+          console.log("[RTK] Résultat extraction pour", url, result);
           chrome.tabs.remove(tab.id).catch(() => {});
           resolve(result);
         };
