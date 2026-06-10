@@ -282,19 +282,41 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
         </div>
 
         <div className="mt-8">
-          <h3 className="text-sm font-semibold">Chapitres détectés</h3>
-          <ul className="mt-2 space-y-1.5">
-            {data.chapters.map((c) => (
-              <li key={c.id} className="flex items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-xs">
-                <a href={c.chapter_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-accent hover:underline">
-                  <ExternalLink style={{ width: 11, height: 11 }} />
-                  {c.chapter_label}
-                </a>
-                <span className="text-muted-foreground">{new Date(c.detected_at).toLocaleDateString()}</span>
-              </li>
-            ))}
-            {data.chapters.length === 0 && <li className="text-xs text-muted-foreground">Aucun chapitre détecté pour l'instant.</li>}
-          </ul>
+          {(() => {
+            // Trouver le dernier chapitre détecté et ses liens par source
+            if (data.chapters.length === 0) {
+              return (
+                <div>
+                  <h3 className="text-sm font-semibold">Dernier chapitre détecté</h3>
+                  <p className="mt-2 text-xs text-muted-foreground">Aucun chapitre détecté pour l'instant.</p>
+                </div>
+              );
+            }
+            const groups: Record<string, { label: string; date: string; links: { url: string; siteName: string }[] }> = {};
+            for (const c of data.chapters) {
+              const key = c.chapter_label;
+              if (!groups[key]) groups[key] = { label: key, date: c.detected_at, links: [] };
+              groups[key].links.push({ url: c.chapter_url, siteName: (c as { sites?: { name?: string } }).sites?.name ?? "Source" });
+            }
+            const sorted = Object.values(groups).sort((a, b) => parseFloat(b.label) - parseFloat(a.label));
+            const latest = sorted[0];
+            return (
+              <div>
+                <h3 className="text-sm font-semibold">
+                  Dernier chapitre détecté : <span className="text-accent">{latest.label}</span>
+                </h3>
+                <div className="mt-2 space-y-1.5">
+                  {latest.links.map((link, i) => (
+                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-accent hover:underline break-all">
+                      <ExternalLink className="shrink-0" style={{ width: 11, height: 11 }} />
+                      <span>{link.siteName} — {link.url}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         <div className="mt-10 border-t border-border/40 pt-4">
