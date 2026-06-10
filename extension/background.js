@@ -160,7 +160,7 @@ function parseLastChapter(html, baseUrl) {
   while ((m = anchorRe.exec(html)) !== null) {
     const href = m[1];
     const text = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    const km = chapterNumRe.exec(text) || chapterNumRe.exec(href);
+    const km = chapterNumRe.exec(href) || chapterNumRe.exec(text);
     if (km) {
       const num = parseFloat(km[2]);
       if (!isNaN(num)) {
@@ -244,7 +244,7 @@ function injectedExtract() {
           for (const el of els) {
             const text = (el.textContent || "").trim();
             const href = el.href || el.getAttribute("href") || "";
-            const m = chapterNumRe.exec(text) || chapterNumRe.exec(href);
+            const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
             if (m) {
               const num = parseFloat(m[2]);
               if (!isNaN(num)) candidates.push({ num, url: el.href || href });
@@ -259,7 +259,7 @@ function injectedExtract() {
         document.querySelectorAll("a[href]").forEach((el) => {
           const text = (el.textContent || "").trim();
           const href = el.href || "";
-          const m = chapterNumRe.exec(text) || chapterNumRe.exec(href);
+          const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
           if (m) {
             const num = parseFloat(m[2]);
             if (!isNaN(num)) candidates.push({ num, url: href });
@@ -378,6 +378,8 @@ async function runCheck() {
         const progress = await sbGet(`/reading_progress?title_id=eq.${title.id}&select=last_chapter_read`);
         const lastRead = parseFloat(progress[0]?.last_chapter_read ?? "") || -1;
 
+        const notifiedLabels = new Set();
+
         for (const src of sources) {
           try {
             const result = await fetchViaTab(src.url);
@@ -389,8 +391,9 @@ async function runCheck() {
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel });
 
+            // Vérifier si cette source a déjà une ligne pour ce chapitre
             const existing = await sbGet(
-              `/chapters?title_id=eq.${title.id}&chapter_label=eq.${encodeURIComponent(chapLabel)}&select=id`
+              `/chapters?title_id=eq.${title.id}&chapter_label=eq.${encodeURIComponent(chapLabel)}&site_id=eq.${src.site_id}&select=id`
             );
 
             if (!existing.length) {
@@ -403,7 +406,9 @@ async function runCheck() {
 
               const isNew = isNaN(found.num) || isNaN(lastRead) ? lastRead < 0 : found.num > lastRead;
 
-              if (isNew) {
+              // Notifier une seule fois par chapitre (même si plusieurs sources)
+              if (isNew && !notifiedLabels.has(chapLabel)) {
+                notifiedLabels.add(chapLabel);
                 detected++;
 
                 if (notifyInApp && newChap[0]?.id) {
@@ -426,8 +431,6 @@ async function runCheck() {
                 }
               }
             }
-
-            break;
           } catch { errors++; }
         }
       } catch { errors++; }

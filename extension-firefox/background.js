@@ -3,53 +3,83 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const STORAGE_KEY = "sb-jjjfphkvwtruckxygwal-auth-token";
 const SITE_URL = "https://readingtk.net";
 
+// ── Helpers storage (Firefox MV2 : chrome.storage ne retourne pas de Promise) ──
+
+function storageGet(keys) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(keys, (result) => {
+      resolve(result || {});
+    });
+  });
+}
+
+function storageSet(data) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set(data, () => {
+      if (chrome.runtime.lastError) console.error("[RTK] storageSet error:", chrome.runtime.lastError);
+      resolve();
+    });
+  });
+}
+
+function storageClear() {
+  return new Promise((resolve) => {
+    chrome.storage.local.clear(() => { resolve(); });
+  });
+}
+
 // ── Auth — lecture de session depuis readingtk.net ─────────────────────────────
 
 async function extractSessionFromTab(tabId) {
-  try {
-    // MV3 Chrome
-    if (chrome.scripting) {
-      const results = await chrome.scripting.executeScript({
-        target: { tabId },
-        func: (key) => {
-          const raw = localStorage.getItem(key);
-          if (!raw) return null;
-          try { return JSON.parse(raw); } catch { return null; }
-        },
-        args: [STORAGE_KEY],
-      });
-      return results?.[0]?.result ?? null;
-    }
-    // MV2 Firefox
-    const results = await chrome.tabs.executeScript(tabId, {
-      code: `
-        (function() {
+  return new Promise((resolve) => {
+    const code = `
+      (function() {
+        try {
           const raw = localStorage.getItem("${STORAGE_KEY}");
           if (!raw) return null;
-          try { return JSON.parse(raw); } catch { return null; }
-        })()
-      `,
+          return JSON.parse(raw);
+        } catch(e) { return null; }
+      })()
+    `;
+    chrome.tabs.executeScript(tabId, { code }, (results) => {
+      if (chrome.runtime.lastError) {
+        console.error("[RTK] executeScript error:", chrome.runtime.lastError.message);
+        resolve(null);
+        return;
+      }
+      resolve(results?.[0] ?? null);
     });
-    return results?.[0] ?? null;
-  } catch (e) {
-    console.error("[RTK] extractSession error:", e);
-    return null;
-  }
+  });
+}
+
+// Chercher un onglet readingtk.net — utilise callbacks pour éviter les problèmes Firefox
+function findReadingTKTab() {
+  return new Promise((resolve) => {
+    // Chercher dans tous les onglets (plus fiable en Firefox MV2)
+    chrome.tabs.query({}, (allTabs) => {
+      if (chrome.runtime.lastError || !allTabs) { resolve(null); return; }
+      const found = allTabs.find(t => t.url && t.url.includes("readingtk.net"));
+      resolve(found ?? null);
+    });
+  });
 }
 
 async function loginViaWebApp() {
   // 1. Chercher un onglet readingtk.net déjà ouvert
-  const existing = await chrome.tabs.query({ url: `${SITE_URL}/*` });
+  const existing = await findReadingTKTab();
 
-  if (existing.length > 0) {
-    const session = await extractSessionFromTab(existing[0].id);
+  if (existing) {
+    const session = await extractSessionFromTab(existing.id);
     if (session?.access_token) {
       await storeSession(session);
       return { ok: true };
     }
+    // Onglet trouvé mais pas de session — le mettre en avant sans ouvrir de nouvel onglet
+    chrome.tabs.update(existing.id, { active: true });
+    return { error: "Connectez-vous sur readingtk.net, puis réessayez." };
   }
 
-  // 2. Ouvrir readingtk.net et attendre le chargement
+  // 2. Aucun onglet readingtk.net — en ouvrir un et attendre le chargement
   return new Promise((resolve) => {
     chrome.tabs.create({ url: `${SITE_URL}/dashboard` }, (tab) => {
       const listener = (tabId, changeInfo) => {
@@ -71,7 +101,7 @@ async function loginViaWebApp() {
 }
 
 async function storeSession(session) {
-  await chrome.storage.local.set({
+  await storageSet({
     access_token: session.access_token,
     refresh_token: session.refresh_token,
     user_id: session.user?.id,
@@ -80,7 +110,8 @@ async function storeSession(session) {
 }
 
 async function refreshToken() {
-  const { refresh_token } = await chrome.storage.local.get("refresh_token");
+  const data = await storageGet("refresh_token");
+  const refresh_token = data.refresh_token;
   if (!refresh_token) throw new Error("Pas de refresh token");
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
     method: "POST",
@@ -88,17 +119,19 @@ async function refreshToken() {
     body: JSON.stringify({ refresh_token }),
   });
   if (!res.ok) throw new Error("Token refresh échoué");
-  const data = await res.json();
-  await chrome.storage.local.set({
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    token_expires_at: (data.expires_at ?? 0) * 1000,
+  const tokenData = await res.json();
+  await storageSet({
+    access_token: tokenData.access_token,
+    refresh_token: tokenData.refresh_token,
+    token_expires_at: (tokenData.expires_at ?? 0) * 1000,
   });
-  return data.access_token;
+  return tokenData.access_token;
 }
 
 async function getToken() {
-  const { access_token, token_expires_at } = await chrome.storage.local.get(["access_token", "token_expires_at"]);
+  const data = await storageGet(["access_token", "token_expires_at"]);
+  const access_token = data.access_token;
+  const token_expires_at = data.token_expires_at;
   if (!access_token) return null;
   if (token_expires_at && Date.now() > token_expires_at - 5 * 60 * 1000) {
     try { return await refreshToken(); } catch { return null; }
@@ -160,7 +193,7 @@ function parseLastChapter(html, baseUrl) {
   while ((m = anchorRe.exec(html)) !== null) {
     const href = m[1];
     const text = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    const km = chapterNumRe.exec(text) || chapterNumRe.exec(href);
+    const km = chapterNumRe.exec(href) || chapterNumRe.exec(text);
     if (km) {
       const num = parseFloat(km[2]);
       if (!isNaN(num)) {
@@ -216,12 +249,10 @@ function parseLastChapter(html, baseUrl) {
 
 // ── Fetch via onglet réel (bypass Cloudflare) ──────────────────────────────────
 
-// Fonction injectée dans l'onglet — cherche les chapitres dans le DOM réel
 function injectedExtract() {
   return new Promise((resolve) => {
     const chapterNumRe = /(chapter|chapitre|chap|ch|episode|ep)[-_\s]?(\d+(?:\.\d+)?)/i;
 
-    // Sélecteurs CSS connus pour les sites manga (MadaraWP et variantes)
     const SELECTORS = [
       ".wp-manga-chapter a",
       ".listing-chapters_wrap a",
@@ -237,14 +268,13 @@ function injectedExtract() {
     function tryExtract() {
       const candidates = [];
 
-      // 1. Essayer les sélecteurs DOM connus
       for (const sel of SELECTORS) {
         const els = document.querySelectorAll(sel);
         if (els.length > 0) {
           for (const el of els) {
             const text = (el.textContent || "").trim();
             const href = el.href || el.getAttribute("href") || "";
-            const m = chapterNumRe.exec(text) || chapterNumRe.exec(href);
+            const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
             if (m) {
               const num = parseFloat(m[2]);
               if (!isNaN(num)) candidates.push({ num, url: el.href || href });
@@ -254,12 +284,11 @@ function injectedExtract() {
         }
       }
 
-      // 2. Fallback : tous les liens de la page
       if (!candidates.length) {
         document.querySelectorAll("a[href]").forEach((el) => {
           const text = (el.textContent || "").trim();
           const href = el.href || "";
-          const m = chapterNumRe.exec(text) || chapterNumRe.exec(href);
+          const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
           if (m) {
             const num = parseFloat(m[2]);
             if (!isNaN(num)) candidates.push({ num, url: href });
@@ -270,7 +299,6 @@ function injectedExtract() {
       return candidates;
     }
 
-    // Attendre jusqu'à 8s que le contenu dynamique apparaisse
     let elapsed = 0;
     const interval = setInterval(() => {
       const candidates = tryExtract();
@@ -311,13 +339,18 @@ function fetchViaTab(url) {
         chrome.tabs.onUpdated.removeListener(onUpdated);
         clearTimeout(timeout);
 
+        // Utiliser callback pour remove (Firefox MV2 : chrome.tabs.remove ne retourne pas de Promise)
+        const removeTab = () => {
+          chrome.tabs.remove(tab.id, () => { if (chrome.runtime.lastError) {} });
+        };
+
         const done = (result) => {
           console.log("[RTK] Résultat extraction pour", url, result);
-          chrome.tabs.remove(tab.id).catch(() => {});
+          removeTab();
           resolve(result);
         };
         const fail = (e) => {
-          chrome.tabs.remove(tab.id).catch(() => {});
+          removeTab();
           reject(e);
         };
 
@@ -335,8 +368,10 @@ function fetchViaTab(url) {
           const code = `(${injectedExtract.toString()})()`;
           chrome.tabs.executeScript(tab.id, { code }, (results) => {
             if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
-            // Firefox retourne une Promise non résolue — attendre
-            Promise.resolve(results?.[0]).then(done).catch(fail);
+            // Firefox résout automatiquement la Promise retournée par injectedExtract
+            Promise.resolve(results?.[0])
+              .then(r => done(r ?? { found: null, html: null }))
+              .catch(fail);
           });
         }
       }
@@ -352,11 +387,11 @@ async function runCheck() {
   const token = await getToken();
   if (!token) return { error: "Non connecté" };
 
-  const { user_id } = await chrome.storage.local.get("user_id");
+  const storage = await storageGet(["user_id", "browser_notifications"]);
+  const user_id = storage.user_id;
   if (!user_id) return { error: "Pas de user_id" };
 
-  const { browser_notifications } = await chrome.storage.local.get("browser_notifications");
-  const notifyBrowser = browser_notifications !== false;
+  const notifyBrowser = storage.browser_notifications !== false;
 
   let detected = 0;
   let errors = 0;
@@ -378,11 +413,12 @@ async function runCheck() {
         const progress = await sbGet(`/reading_progress?title_id=eq.${title.id}&select=last_chapter_read`);
         const lastRead = parseFloat(progress[0]?.last_chapter_read ?? "") || -1;
 
+        const notifiedLabels = new Set();
+
         for (const src of sources) {
           try {
             const result = await fetchViaTab(src.url);
-            // Si le script injecté a trouvé directement via DOM, utiliser ça
-            // Sinon, parser le HTML brut avec les regex
+            if (!result) continue;
             const found = result.found ?? parseLastChapter(result.html ?? "", src.url);
             if (!found) continue;
 
@@ -390,7 +426,7 @@ async function runCheck() {
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel });
 
             const existing = await sbGet(
-              `/chapters?title_id=eq.${title.id}&chapter_label=eq.${encodeURIComponent(chapLabel)}&select=id`
+              `/chapters?title_id=eq.${title.id}&chapter_label=eq.${encodeURIComponent(chapLabel)}&site_id=eq.${src.site_id}&select=id`
             );
 
             if (!existing.length) {
@@ -403,7 +439,8 @@ async function runCheck() {
 
               const isNew = isNaN(found.num) || isNaN(lastRead) ? lastRead < 0 : found.num > lastRead;
 
-              if (isNew) {
+              if (isNew && !notifiedLabels.has(chapLabel)) {
+                notifiedLabels.add(chapLabel);
                 detected++;
 
                 if (notifyInApp && newChap[0]?.id) {
@@ -426,20 +463,19 @@ async function runCheck() {
                 }
               }
             }
-
-            break;
-          } catch { errors++; }
+          } catch (e) { console.error("[RTK] Source error:", e.message); errors++; }
         }
-      } catch { errors++; }
+      } catch (e) { console.error("[RTK] Title error:", e.message); errors++; }
     }
 
     await sbPatch(`/user_settings?user_id=eq.${user_id}`, {
       last_global_check_at: new Date().toISOString(),
     });
 
-    await chrome.storage.local.set({ last_check: Date.now(), last_detected: detected, last_errors: errors });
+    await storageSet({ last_check: Date.now(), last_detected: detected, last_errors: errors });
     return { detected, errors };
   } catch (e) {
+    console.error("[RTK] runCheck error:", e.message);
     return { error: e.message };
   }
 }
@@ -447,10 +483,11 @@ async function runCheck() {
 // ── Alarm ──────────────────────────────────────────────────────────────────────
 
 async function setupAlarm() {
-  const { check_interval } = await chrome.storage.local.get("check_interval");
-  const minutes = check_interval || 60;
-  await chrome.alarms.clear("readingtk-check");
-  chrome.alarms.create("readingtk-check", { periodInMinutes: minutes });
+  const data = await storageGet("check_interval");
+  const minutes = data.check_interval || 60;
+  chrome.alarms.clear("readingtk-check", () => {
+    chrome.alarms.create("readingtk-check", { periodInMinutes: minutes });
+  });
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -460,12 +497,24 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // ── Messages depuis le popup ───────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  // Message envoyé par le content script sur readingtk.net
+  if (msg.type === "SESSION_FROM_PAGE") {
+    if (msg.session?.access_token) {
+      storeSession(msg.session).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
+    } else {
+      sendResponse({ ok: false });
+    }
+    return true;
+  }
   if (msg.type === "LOGIN") {
     loginViaWebApp().then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;
   }
   if (msg.type === "LOGOUT") {
-    chrome.storage.local.clear().then(() => { chrome.alarms.clear("readingtk-check"); sendResponse({ ok: true }); });
+    storageClear().then(() => {
+      chrome.alarms.clear("readingtk-check", () => {});
+      sendResponse({ ok: true });
+    });
     return true;
   }
   if (msg.type === "CHECK_NOW") {
@@ -473,15 +522,33 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg.type === "SET_INTERVAL") {
-    chrome.storage.local.set({ check_interval: msg.minutes }).then(() => { setupAlarm(); sendResponse({ ok: true }); });
+    storageSet({ check_interval: msg.minutes }).then(() => { setupAlarm(); sendResponse({ ok: true }); });
     return true;
   }
   if (msg.type === "SET_NOTIFICATIONS") {
-    chrome.storage.local.set({ browser_notifications: msg.enabled }).then(() => sendResponse({ ok: true }));
+    storageSet({ browser_notifications: msg.enabled }).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg.type === "LOGIN_SILENT") {
+    (async () => {
+      try {
+        const tab = await findReadingTKTab();
+        if (!tab) { sendResponse({ error: "no_tab" }); return; }
+        const session = await extractSessionFromTab(tab.id);
+        if (session?.access_token) {
+          await storeSession(session);
+          sendResponse({ ok: true });
+        } else {
+          sendResponse({ error: "no_session" });
+        }
+      } catch (e) {
+        sendResponse({ error: e.message });
+      }
+    })();
     return true;
   }
   if (msg.type === "GET_STATUS") {
-    chrome.storage.local.get([
+    storageGet([
       "access_token", "user_id", "last_check", "last_detected",
       "last_errors", "check_interval", "browser_notifications",
     ]).then(sendResponse);
@@ -489,5 +556,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(setupAlarm);
-chrome.runtime.onStartup.addListener(setupAlarm);
+// Injecter le content script dans les onglets readingtk.net déjà ouverts
+function injectContentScript() {
+  chrome.tabs.query({}, (allTabs) => {
+    if (chrome.runtime.lastError || !allTabs) return;
+    const rtkTabs = allTabs.filter(t => t.url && t.url.includes("readingtk.net") && t.status === "complete");
+    for (const tab of rtkTabs) {
+      chrome.tabs.executeScript(tab.id, { file: "content.js" }, () => {
+        if (chrome.runtime.lastError) {}
+      });
+    }
+  });
+}
+
+chrome.runtime.onInstalled.addListener(() => { setupAlarm(); injectContentScript(); });
+chrome.runtime.onStartup.addListener(() => { setupAlarm(); injectContentScript(); });
