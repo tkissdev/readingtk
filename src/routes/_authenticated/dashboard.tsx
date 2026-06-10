@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, Upload, Globe, Bell, Settings, X, Sparkles, ExternalLink } from "lucide-react";
+import { Search, X, Sparkles, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -62,8 +62,8 @@ function Dashboard() {
 
   return (
     <div className={`p-6 transition-all duration-300 ${openId ? "mr-[520px]" : ""}`} onClick={() => { if (openId) setOpenId(null); }}>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-card/60 px-3 py-2 min-w-64">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-card/60 px-3 py-2">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={query} onChange={(e) => setQuery(e.target.value)}
@@ -71,21 +71,6 @@ function Dashboard() {
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
-<Link to="/titles/add" className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent/10">
-          <Plus className="h-4 w-4" /> Ajouter
-        </Link>
-        <Link to="/import" className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent/10">
-          <Upload className="h-4 w-4" /> Importer
-        </Link>
-        <Link to="/sites" className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent/10">
-          <Globe className="h-4 w-4" /> Sites
-        </Link>
-        <Link to="/notifications" className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent/10">
-          <Bell className="h-4 w-4" />
-        </Link>
-        <Link to="/settings" className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent/10">
-          <Settings className="h-4 w-4" />
-        </Link>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-4 text-xs">
