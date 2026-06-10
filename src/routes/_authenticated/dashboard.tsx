@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, X, Sparkles, ExternalLink } from "lucide-react";
+import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -19,12 +19,23 @@ type Title = {
 const TYPES = ["all", "manga", "manhua", "novel", "autre"];
 const STATUSES = ["all", "ongoing", "paused", "dropped", "completed"];
 
+type SortBy = "name" | "type" | "status" | "lu" | "detected";
+
+function SortIcon({ col, sortBy, sortDir }: { col: SortBy; sortBy: SortBy | null; sortDir: "asc" | "desc" }) {
+  if (sortBy !== col) return <ChevronsUpDown className="inline ml-1 h-3 w-3 opacity-40" />;
+  return sortDir === "asc"
+    ? <ChevronUp className="inline ml-1 h-3 w-3" />
+    : <ChevronDown className="inline ml-1 h-3 w-3" />;
+}
+
 function Dashboard() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const { data: titles, isLoading } = useQuery({
     queryKey: ["titles"],
     queryFn: async (): Promise<Title[]> => {
@@ -59,6 +70,37 @@ function Dashboard() {
       .map(([n]) => parseFloat(n));
     return String(Math.min(...topNums));
   };
+
+  const sorted = sortBy
+    ? [...filtered].sort((a, b) => {
+        let cmp = 0;
+        if (sortBy === "name") {
+          cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+        } else if (sortBy === "type") {
+          cmp = (a.type ?? "").localeCompare(b.type ?? "", undefined, { sensitivity: "base" });
+        } else if (sortBy === "status") {
+          cmp = (a.status ?? "").localeCompare(b.status ?? "", undefined, { sensitivity: "base" });
+        } else if (sortBy === "lu") {
+          const aV = parseFloat(a.reading_progress?.last_chapter_read ?? "");
+          const bV = parseFloat(b.reading_progress?.last_chapter_read ?? "");
+          cmp = (isNaN(aV) ? -1 : aV) - (isNaN(bV) ? -1 : bV);
+        } else if (sortBy === "detected") {
+          const aV = parseFloat(lastSeenOf(a) ?? "");
+          const bV = parseFloat(lastSeenOf(b) ?? "");
+          cmp = (isNaN(aV) ? -1 : aV) - (isNaN(bV) ? -1 : bV);
+        }
+        return sortDir === "asc" ? cmp : -cmp;
+      })
+    : filtered;
+
+  function handleSort(col: SortBy) {
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortDir("asc");
+    }
+  }
 
   return (
     <div className="p-6 pr-[600px]" onClick={() => { if (openId) setOpenId(null); }}>
@@ -101,15 +143,21 @@ function Dashboard() {
             </colgroup>
             <thead className="bg-secondary/40 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 text-left">Titre</th>
-                <th className="px-2 py-2 text-left">Type</th>
-                <th className="px-2 py-2 text-left">Statut</th>
-                <th className="px-2 py-2 text-left">Lu</th>
-                <th className="px-2 py-2 text-left">Détecté</th>
+                {(["name", "type", "status", "lu", "detected"] as SortBy[]).map((col, i) => (
+                  <th key={col} className={`${i === 0 ? "px-3" : "px-2"} py-2 text-left`}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSort(col); }}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      {col === "name" ? "Titre" : col === "type" ? "Type" : col === "status" ? "Statut" : col === "lu" ? "Lu" : "Détecté"}
+                      <SortIcon col={col} sortBy={sortBy} sortDir={sortDir} />
+                    </button>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t) => {
+              {sorted.map((t) => {
                 const lastRead = t.reading_progress?.last_chapter_read ?? null;
                 const lastSeen = lastSeenOf(t);
                 const isNew = lastSeen && (!lastRead || parseFloat(lastSeen) > parseFloat(lastRead || "0"));
