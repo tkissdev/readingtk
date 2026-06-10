@@ -30,6 +30,14 @@ function computeSlug(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/** Clé de regroupement normalisée : strip article initial, traite "-s-" comme possessif */
+function toGroupKey(title: string): string {
+  return computeSlug(title)
+    .replace(/^(the|a|an)-/, "")
+    .replace(/-s-/g, "s-")
+    .replace(/-s$/, "s");
+}
+
 function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
   try {
     const u = new URL(rawUrl);
@@ -38,10 +46,10 @@ function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
     const chapterWordRe = /^(?:chapter|chapitre|chap|ch|episode|ep)$/i;
     let end = parts.length;
     for (let i = 0; i < parts.length; i++) {
-      if (
-        chapterCombinedRe.test(parts[i]) ||
-        (chapterWordRe.test(parts[i]) && i + 1 < parts.length && /^\d/.test(parts[i + 1]))
-      ) { end = i; break; }
+      if (chapterCombinedRe.test(parts[i]) ||
+        (chapterWordRe.test(parts[i]) && i + 1 < parts.length && /^\d/.test(parts[i + 1]))) {
+        end = i; break;
+      }
     }
     const titleParts = parts.slice(0, end);
     if (!titleParts.length) return null;
@@ -61,9 +69,9 @@ function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
   } catch { return null; }
 }
 
-/** Extrait titre propre, numéro de chapitre et URL manga depuis une URL de chapitre.
- *  Ex: "https://asurascans.com/series/nano-machine/chapter-315"
- *  → { cleanTitle: "Nano Machine", chapterNum: "315", sourceUrl: "https://asurascans.com/series/nano-machine/" }
+/**
+ * Extrait titre propre, numéro de chapitre et URL manga depuis une URL de chapitre.
+ * Gère : slugs avec chapitre intégré ("nano-machine-chapter-315"), suffixes hash/ID ("title056541").
  */
 function extractFromUrl(rawUrl: string): { cleanTitle: string | null; chapterNum: string | null; sourceUrl: string } {
   try {
@@ -97,21 +105,35 @@ function extractFromUrl(rawUrl: string): { cleanTitle: string | null; chapterNum
     if (!titleSeg) titleSeg = segments[segments.length - 1] ?? null;
     if (!titleSeg) return { cleanTitle: null, chapterNum, sourceUrl };
 
-    const cleanTitle = decodeURIComponent(titleSeg)
-      .replace(/-[a-f0-9]{6,}$/i, "")
+    // Extraire le chapitre depuis le slug lui-même si pas déjà trouvé ("nano-machine-chapter-315")
+    if (!chapterNum) {
+      const slugChapRe = /[-_](?:chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)/i;
+      const mc = titleSeg.match(slugChapRe);
+      if (mc) chapterNum = mc[1];
+    }
+
+    // Supprimer le segment chapitre du slug
+    let cleanSlug = titleSeg
+      .replace(/[-_](?:chapter|chap|ch|episode|ep)[-_]?\d[\d.]*/i, "")
+      .replace(/[-_]+$/g, "");
+
+    // Supprimer les suffixes hash/ID (avec ou sans séparateur : "title056541", "title-abc123")
+    cleanSlug = cleanSlug.replace(/[-_]?[0-9a-f]{5,}$/i, "") || cleanSlug;
+
+    const cleanTitle = decodeURIComponent(cleanSlug)
       .replace(/[-_]+/g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase())
       .trim();
 
-    return { cleanTitle, chapterNum, sourceUrl };
+    return { cleanTitle: cleanTitle || null, chapterNum, sourceUrl };
   } catch {
     return { cleanTitle: null, chapterNum: null, sourceUrl: rawUrl };
   }
 }
 
-/** Extrait titre propre et numéro de chapitre depuis le texte d'ancre d'un favori.
- *  Ex: "Nano Machine Chapter 315 - Read Online | Asura Scans"
- *  → { cleanTitle: "Nano Machine", chapterNum: "315" }
+/**
+ * Extrait titre propre et numéro de chapitre depuis le texte d'ancre.
+ * Ex: "Nano Machine Chapter 315 - Read Online | Asura Scans" → { cleanTitle: "Nano Machine", chapterNum: "315" }
  */
 function parseTitleFromText(rawText: string): { cleanTitle: string; chapterNum: string | null } {
   let t = rawText
@@ -173,9 +195,7 @@ function ImportPage() {
 
       const rawText = unescapeHtml(m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || url);
 
-      // Extraction depuis l'URL (plus fiable — slugs normalisés)
       const { cleanTitle: urlTitle, chapterNum: urlChapter, sourceUrl } = extractFromUrl(url);
-      // Extraction depuis le texte (fallback)
       const { cleanTitle: textTitle, chapterNum: textChapter } = parseTitleFromText(rawText);
 
       const title = urlTitle || textTitle;
@@ -199,20 +219,20 @@ function ImportPage() {
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user!.id;
 
-      // Regrouper par titre normalisé (fusion des sources du même manga)
+      // Regrouper par clé normalisée (gère "The Infinite Mage" = "Infinite Mage", apostrophes, etc.)
       const groups = new Map<string, ParsedItem[]>();
       for (const it of selected) {
-        const key = it.title.toLowerCase().trim();
+        const key = toGroupKey(it.title);
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key)!.push(it);
       }
 
-      const siteCache = new Map<string, string>(); // hostname → site_id
+      const siteCache = new Map<string, string>();
 
       for (const [, groupItems] of groups) {
-        const titleName = groupItems[0].title;
+        // Nom affiché = le plus court (évite "The Infinite Mage" si "Infinite Mage" existe)
+        const titleName = groupItems.reduce((a, b) => a.title.length <= b.title.length ? a : b).title;
 
-        // Trouver un titre existant ou en créer un
         const { data: existing } = await supabase
           .from("titles").select("id")
           .eq("user_id", userId).ilike("name", titleName).maybeSingle();
@@ -222,8 +242,7 @@ function ImportPage() {
           titleId = existing.id;
         } else {
           const { data: newTitle } = await supabase.from("titles").insert({
-            user_id: userId,
-            name: titleName,
+            user_id: userId, name: titleName,
             type: settings?.default_type ?? "manga",
             status: settings?.default_status ?? "ongoing",
           }).select("id").single();
@@ -231,13 +250,10 @@ function ImportPage() {
           titleId = newTitle.id;
         }
 
-        // Sauvegarder le chapitre le plus élevé comme progression de lecture
-        const chapNums = groupItems
-          .map(it => parseFloat(it.chapterNum ?? ""))
-          .filter(n => !isNaN(n));
+        // Sauvegarder le chapitre le plus élevé (sans écraser une progression existante supérieure)
+        const chapNums = groupItems.map(it => parseFloat(it.chapterNum ?? "")).filter(n => !isNaN(n));
         if (chapNums.length > 0) {
           const maxChapter = Math.max(...chapNums);
-          // Ne mettre à jour que si supérieur à la progression existante
           const { data: existingProg } = await supabase
             .from("reading_progress").select("last_chapter_read").eq("title_id", titleId).maybeSingle();
           const existingNum = parseFloat(existingProg?.last_chapter_read ?? "");
@@ -249,7 +265,7 @@ function ImportPage() {
           }
         }
 
-        // Ajouter les sources — une par URL unique (un seul enregistrement par site)
+        // Ajouter les sources — une par URL de manga unique
         const seenSourceUrls = new Set<string>();
         for (const it of groupItems) {
           if (seenSourceUrls.has(it.sourceUrl)) continue;
@@ -266,7 +282,6 @@ function ImportPage() {
               const matchedSite = (sites ?? []).find((s) => {
                 try { return new URL(s.base_url).hostname === host; } catch { return false; }
               });
-
               if (matchedSite) {
                 siteId = matchedSite.id;
                 if (!(matchedSite as { url_template?: string | null }).url_template) {
@@ -276,17 +291,14 @@ function ImportPage() {
               } else {
                 const raw = host.replace(/^www\./, "").split(".")[0];
                 const siteName = raw.charAt(0).toUpperCase() + raw.slice(1);
-                const base_url = `${u.protocol}//${host}`;
-                const template = inferUrlTemplate(it.sourceUrl, titleName);
-                const { data: newSite } = await supabase
-                  .from("sites")
-                  .insert({ user_id: userId, name: siteName, base_url, url_template: template, priority: 0, enabled: true })
+                const { data: newSite } = await supabase.from("sites")
+                  .insert({ user_id: userId, name: siteName, base_url: `${u.protocol}//${host}`, url_template: inferUrlTemplate(it.sourceUrl, titleName), priority: 0, enabled: true })
                   .select("id").single();
                 siteId = newSite?.id ?? null;
               }
               if (siteId) siteCache.set(host, siteId);
             }
-          } catch { /* ignore site errors */ }
+          } catch { /* ignore */ }
 
           await supabase.from("title_sources").insert({
             title_id: titleId, site_id: siteId, url: it.sourceUrl, is_primary: true,
@@ -295,9 +307,7 @@ function ImportPage() {
       }
 
       await supabase.from("imports").insert({
-        user_id: userId,
-        source: "html_bookmarks",
-        raw_json: { count: selected.length },
+        user_id: userId, source: "html_bookmarks", raw_json: { count: selected.length },
       });
       toast.success(`${groups.size} titre(s) importé(s) depuis ${selected.length} favoris`);
       navigate({ to: "/dashboard" });
