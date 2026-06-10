@@ -294,24 +294,29 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
             const selectedNum = Math.min(...topNums);
             const selectedLabel = String(selectedNum);
 
-            // Pour chaque source : chercher un lien spécifique dans chapters, sinon utiliser l'URL de base
-            // Fallback 2 : l'URL stockée contient le bon numéro de chapitre même si le label est faux
+            // Pour chaque source : chercher une URL de chapitre réelle (label exact ou URL contenant le numéro)
+            // On n'affiche QUE les sources pour lesquelles on a une URL de chapitre connue
             const chapterUrlRe = new RegExp(
               `(?:chapter|chap|ch|episode|ep)[-_/]?${selectedNum}(?:[^0-9]|$)`,
               "i"
             );
-            const links = data.sources.map((s) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const chap = (data.chapters as any[]).find(
+            const links = data.sources
+              .map((s) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (c: any) => c.site_id === (s as any).site_id &&
-                  (c.chapter_label === selectedLabel || chapterUrlRe.test(c.chapter_url ?? ""))
-              );
-              return {
-                siteName: (s as { sites?: { name?: string } }).sites?.name ?? "Source",
-                url: (chap?.chapter_url as string | undefined) ?? s.url,
-              };
-            });
+                const chap = (data.chapters as any[]).find(
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (c: any) => c.site_id === (s as any).site_id &&
+                    (c.chapter_label === selectedLabel || chapterUrlRe.test(c.chapter_url ?? ""))
+                );
+                const chapUrl = chap?.chapter_url as string | undefined;
+                if (!chapUrl) return null;
+                return {
+                  siteName: (s as { sites?: { name?: string } }).sites?.name ?? "Source",
+                  url: chapUrl,
+                };
+              })
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((l): l is { siteName: string; url: string } => l !== null);
 
             return (
               <div>
