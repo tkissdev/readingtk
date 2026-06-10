@@ -61,8 +61,7 @@ function Dashboard() {
   };
 
   return (
-    <div className="p-6" onClick={() => { if (openId) setOpenId(null); }}>
-      <div className="mx-auto max-w-4xl">
+    <div className={`p-6 transition-all duration-300 ${openId ? "mr-[520px]" : ""}`} onClick={() => { if (openId) setOpenId(null); }}>
       <div className="mb-6 flex items-center gap-3">
         <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-card/60 px-3 py-2">
           <Search className="h-4 w-4 text-muted-foreground" />
@@ -138,7 +137,6 @@ function Dashboard() {
         </div>
       )}
 
-      </div>
       {openId && <TitleDrawer titleId={openId} onClose={() => setOpenId(null)} />}
     </div>
   );
