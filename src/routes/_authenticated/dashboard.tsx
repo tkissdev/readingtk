@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge } from "lucide-react";
+import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -192,10 +192,16 @@ function Dashboard() {
           <FilterGroup label="Statut" value={status} options={STATUSES} onChange={setStatus} />
         </div>
         {!mergeMode ? (
-          <button onClick={toggleMergeMode}
-            className="flex items-center gap-1.5 rounded-full bg-secondary/40 px-3 py-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition">
-            <GitMerge className="h-3 w-3" /> Fusionner
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => qc.invalidateQueries({ queryKey: ["titles"] })}
+              className="flex items-center gap-1.5 rounded-full bg-secondary/40 px-3 py-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition">
+              <RefreshCw className="h-3 w-3" /> Actualiser
+            </button>
+            <button onClick={toggleMergeMode}
+              className="flex items-center gap-1.5 rounded-full bg-secondary/40 px-3 py-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition">
+              <GitMerge className="h-3 w-3" /> Fusionner
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">{mergeSelection.size} sélectionné(s)</span>
@@ -473,16 +479,35 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
         <div className="mt-8">
           <h3 className="text-sm font-semibold">Sources ({data.sources.length})</h3>
           <ul className="mt-2 space-y-2">
-            {data.sources.map((s) => (
-              <li key={s.id} className="rounded-md border border-border/60 bg-secondary/30 p-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{(s as { sites?: { name?: string } }).sites?.name ?? "Source"}</span>
-                  {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
-                </div>
-                <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-accent hover:underline">{s.url}</a>
-                {s.last_seen_chapter && <div className="mt-1 text-muted-foreground">Dernier détecté : {s.last_seen_chapter}</div>}
-              </li>
-            ))}
+            {data.sources.map((s) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const isDown = (s as any).last_error === "404";
+              return (
+                <li key={s.id} className={`rounded-md border p-3 text-xs ${isDown ? "border-destructive/40 bg-destructive/5" : "border-border/60 bg-secondary/30"}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium">{(s as { sites?: { name?: string } }).sites?.name ?? "Source"}</span>
+                      {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
+                      {isDown && <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-[10px] font-semibold text-destructive">⬤ Down</span>}
+                    </div>
+                    {isDown && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm("Supprimer cette source ?")) return;
+                          await supabase.from("title_sources").delete().eq("id", s.id);
+                          qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                          qc.invalidateQueries({ queryKey: ["titles"] });
+                        }}
+                        className="shrink-0 rounded-md p-1 text-destructive hover:bg-destructive/10">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-accent hover:underline">{s.url}</a>
+                  {s.last_seen_chapter && !isDown && <div className="mt-1 text-muted-foreground">Dernier détecté : {s.last_seen_chapter}</div>}
+                </li>
+              );
+            })}
             {data.sources.length === 0 && <li className="text-xs text-muted-foreground">Aucune source.</li>}
           </ul>
         </div>

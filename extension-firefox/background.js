@@ -309,16 +309,20 @@ function injectedExtract() {
         const isCF = document.querySelector("#challenge-running, #challenge-form") !== null
           || pageTitle === "Just a moment...";
         const allLinks = document.querySelectorAll("a[href]").length;
+        const titleLower = pageTitle.toLowerCase();
+        const bodySnippet = (document.body?.innerText || "").slice(0, 500).toLowerCase();
+        const is404 = /\b404\b/.test(titleLower) || /not.?found/i.test(titleLower) || /introuvable/i.test(titleLower)
+          || (/\b404\b/.test(bodySnippet) && /\b(not.?found|error|erreur)\b/i.test(bodySnippet));
         if (!candidates.length) {
           resolve({
-            found: null,
+            found: null, is404,
             html: document.documentElement.outerHTML,
             debug: { title: pageTitle, isCF, allLinks, elapsed }
           });
           return;
         }
         candidates.sort((a, b) => b.num - a.num);
-        resolve({ found: candidates[0], html: null, debug: { title: pageTitle, isCF, allLinks, elapsed } });
+        resolve({ found: candidates[0], is404: false, html: null, debug: { title: pageTitle, isCF, allLinks, elapsed } });
       }
     }, 500);
   });
@@ -451,7 +455,7 @@ async function runCheck() {
     const notifyInApp = settings[0]?.in_app_notifications_enabled !== false;
 
     const titles = await sbGet(
-      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,title_sources(id,url,site_id,last_seen_chapter)`
+      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,title_sources(id,url,site_id,last_seen_chapter,last_error)`
     );
 
     // Sites globaux avec un template URL (pour l'auto-découverte)
@@ -474,11 +478,23 @@ async function runCheck() {
           try {
             const result = await fetchViaTab(src.url);
             if (!result) continue;
+
+            // Détecter les pages 404 : marquer la source et désactiver le site
+            if (result.is404) {
+              await sbPatch(`/title_sources?id=eq.${src.id}`, { last_error: "404" });
+              if (src.site_id) {
+                await sbPatch(`/sites?id=eq.${src.site_id}`, { is_down: true, enabled: false });
+              }
+              errors++;
+              continue;
+            }
+
             const found = result.found ?? parseLastChapter(result.html ?? "", src.url);
             if (!found) continue;
 
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
-            await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel });
+            // Succès : mettre à jour le chapitre et effacer toute erreur précédente
+            await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
 
             const { isNew, chapterId } = await saveChapter({
               titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead,
@@ -569,9 +585,11 @@ async function runCheck() {
 
 async function setupAlarm() {
   const data = await storageGet("check_interval");
-  const minutes = data.check_interval || 60;
+  const minutes = data.check_interval ?? 60;
   chrome.alarms.clear("readingtk-check", () => {
-    chrome.alarms.create("readingtk-check", { periodInMinutes: minutes });
+    if (minutes > 0) {
+      chrome.alarms.create("readingtk-check", { periodInMinutes: minutes });
+    }
   });
 }
 

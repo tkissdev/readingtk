@@ -61,7 +61,7 @@ function updateStatus(status) {
     $("last-detected").textContent = d > 0 ? `${d} nouveau(x)` : "Aucun";
     $("last-detected").style.color = d > 0 ? "#818cf8" : "";
   }
-  $("interval-select").value = String(status.check_interval || 60);
+  $("interval-select").value = String(status.check_interval ?? 60);
   $("notif-toggle").checked = status.browser_notifications !== false;
 }
 

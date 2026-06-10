@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/sites")({
@@ -106,9 +106,20 @@ function SitesPage() {
             </tr>
           </thead>
           <tbody>
-            {(sites ?? []).map((s) => (
-              <tr key={s.id} className="border-t border-border/40">
-                <td className="px-4 py-3 font-medium">{s.name}</td>
+            {(sites ?? []).map((s) => {
+              const isDown = (s as any).is_down === true;
+              return (
+              <tr key={s.id} className={`border-t border-border/40 ${isDown ? "bg-red-500/5" : ""}`}>
+                <td className="px-4 py-3 font-medium">
+                  <span className="flex items-center gap-2">
+                    {s.name}
+                    {isDown && (
+                      <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-red-500/15 text-red-400">
+                        <AlertTriangle className="h-3 w-3" /> Down
+                      </span>
+                    )}
+                  </span>
+                </td>
                 <td className="px-3 py-3 truncate text-xs text-muted-foreground max-w-[140px]">{s.base_url}</td>
                 <td className="px-3 py-3 max-w-[200px]">
                   <input
@@ -134,12 +145,13 @@ function SitesPage() {
                   </button>
                 </td>
                 <td className="px-3 py-3 text-right">
-                  <button onClick={() => del.mutate(s.id)} className="rounded-md p-1.5 text-destructive hover:bg-destructive/10">
+                  <button onClick={() => del.mutate(s.id)} className={`rounded-md p-1.5 hover:bg-destructive/10 ${isDown ? "text-red-400" : "text-destructive"}`}>
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {(sites ?? []).length === 0 && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun site configuré.</td></tr>
             )}
