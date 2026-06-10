@@ -402,6 +402,13 @@ function pickBestChapter(newChapters) {
   return newChapters.find(c => c.num === bestNum) || newChapters[0];
 }
 
+// ── Abort helper ───────────────────────────────────────────────────────────────
+
+async function isAborted() {
+  const { check_abort } = await chrome.storage.local.get("check_abort");
+  return check_abort === true;
+}
+
 // ── Check principal ────────────────────────────────────────────────────────────
 
 async function runCheck() {
@@ -413,6 +420,8 @@ async function runCheck() {
 
   const { browser_notifications } = await chrome.storage.local.get("browser_notifications");
   const notifyBrowser = browser_notifications !== false;
+
+  await chrome.storage.local.set({ check_running: true, check_abort: false });
 
   let detected = 0;
   let errors = 0;
@@ -432,6 +441,8 @@ async function runCheck() {
     );
 
     for (const title of titles) {
+      if (await isAborted()) break;
+
       const sources = (title.title_sources || []).filter(s => s.url);
 
       try {
@@ -443,6 +454,7 @@ async function runCheck() {
 
         // ── 1. Scraper les sources existantes ──────────────────────────────────
         for (const src of sources) {
+          if (await isAborted()) break;
           try {
             const siteNeedsTab = src.sites?.needs_tab === true;
             const { result } = await fetchForSite(src.url, src.site_id, siteNeedsTab);
@@ -473,6 +485,7 @@ async function runCheck() {
 
         // ── 2. Auto-découverte : sites globaux non encore liés à ce titre ──────
         for (const site of (globalSites || [])) {
+          if (await isAborted()) break;
           const alreadyLinked = sources.some(s => s.site_id === site.id);
           if (alreadyLinked) continue;
 
@@ -544,6 +557,8 @@ async function runCheck() {
     return { detected, errors };
   } catch (e) {
     return { error: e.message };
+  } finally {
+    await chrome.storage.local.set({ check_running: false, check_abort: false });
   }
 }
 
@@ -577,6 +592,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     runCheck().then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;
   }
+  if (msg.type === "STOP_CHECK") {
+    chrome.storage.local.set({ check_abort: true }).then(() => sendResponse({ ok: true }));
+    return true;
+  }
   if (msg.type === "SET_INTERVAL") {
     chrome.storage.local.set({ check_interval: msg.minutes }).then(() => { setupAlarm(); sendResponse({ ok: true }); });
     return true;
@@ -588,7 +607,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "GET_STATUS") {
     chrome.storage.local.get([
       "access_token", "user_id", "last_check", "last_detected",
-      "last_errors", "check_interval", "browser_notifications",
+      "last_errors", "check_interval", "browser_notifications", "check_running",
     ]).then(sendResponse);
     return true;
   }

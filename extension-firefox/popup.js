@@ -46,6 +46,11 @@ async function init() {
     if (status?.access_token) {
       showScreen("main");
       updateStatus(status);
+      // Si une vérification est déjà en cours (lancée avant l'ouverture du popup)
+      if (status.check_running) {
+        setCheckRunning(true);
+        startPolling();
+      }
     } else {
       showScreen("login");
     }
@@ -63,6 +68,32 @@ function updateStatus(status) {
   }
   $("interval-select").value = String(status.check_interval ?? 60);
   $("notif-toggle").checked = status.browser_notifications !== false;
+}
+
+// ── Gestion état "vérification en cours" ───────────────────────────────────────
+
+let pollInterval = null;
+
+function setCheckRunning(running) {
+  $("check-btn").disabled = running;
+  $("check-icon").classList.toggle("spinning", running);
+  $("stop-btn").style.display = running ? "" : "none";
+}
+
+function startPolling() {
+  if (pollInterval) return;
+  pollInterval = setInterval(async () => {
+    const status = await send("GET_STATUS");
+    if (!status?.check_running) {
+      stopPolling();
+      setCheckRunning(false);
+      if (status) updateStatus(status);
+    }
+  }, 1000);
+}
+
+function stopPolling() {
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
 }
 
 // ── Login ──────────────────────────────────────────────────────────────────────
@@ -97,16 +128,15 @@ $("logout-btn").addEventListener("click", async () => {
 // ── Check Now ──────────────────────────────────────────────────────────────────
 
 $("check-btn").addEventListener("click", async () => {
-  $("check-btn").disabled = true;
-  $("check-icon").classList.add("spinning");
+  setCheckRunning(true);
+  startPolling();
 
   const res = await send("CHECK_NOW");
 
-  $("check-btn").disabled = false;
-  $("check-icon").classList.remove("spinning");
+  stopPolling();
+  setCheckRunning(false);
 
   if (res?.error) {
-    // Afficher l'erreur dans le popup pour debug
     const errEl = document.createElement("div");
     errEl.style.cssText = "color:#f87171;font-size:11px;padding:4px 0;text-align:center";
     errEl.textContent = res.error === "Non connecté" ? "Session expirée — reconnectez-vous." : res.error;
@@ -115,6 +145,16 @@ $("check-btn").addEventListener("click", async () => {
     return;
   }
 
+  const status = await send("GET_STATUS");
+  if (status) updateStatus(status);
+});
+
+// ── Stop Check ─────────────────────────────────────────────────────────────────
+
+$("stop-btn").addEventListener("click", async () => {
+  await send("STOP_CHECK");
+  stopPolling();
+  setCheckRunning(false);
   const status = await send("GET_STATUS");
   if (status) updateStatus(status);
 });
