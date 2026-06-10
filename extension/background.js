@@ -153,7 +153,7 @@ async function sbPatch(path, body) {
 
 function parseLastChapter(html, baseUrl) {
   const candidates = [];
-  const chapterNumRe = /(chapter|chapitre|chap|ch\.?|episode|ep\.?)[-_\s]?(\d+(?:\.\d+)?)/i;
+  const chapterNumRe = /(chapter|chapitre|chap|ch\.?|episode|ep\.?)[-_\/\s]?(\d+(?:\.\d+)?)/i;
 
   const anchorRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m;
@@ -219,7 +219,7 @@ function parseLastChapter(html, baseUrl) {
 // Fonction injectée dans l'onglet — cherche les chapitres dans le DOM réel
 function injectedExtract() {
   return new Promise((resolve) => {
-    const chapterNumRe = /(chapter|chapitre|chap|ch|episode|ep)[-_\s]?(\d+(?:\.\d+)?)/i;
+    const chapterNumRe = /(chapter|chapitre|chap|ch|episode|ep)[-_\/\s]?(\d+(?:\.\d+)?)/i;
 
     // Sélecteurs CSS connus pour les sites manga (MadaraWP et variantes)
     const SELECTORS = [
@@ -358,12 +358,12 @@ function titleToSlug(name) {
     .replace(/^-+|-+$/g, "");
 }
 
-// Enregistre un chapitre trouvé et envoie les notifications si nécessaire
-async function recordChapter({ titleId, siteId, chapLabel, chapUrl, lastRead, notifiedLabels, notifyInApp, notifyBrowser, titleName, userId, detected }) {
+// Enregistre un chapitre en base. Retourne { isNew, chapterId } sans envoyer de notification.
+async function saveChapter({ titleId, siteId, chapLabel, chapUrl, lastRead }) {
   const existing = await sbGet(
     `/chapters?title_id=eq.${titleId}&chapter_label=eq.${encodeURIComponent(chapLabel)}&site_id=eq.${siteId}&select=id`
   );
-  if (existing.length) return detected;
+  if (existing.length) return { isNew: false, chapterId: existing[0].id };
 
   const newChap = await sbPost("/chapters", {
     title_id: titleId,
@@ -375,30 +375,24 @@ async function recordChapter({ titleId, siteId, chapLabel, chapUrl, lastRead, no
   const num = parseFloat(chapLabel);
   const isNew = isNaN(num) || isNaN(lastRead) ? lastRead < 0 : num > lastRead;
 
-  if (isNew && !notifiedLabels.has(chapLabel)) {
-    notifiedLabels.add(chapLabel);
-    detected++;
+  return { isNew, chapterId: newChap[0]?.id ?? null };
+}
 
-    if (notifyInApp && newChap[0]?.id) {
-      await sbPost("/notifications", {
-        user_id: userId,
-        title_id: titleId,
-        chapter_id: newChap[0].id,
-        channel: "in_app",
-        sent_at: new Date().toISOString(),
-      });
-    }
-
-    if (notifyBrowser) {
-      chrome.notifications.create(`rtk-${titleId}-${chapLabel}`, {
-        type: "basic",
-        iconUrl: "icons/icon-128.png",
-        title: "Nouveau chapitre · ReadingTK",
-        message: `${titleName} — ${chapLabel}`,
-      });
-    }
+// Choisit le meilleur chapitre parmi une liste : valeur la plus fréquente, minimum en cas d'égalité.
+// newChapters = [{ num, chapLabel, chapUrl, chapterId, siteId }, ...]
+function pickBestChapter(newChapters) {
+  if (!newChapters.length) return null;
+  const counts = {};
+  for (const { num } of newChapters) {
+    if (!isNaN(num)) counts[num] = (counts[num] || 0) + 1;
   }
-  return detected;
+  if (!Object.keys(counts).length) return newChapters[0];
+  const maxCount = Math.max(...Object.values(counts));
+  const topNums = Object.entries(counts)
+    .filter(([, c]) => c === maxCount)
+    .map(([n]) => parseFloat(n));
+  const bestNum = Math.min(...topNums);
+  return newChapters.find(c => c.num === bestNum) || newChapters[0];
 }
 
 // ── Check principal ────────────────────────────────────────────────────────────
@@ -437,7 +431,8 @@ async function runCheck() {
         const progress = await sbGet(`/reading_progress?title_id=eq.${title.id}&select=last_chapter_read`);
         const lastRead = parseFloat(progress[0]?.last_chapter_read ?? "") || -1;
 
-        const notifiedLabels = new Set();
+        // Accumule tous les nouveaux chapitres trouvés pour ce titre (toutes sources confondues)
+        const newChaptersList = [];
 
         // ── 1. Scraper les sources existantes ──────────────────────────────────
         for (const src of sources) {
@@ -449,11 +444,10 @@ async function runCheck() {
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel });
 
-            detected = await recordChapter({
-              titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url,
-              lastRead, notifiedLabels, notifyInApp, notifyBrowser,
-              titleName: title.name, userId: user_id, detected,
+            const { isNew, chapterId } = await saveChapter({
+              titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead,
             });
+            if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: src.site_id });
           } catch { errors++; }
         }
 
@@ -470,7 +464,6 @@ async function runCheck() {
             const found = result?.found ?? parseLastChapter(result?.html ?? "", templateUrl);
             if (!found) continue;
 
-            // Chapitre trouvé → ajouter comme source du titre
             console.log(`[RTK] Auto-découverte: "${title.name}" sur ${site.name} (${templateUrl})`);
 
             const newSrcArr = await sbPost("/title_sources", {
@@ -488,12 +481,36 @@ async function runCheck() {
               sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
             }
 
-            detected = await recordChapter({
-              titleId: title.id, siteId: site.id, chapLabel, chapUrl: found.url,
-              lastRead, notifiedLabels, notifyInApp, notifyBrowser,
-              titleName: title.name, userId: user_id, detected,
+            const { isNew, chapterId } = await saveChapter({
+              titleId: title.id, siteId: site.id, chapLabel, chapUrl: found.url, lastRead,
             });
+            if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: site.id });
           } catch (e) { console.error("[RTK] Auto-discover error:", e?.message); errors++; }
+        }
+
+        // ── 3. Une seule notification par titre avec le meilleur chapitre ───────
+        if (newChaptersList.length > 0) {
+          const best = pickBestChapter(newChaptersList);
+          detected++;
+
+          if (notifyInApp && best.chapterId) {
+            await sbPost("/notifications", {
+              user_id: user_id,
+              title_id: title.id,
+              chapter_id: best.chapterId,
+              channel: "in_app",
+              sent_at: new Date().toISOString(),
+            });
+          }
+
+          if (notifyBrowser) {
+            chrome.notifications.create(`rtk-${title.id}-${best.chapLabel}`, {
+              type: "basic",
+              iconUrl: "icons/icon-128.png",
+              title: "Nouveau chapitre · ReadingTK",
+              message: `${title.name} — ${best.chapLabel}`,
+            });
+          }
         }
 
       } catch { errors++; }

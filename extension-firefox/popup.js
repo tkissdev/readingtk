@@ -14,22 +14,44 @@ function formatTime(ts) {
   return new Date(ts).toLocaleDateString("fr-FR");
 }
 
+// Délais selon le type de message — CHECK_NOW ouvre des onglets réels, peut prendre longtemps
+const MSG_TIMEOUT = { CHECK_NOW: 120000, LOGIN: 30000, LOGIN_SILENT: 10000 };
+
 function send(type, payload = {}) {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type, ...payload }, resolve);
+    const timeout = MSG_TIMEOUT[type] ?? 5000;
+    const t = setTimeout(() => resolve(undefined), timeout);
+    chrome.runtime.sendMessage({ type, ...payload }, (response) => {
+      clearTimeout(t);
+      if (chrome.runtime.lastError) { resolve(undefined); return; }
+      resolve(response);
+    });
   });
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const status = await send("GET_STATUS");
-  if (!status.access_token) {
+  try {
+    let status = await send("GET_STATUS");
+
+    // Pas de token stocké — essayer de le récupérer depuis un onglet readingtk.net ouvert
+    if (!status?.access_token) {
+      const res = await send("LOGIN_SILENT");
+      if (res?.ok) {
+        status = await send("GET_STATUS");
+      }
+    }
+
+    if (status?.access_token) {
+      showScreen("main");
+      updateStatus(status);
+    } else {
+      showScreen("login");
+    }
+  } catch (e) {
     showScreen("login");
-    return;
   }
-  showScreen("main");
-  updateStatus(status);
 }
 
 function updateStatus(status) {
@@ -83,10 +105,18 @@ $("check-btn").addEventListener("click", async () => {
   $("check-btn").disabled = false;
   $("check-icon").classList.remove("spinning");
 
-  const status = await send("GET_STATUS");
-  updateStatus(status);
+  if (res?.error) {
+    // Afficher l'erreur dans le popup pour debug
+    const errEl = document.createElement("div");
+    errEl.style.cssText = "color:#f87171;font-size:11px;padding:4px 0;text-align:center";
+    errEl.textContent = res.error === "Non connecté" ? "Session expirée — reconnectez-vous." : res.error;
+    $("check-btn").insertAdjacentElement("afterend", errEl);
+    setTimeout(() => errEl.remove(), 5000);
+    return;
+  }
 
-  if (res?.error) console.error("[ReadingTK]", res.error);
+  const status = await send("GET_STATUS");
+  if (status) updateStatus(status);
 });
 
 // ── Interval ───────────────────────────────────────────────────────────────────

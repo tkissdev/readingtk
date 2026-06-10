@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, Upload, Globe, Bell, Settings, X, Sparkles, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
@@ -37,17 +37,6 @@ function Dashboard() {
     },
   });
 
-  const incrementMutation = useMutation({
-    mutationFn: async ({ titleId, current }: { titleId: string; current: string | null }) => {
-      const next = String((parseFloat(current ?? "0") || 0) + 1);
-      const { error } = await supabase.from("reading_progress").upsert(
-        { title_id: titleId, last_chapter_read: next, last_read_at: new Date().toISOString() },
-        { onConflict: "title_id" }
-      );
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["titles"] }),
-  });
 
   const filtered = (titles ?? []).filter((t) => {
     if (query && !t.name.toLowerCase().includes(query.toLowerCase())) return false;
@@ -56,8 +45,20 @@ function Dashboard() {
     return true;
   });
 
-  const lastSeenOf = (t: Title) =>
-    (t.title_sources || []).map((s) => s.last_seen_chapter).filter(Boolean)[0] ?? null;
+  // Valeur consensuelle : la plus fréquente parmi les sources, la plus petite en cas d'égalité (évite les faux positifs)
+  const lastSeenOf = (t: Title) => {
+    const nums = (t.title_sources || [])
+      .map((s) => parseFloat(s.last_seen_chapter ?? ""))
+      .filter((n) => !isNaN(n));
+    if (!nums.length) return null;
+    const counts: Record<number, number> = {};
+    for (const n of nums) counts[n] = (counts[n] || 0) + 1;
+    const maxCount = Math.max(...Object.values(counts));
+    const topNums = Object.entries(counts)
+      .filter(([, c]) => c === maxCount)
+      .map(([n]) => parseFloat(n));
+    return String(Math.min(...topNums));
+  };
 
   return (
     <div className="p-6" onClick={() => { if (openId) setOpenId(null); }}>
@@ -105,15 +106,21 @@ function Dashboard() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40" style={{ boxShadow: "var(--shadow-card)" }}>
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col className="w-full" />
+              <col className="w-20" />
+              <col className="w-24" />
+              <col className="w-12" />
+              <col className="w-24" />
+            </colgroup>
             <thead className="bg-secondary/40 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 text-left">Titre</th>
-                <th className="px-3 py-3 text-left">Type</th>
-                <th className="px-3 py-3 text-left">Statut</th>
-                <th className="px-3 py-3 text-left">Lu</th>
-                <th className="px-3 py-3 text-left">Détecté</th>
-                <th className="px-3 py-3 text-right">Actions</th>
+                <th className="px-3 py-2 text-left">Titre</th>
+                <th className="px-2 py-2 text-left">Type</th>
+                <th className="px-2 py-2 text-left">Statut</th>
+                <th className="px-2 py-2 text-left">Lu</th>
+                <th className="px-2 py-2 text-left">Détecté</th>
               </tr>
             </thead>
             <tbody>
@@ -127,21 +134,15 @@ function Dashboard() {
                     onClick={(e) => { e.stopPropagation(); setOpenId(t.id); }}
                     className={`cursor-pointer border-t border-border/40 transition-colors hover:bg-secondary/30 ${openId === t.id ? "bg-secondary/40" : ""}`}
                   >
-                    <td className="px-4 py-3 font-medium">{t.name}</td>
-                    <td className="px-3 py-3 text-xs text-muted-foreground">{t.type ?? "—"}</td>
-                    <td className="px-3 py-3 text-xs">
+                    <td className="px-3 py-2 font-medium truncate">{t.name}</td>
+                    <td className="px-2 py-2 text-xs text-muted-foreground truncate">{t.type ?? "—"}</td>
+                    <td className="px-2 py-2 text-xs">
                       <span className="rounded-full bg-secondary/60 px-2 py-0.5 text-muted-foreground">{t.status ?? "—"}</span>
                     </td>
-                    <td className="px-3 py-3 text-xs">{lastRead ?? "—"}</td>
-                    <td className="px-3 py-3 text-xs">
+                    <td className="px-2 py-2 text-xs">{lastRead ?? "—"}</td>
+                    <td className="px-2 py-2 text-xs whitespace-nowrap">
                       {lastSeen ?? "—"}
-                      {isNew && <span className="ml-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">NEW</span>}
-                    </td>
-                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => incrementMutation.mutate({ titleId: t.id, current: lastRead })}
-                        className="rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/10"
-                      >+1</button>
+                      {isNew && <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">NEW</span>}
                     </td>
                   </tr>
                 );
@@ -309,11 +310,17 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
             const selectedLabel = String(selectedNum);
 
             // Pour chaque source : chercher un lien spécifique dans chapters, sinon utiliser l'URL de base
+            // Fallback 2 : l'URL stockée contient le bon numéro de chapitre même si le label est faux
+            const chapterUrlRe = new RegExp(
+              `(?:chapter|chap|ch|episode|ep)[-_/]?${selectedNum}(?:[^0-9]|$)`,
+              "i"
+            );
             const links = data.sources.map((s) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const chap = (data.chapters as any[]).find(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (c: any) => c.chapter_label === selectedLabel && c.site_id === (s as any).site_id
+                (c: any) => c.site_id === (s as any).site_id &&
+                  (c.chapter_label === selectedLabel || chapterUrlRe.test(c.chapter_url ?? ""))
               );
               return {
                 siteName: (s as { sites?: { name?: string } }).sites?.name ?? "Source",

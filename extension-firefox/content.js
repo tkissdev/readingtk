@@ -1,0 +1,49 @@
+// Lit la session Supabase et la transmet au background de l'extension
+(function () {
+  const KEY = "sb-jjjfphkvwtruckxygwal-auth-token";
+
+  function syncSession() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) {
+        console.log("[RTK] Aucune session trouvée dans localStorage (clé:", KEY, ")");
+        return;
+      }
+      const session = JSON.parse(raw);
+      if (!session?.access_token) {
+        console.log("[RTK] Session trouvée mais pas d'access_token");
+        return;
+      }
+      console.log("[RTK] Session trouvée, envoi au background...");
+
+      // 1. Écrire directement dans le storage (fonctionne si background déjà actif)
+      chrome.storage.local.set({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        user_id: session.user?.id,
+        token_expires_at: (session.expires_at ?? 0) * 1000,
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("[RTK] Erreur storage.local.set:", chrome.runtime.lastError);
+        } else {
+          console.log("[RTK] Session écrite dans le storage.");
+        }
+      });
+
+      // 2. Envoyer un message au background (le réveille si inactif et lui transmet la session)
+      chrome.runtime.sendMessage({ type: "SESSION_FROM_PAGE", session: session }, () => {
+        if (chrome.runtime.lastError) {
+          // Normal si le background n'est pas encore prêt
+        } else {
+          console.log("[RTK] Session transmise au background.");
+        }
+      });
+    } catch (e) {
+      console.error("[RTK] Erreur content script:", e);
+    }
+  }
+
+  console.log("[RTK] Content script démarré sur", location.href);
+  syncSession();
+  setTimeout(syncSession, 1500);
+})();
