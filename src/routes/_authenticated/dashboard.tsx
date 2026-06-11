@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw } from "lucide-react";
+import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -557,42 +557,6 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
         </div>
 
         <div className="mt-8">
-          <h3 className="text-sm font-semibold">Sources ({data.sources.length})</h3>
-          <ul className="mt-2 space-y-2">
-            {data.sources.map((s) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const isDown = (s as any).last_error === "404";
-              return (
-                <li key={s.id} className={`rounded-md border p-3 text-xs ${isDown ? "border-destructive/40 bg-destructive/5" : "border-border/60 bg-secondary/30"}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-medium">{(s as { sites?: { name?: string } }).sites?.name ?? "Source"}</span>
-                      {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
-                      {isDown && <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-[10px] font-semibold text-destructive">⬤ Down</span>}
-                    </div>
-                    {isDown && (
-                      <button
-                        onClick={async () => {
-                          if (!confirm("Supprimer cette source ?")) return;
-                          await supabase.from("title_sources").delete().eq("id", s.id);
-                          qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
-                          qc.invalidateQueries({ queryKey: ["titles"] });
-                        }}
-                        className="shrink-0 rounded-md p-1 text-destructive hover:bg-destructive/10">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-accent hover:underline">{s.url}</a>
-                  {s.last_seen_chapter && !isDown && <div className="mt-1 text-muted-foreground">Dernier détecté : {s.last_seen_chapter}</div>}
-                </li>
-              );
-            })}
-            {data.sources.length === 0 && <li className="text-xs text-muted-foreground">Aucune source.</li>}
-          </ul>
-        </div>
-
-        <div className="mt-8">
           {(() => {
             const sourceValues = data.sources
               .filter((s) => s.last_seen_chapter)
@@ -620,26 +584,77 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                 c.site_id === (s as any).site_id &&
                 (c.chapter_label === selectedLabel || chapterUrlRe.test(c.chapter_url ?? ""))
               );
-              const chapUrl = chap?.chapter_url as string | undefined;
-              if (!chapUrl) return null;
-              return { siteName: (s as { sites?: { name?: string } }).sites?.name ?? "Source", url: chapUrl };
-            }).filter((l): l is { siteName: string; url: string } => l !== null);
+              if (!chap?.chapter_url) return null;
+              return {
+                chapId: chap.id as string,
+                siteName: (s as { sites?: { name?: string } }).sites?.name ?? "Source",
+                url: chap.chapter_url as string,
+              };
+            }).filter((l): l is { chapId: string; siteName: string; url: string } => l !== null);
 
             return (
               <div>
                 <h3 className="text-sm font-semibold">Dernier chapitre détecté : <span className="text-accent">{selectedLabel}</span></h3>
-                <div className="mt-2 space-y-1.5">
-                  {links.map((link, i) => (
-                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-accent hover:underline break-all">
-                      <ExternalLink className="shrink-0" style={{ width: 11, height: 11 }} />
-                      <span>{link.siteName} — {link.url}</span>
-                    </a>
+                <div className="mt-2 space-y-1">
+                  {links.map((link) => (
+                    <div key={link.chapId} className="flex items-center gap-1">
+                      <a href={link.url} target="_blank" rel="noopener noreferrer"
+                        className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-accent hover:underline break-all">
+                        <ExternalLink className="shrink-0" style={{ width: 11, height: 11 }} />
+                        <span>{link.siteName} — {link.url}</span>
+                      </a>
+                      <button
+                        title="Supprimer ce chapitre"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          await supabase.from("chapters").delete().eq("id", link.chapId);
+                          qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                          qc.invalidateQueries({ queryKey: ["titles"] });
+                        }}
+                        className="shrink-0 rounded p-1 text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
             );
           })()}
+        </div>
+
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold">Sources ({data.sources.length})</h3>
+          <ul className="mt-2 space-y-2">
+            {data.sources.map((s) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const isDown = (s as any).last_error === "404";
+              return (
+                <li key={s.id} className={`rounded-md border p-3 text-xs ${isDown ? "border-destructive/40 bg-destructive/5" : "border-border/60 bg-secondary/30"}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium">{(s as { sites?: { name?: string } }).sites?.name ?? "Source"}</span>
+                      {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
+                      {isDown && <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-[10px] font-semibold text-destructive">⬤ Down</span>}
+                    </div>
+                    <button
+                      title="Supprimer cette source"
+                      onClick={async () => {
+                        if (!confirm("Supprimer cette source ?")) return;
+                        await supabase.from("title_sources").delete().eq("id", s.id);
+                        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                        qc.invalidateQueries({ queryKey: ["titles"] });
+                      }}
+                      className="shrink-0 rounded p-1 text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-accent hover:underline">{s.url}</a>
+                  {s.last_seen_chapter && !isDown && <div className="mt-1 text-muted-foreground">Dernier détecté : {s.last_seen_chapter}</div>}
+                </li>
+              );
+            })}
+            {data.sources.length === 0 && <li className="text-xs text-muted-foreground">Aucune source.</li>}
+          </ul>
         </div>
 
         <div className="mt-10 border-t border-border/40 pt-4">
