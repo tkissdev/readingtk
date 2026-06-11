@@ -247,17 +247,15 @@ function Dashboard() {
         <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40" style={{ boxShadow: "var(--shadow-card)" }}>
           <table className="w-full table-fixed text-sm">
             <colgroup>
-              <col className="w-9" />
+              <col className="w-24" />
               <col className="w-full" />
-              <col className="w-20" />
               <col className="w-24" />
               <col className="w-12" />
               <col className="w-24" />
             </colgroup>
             <thead className="bg-secondary/40 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-2 py-2" />
-                {(["name", "type", "status", "lu", "detected"] as SortBy[]).map((col, i) => (
+                {(["type", "name", "status", "lu", "detected"] as SortBy[]).map((col, i) => (
                   <th key={col} className={`${i === 0 ? "px-3" : "px-2"} py-2 text-left`}>
                     <button onClick={(e) => { e.stopPropagation(); handleSort(col); }}
                       className="flex items-center hover:text-foreground transition-colors">
@@ -278,26 +276,30 @@ function Dashboard() {
                   <tr key={t.id}
                     onClick={(e) => { e.stopPropagation(); if (mergeMode) toggleSelect(t.id); else setOpenId(t.id); }}
                     className={`cursor-pointer border-t border-border/40 transition-colors hover:bg-secondary/30 ${(!mergeMode && openId === t.id) || (mergeMode && isSelected) ? "bg-secondary/40" : ""}`}>
+                    <td className="px-3 py-2">
+                      <TypeBadge type={t.type} />
+                    </td>
                     <td className="px-2 py-1">
-                      {t.cover_url ? (
-                        <img src={t.cover_url} alt="" loading="lazy"
-                          className="h-9 w-6 rounded object-cover object-top shrink-0" />
-                      ) : (
-                        <div className="h-9 w-6 rounded bg-secondary/60 shrink-0" />
-                      )}
-                    </td>
-                    <td className="px-3 py-2 font-medium truncate">
-                      {mergeMode && (
-                        <input type="checkbox" checked={isSelected} onChange={() => {}} className="mr-2 pointer-events-none" />
-                      )}
-                      {t.name}
-                      {(t.aliases ?? []).length > 0 && (
-                        <span className="ml-1.5 text-xs font-normal text-muted-foreground/60">
-                          +{(t.aliases ?? []).length} variante{(t.aliases ?? []).length > 1 ? "s" : ""}
+                      <div className="flex items-center gap-2 min-w-0">
+                        {t.cover_url ? (
+                          <img src={t.cover_url} alt="" loading="lazy"
+                            className="h-9 w-6 shrink-0 rounded object-cover object-top" />
+                        ) : (
+                          <div className="h-9 w-6 shrink-0 rounded bg-secondary/60" />
+                        )}
+                        <span className="truncate font-medium">
+                          {mergeMode && (
+                            <input type="checkbox" checked={isSelected} onChange={() => {}} className="mr-2 pointer-events-none" />
+                          )}
+                          {t.name}
+                          {(t.aliases ?? []).length > 0 && (
+                            <span className="ml-1.5 text-xs font-normal text-muted-foreground/60">
+                              +{(t.aliases ?? []).length} variante{(t.aliases ?? []).length > 1 ? "s" : ""}
+                            </span>
+                          )}
                         </span>
-                      )}
+                      </div>
                     </td>
-                    <td className="px-2 py-2 text-xs text-muted-foreground truncate">{t.type ?? "—"}</td>
                     <td className="px-2 py-2 text-xs">
                       <span className="rounded-full bg-secondary/60 px-2 py-0.5 text-muted-foreground">{t.status ?? "—"}</span>
                     </td>
@@ -378,6 +380,25 @@ function MergeModal({ selectedTitles, onConfirm, onClose }: {
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Type Badge ────────────────────────────────────────────────────────────────
+
+const TYPE_STYLES: Record<string, string> = {
+  manga:   "bg-accent/15 text-accent border border-accent/30",
+  manhua:  "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30",
+  manhwa:  "bg-orange-500/15 text-orange-400 border border-orange-500/30",
+  novel:   "bg-amber-500/15 text-amber-400 border border-amber-500/30",
+  autre:   "bg-secondary/60 text-muted-foreground border border-border/60",
+};
+
+function TypeBadge({ type }: { type: string | null }) {
+  const cls = TYPE_STYLES[type ?? ""] ?? TYPE_STYLES.autre;
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${cls}`}>
+      {type ?? "—"}
+    </span>
   );
 }
 
