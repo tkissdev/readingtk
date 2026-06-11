@@ -221,6 +221,24 @@ function parseLastChapter(html, baseUrl) {
   return candidates[0];
 }
 
+// Détecte si une URL a été redirigée vers un autre site ou la page d'accueil du site.
+// fetch() suit les redirections silencieusement ; res.url donne l'URL finale.
+function isRedirectedAway(originalUrl, finalUrl) {
+  if (!finalUrl || finalUrl === originalUrl) return false;
+  try {
+    const orig = new URL(originalUrl);
+    const final = new URL(finalUrl);
+    const norm = (h) => h.replace(/^www\./, "");
+    // Domaine différent (hors www ↔ sans-www et http ↔ https)
+    if (norm(orig.hostname) !== norm(final.hostname)) return true;
+    // Même domaine mais l'URL profonde (/manga/titre/) a été redirigée vers la racine (/home, /)
+    const origDepth = orig.pathname.replace(/\/$/, "").split("/").filter(Boolean).length;
+    const finalDepth = final.pathname.replace(/\/$/, "").split("/").filter(Boolean).length;
+    if (origDepth >= 2 && finalDepth <= 1) return true;
+  } catch {}
+  return false;
+}
+
 // ── Fetch silencieux (aucun onglet ouvert, invisible pour l'utilisateur) ──────────
 
 async function fetchSilent(url) {
@@ -235,6 +253,11 @@ async function fetchSilent(url) {
   // 404 / 410 via code HTTP — le plus fiable
   if (res.status === 404 || res.status === 410) {
     return { found: null, is404: true, html: null, debug: { status: res.status } };
+  }
+
+  // Redirection vers un autre domaine ou la page d'accueil = le titre n'existe pas ici
+  if (isRedirectedAway(url, res.url)) {
+    return { found: null, isRedirect: true, html: null, debug: { redirect: res.url } };
   }
 
   const html = await res.text();
@@ -322,12 +345,16 @@ function fetchViaTab(url) {
     const timeout = setTimeout(() => reject(new Error("Timeout fetchViaTab")), 35000);
     chrome.tabs.create({ url, active: false }, (tab) => {
       if (chrome.runtime.lastError) { clearTimeout(timeout); return reject(new Error(chrome.runtime.lastError.message)); }
-      function onUpdated(tabId, changeInfo) {
+      function onUpdated(tabId, changeInfo, updatedTab) {
         if (tabId !== tab.id || changeInfo.status !== "complete") return;
         chrome.tabs.onUpdated.removeListener(onUpdated);
         clearTimeout(timeout);
         const done = (result) => { chrome.tabs.remove(tab.id).catch(() => {}); resolve(result); };
         const fail = (e) => { chrome.tabs.remove(tab.id).catch(() => {}); reject(e); };
+        // Vérifier la redirection via l'URL finale de l'onglet
+        if (isRedirectedAway(url, updatedTab?.url)) {
+          return done({ found: null, isRedirect: true, coverUrl: null, html: null, debug: { redirect: updatedTab.url } });
+        }
         chrome.scripting.executeScript(
           { target: { tabId: tab.id }, func: injectedExtract },
           (results) => {
@@ -350,8 +377,8 @@ async function fetchForSite(url, siteId, currentNeedsTab) {
 
   const silent = await fetchSilent(url);
 
-  // Si on a trouvé quelque chose, ou si c'est une 404 → pas besoin d'aller plus loin
-  if (silent.found || silent.is404) return { result: silent, markedNeedsTab: false };
+  // Si on a trouvé quelque chose, ou si la page est invalide (404/redirect) → pas besoin d'aller plus loin
+  if (silent.found || silent.is404 || silent.isRedirect) return { result: silent, markedNeedsTab: false };
 
   // Rien trouvé, pas de 404 → peut-être un site JS-only : tenter via onglet une fois
   try {
@@ -474,7 +501,15 @@ async function runCheck() {
             const siteNeedsTab = src.sites?.needs_tab === true;
             const { result } = await fetchForSite(src.url, src.site_id, siteNeedsTab);
 
-            // Détecter les pages 404 : marquer la source et désactiver le site
+            // Redirection : l'URL ne mène pas à une page pour ce titre
+            // Ne pas désactiver le site entier (il peut fonctionner pour d'autres titres)
+            if (result?.isRedirect) {
+              await sbPatch(`/title_sources?id=eq.${src.id}`, { last_error: "redirect", last_seen_chapter: null });
+              errors++;
+              continue;
+            }
+
+            // Page 404 / 410 : marquer la source et désactiver le site
             if (result?.is404) {
               await sbPatch(`/title_sources?id=eq.${src.id}`, { last_error: "404" });
               if (src.site_id) {

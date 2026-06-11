@@ -648,14 +648,18 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
           <ul className="mt-2 space-y-2">
             {data.sources.map((s) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const isDown = (s as any).last_error === "404";
+              const lastError = (s as any).last_error as string | null;
+              const isDown = lastError === "404";
+              const isRedirect = lastError === "redirect";
+              const hasError = isDown || isRedirect;
               return (
-                <li key={s.id} className={`rounded-md border p-3 text-xs ${isDown ? "border-destructive/40 bg-destructive/5" : "border-border/60 bg-secondary/30"}`}>
+                <li key={s.id} className={`rounded-md border p-3 text-xs ${isDown ? "border-destructive/40 bg-destructive/5" : isRedirect ? "border-orange-500/30 bg-orange-500/5" : "border-border/60 bg-secondary/30"}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-medium">{(s as { sites?: { name?: string } }).sites?.name ?? "Source"}</span>
                       {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
                       {isDown && <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-[10px] font-semibold text-destructive">⬤ Down</span>}
+                      {isRedirect && <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-semibold text-orange-400">↪ Redirigé</span>}
                     </div>
                     <button
                       title="Supprimer cette source"
@@ -670,7 +674,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                     </button>
                   </div>
                   <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-accent hover:underline">{s.url}</a>
-                  {s.last_seen_chapter && !isDown && <div className="mt-1 text-muted-foreground">Dernier détecté : {s.last_seen_chapter}</div>}
+                  {s.last_seen_chapter && !hasError && <div className="mt-1 text-muted-foreground">Dernier détecté : {s.last_seen_chapter}</div>}
                 </li>
               );
             })}
