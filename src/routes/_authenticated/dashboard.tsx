@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 type Title = {
   id: string; name: string; type: string | null; status: string | null;
-  aliases: string[] | null;
+  aliases: string[] | null; cover_url: string | null;
   reading_progress: { last_chapter_read: string | null } | null;
   title_sources: { last_seen_chapter: string | null }[];
 };
@@ -129,7 +129,7 @@ function Dashboard() {
     queryFn: async (): Promise<Title[]> => {
       const { data, error } = await supabase
         .from("titles")
-        .select("id, name, type, status, aliases, reading_progress(last_chapter_read), title_sources(last_seen_chapter)")
+        .select("id, name, type, status, aliases, cover_url, reading_progress(last_chapter_read), title_sources(last_seen_chapter)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data as unknown as Title[]) ?? [];
@@ -247,6 +247,7 @@ function Dashboard() {
         <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40" style={{ boxShadow: "var(--shadow-card)" }}>
           <table className="w-full table-fixed text-sm">
             <colgroup>
+              <col className="w-9" />
               <col className="w-full" />
               <col className="w-20" />
               <col className="w-24" />
@@ -255,6 +256,7 @@ function Dashboard() {
             </colgroup>
             <thead className="bg-secondary/40 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
+                <th className="px-2 py-2" />
                 {(["name", "type", "status", "lu", "detected"] as SortBy[]).map((col, i) => (
                   <th key={col} className={`${i === 0 ? "px-3" : "px-2"} py-2 text-left`}>
                     <button onClick={(e) => { e.stopPropagation(); handleSort(col); }}
@@ -276,6 +278,14 @@ function Dashboard() {
                   <tr key={t.id}
                     onClick={(e) => { e.stopPropagation(); if (mergeMode) toggleSelect(t.id); else setOpenId(t.id); }}
                     className={`cursor-pointer border-t border-border/40 transition-colors hover:bg-secondary/30 ${(!mergeMode && openId === t.id) || (mergeMode && isSelected) ? "bg-secondary/40" : ""}`}>
+                    <td className="px-2 py-1">
+                      {t.cover_url ? (
+                        <img src={t.cover_url} alt="" loading="lazy"
+                          className="h-9 w-6 rounded object-cover object-top shrink-0" />
+                      ) : (
+                        <div className="h-9 w-6 rounded bg-secondary/60 shrink-0" />
+                      )}
+                    </td>
                     <td className="px-3 py-2 font-medium truncate">
                       {mergeMode && (
                         <input type="checkbox" checked={isSelected} onChange={() => {}} className="mr-2 pointer-events-none" />
@@ -461,19 +471,30 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   return (
     <div className="pointer-events-none fixed inset-0 z-40 flex justify-end">
       <div className="pointer-events-auto h-full w-full max-w-xl overflow-y-auto border-l border-border/60 bg-card p-6" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">{data.title.type ?? "titre"}</div>
-            <h2 className="mt-1 text-2xl font-bold">{data.title.name}</h2>
-            {aliases.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-1">
-                {aliases.map((a, i) => (
-                  <span key={i} className="rounded-full bg-secondary/60 px-2 py-0.5 text-xs text-muted-foreground">{a}</span>
-                ))}
-              </div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0">
+            {(data.title as { cover_url?: string | null }).cover_url ? (
+              <img
+                src={(data.title as { cover_url?: string | null }).cover_url!}
+                alt=""
+                className="h-28 w-20 shrink-0 rounded-lg object-cover object-top shadow-md"
+              />
+            ) : (
+              <div className="h-28 w-20 shrink-0 rounded-lg bg-secondary/60" />
             )}
+            <div className="min-w-0">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">{data.title.type ?? "titre"}</div>
+              <h2 className="mt-1 text-2xl font-bold leading-tight">{data.title.name}</h2>
+              {aliases.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {aliases.map((a, i) => (
+                    <span key={i} className="rounded-full bg-secondary/60 px-2 py-0.5 text-xs text-muted-foreground">{a}</span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <button onClick={onClose} className="rounded-md p-1 hover:bg-accent/10"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="shrink-0 rounded-md p-1 hover:bg-accent/10"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="mt-6">

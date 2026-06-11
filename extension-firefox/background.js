@@ -184,6 +184,13 @@ async function sbPatch(path, body) {
 
 // ── HTML Parsing ───────────────────────────────────────────────────────────────
 
+// Extrait l'URL de la couverture depuis la balise og:image
+function parseCoverUrl(html) {
+  const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+    || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  return m ? m[1] : null;
+}
+
 function parseLastChapter(html, baseUrl) {
   const candidates = [];
   const chapterNumRe = /(chapter|chapitre|chap|ch\.?|episode|ep\.?)[-_\/\s]?(\d+(?:\.\d+)?)/i;
@@ -274,7 +281,8 @@ async function fetchSilent(url) {
   if (is404) return { found: null, is404: true, html: null, debug: { pageTitle } };
 
   const found = parseLastChapter(html, url);
-  return { found, is404: false, html: found ? null : html, debug: { pageTitle } };
+  const coverUrl = parseCoverUrl(html);
+  return { found, is404: false, coverUrl, html: found ? null : html, debug: { pageTitle } };
 }
 
 // ── Fetch via onglet réel (fallback pour les sites JS-only) ────────────────────
@@ -313,6 +321,12 @@ function injectedExtract() {
       return candidates;
     }
 
+    function extractCover() {
+      return document.querySelector('meta[property="og:image"]')?.content
+        || document.querySelector('meta[name="og:image"]')?.content
+        || null;
+    }
+
     let elapsed = 0;
     const interval = setInterval(() => {
       const candidates = tryExtract();
@@ -324,12 +338,13 @@ function injectedExtract() {
         const bodySnippet = (document.body?.innerText || "").slice(0, 500).toLowerCase();
         const is404 = /\b404\b/.test(titleLower) || /not.?found/i.test(titleLower) || /introuvable/i.test(titleLower)
           || (/\b404\b/.test(bodySnippet) && /\b(not.?found|error|erreur)\b/i.test(bodySnippet));
+        const coverUrl = extractCover();
         if (!candidates.length) {
-          resolve({ found: null, is404, html: document.documentElement.outerHTML, debug: { title: pageTitle, elapsed } });
+          resolve({ found: null, is404, coverUrl, html: document.documentElement.outerHTML, debug: { title: pageTitle, elapsed } });
           return;
         }
         candidates.sort((a, b) => b.num - a.num);
-        resolve({ found: candidates[0], is404: false, html: null, debug: { title: pageTitle, elapsed } });
+        resolve({ found: candidates[0], is404: false, coverUrl, html: null, debug: { title: pageTitle, elapsed } });
       }
     }, 500);
   });
@@ -467,7 +482,7 @@ async function runCheck() {
     const notifyInApp = settings[0]?.in_app_notifications_enabled !== false;
 
     const titles = await sbGet(
-      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab))`
+      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,cover_url,title_sources(id,url,site_id,is_primary,last_seen_chapter,last_error,sites(needs_tab))`
     );
 
     // Sites globaux avec un template URL (pour l'auto-découverte)
@@ -511,6 +526,13 @@ async function runCheck() {
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
             // Succès : mettre à jour le chapitre et effacer toute erreur précédente
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
+
+            // Sauvegarder la couverture si trouvée et absente (ou si source primaire)
+            const coverUrl = result.coverUrl ?? parseCoverUrl(result.html ?? "");
+            if (coverUrl && (!title.cover_url || src.is_primary)) {
+              await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: coverUrl });
+              title.cover_url = coverUrl;
+            }
 
             const { isNew, chapterId } = await saveChapter({
               titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead,
