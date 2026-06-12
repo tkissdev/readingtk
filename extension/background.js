@@ -159,8 +159,20 @@ function parseCoverUrl(html) {
 }
 
 function parseLastChapter(html, baseUrl) {
-  const candidates = [];
   const chapterNumRe = /(chapter|chapitre|chap|ch\.?|episode|ep\.?)[-_\/\s]?(\d+(?:\.\d+)?)/i;
+  // Numéro max plausible : évite de confondre des IDs de BDD avec des numéros de chapitre
+  const MAX_CHAPTER = 9999;
+
+  // Extraire le slug de l'URL source pour filtrer les liens propres au titre
+  let titleSlug = null;
+  try {
+    const base = new URL(baseUrl);
+    const parts = base.pathname.replace(/\/$/, "").split("/").filter(Boolean);
+    if (parts.length >= 1) titleSlug = parts[parts.length - 1]; // ex: "killer-pietro-89829cb7"
+  } catch {}
+
+  const allCandidates = [];
+  const specificCandidates = [];
 
   const anchorRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m;
@@ -170,13 +182,20 @@ function parseLastChapter(html, baseUrl) {
     const km = chapterNumRe.exec(href) || chapterNumRe.exec(text);
     if (km) {
       const num = parseFloat(km[2]);
-      if (!isNaN(num)) {
+      if (!isNaN(num) && num <= MAX_CHAPTER) {
         let url = href;
         try { url = new URL(href, baseUrl).toString(); } catch {}
-        candidates.push({ num, url });
+        const candidate = { num, url };
+        allCandidates.push(candidate);
+        // Spécifique = le lien contient le slug du titre (ex: killer-pietro-89829cb7)
+        if (titleSlug && href.includes(titleSlug)) specificCandidates.push(candidate);
       }
     }
   }
+
+  // Préférer les liens spécifiques au titre : évite de ramasser les chapitres
+  // d'autres titres affichés dans la sidebar ou les "derniers chapitres"
+  let candidates = specificCandidates.length > 0 ? specificCandidates : allCandidates;
 
   if (!candidates.length) {
     try {
@@ -196,7 +215,7 @@ function parseLastChapter(html, baseUrl) {
           slugRe.lastIndex = 0;
           if (sm) {
             const num = parseFloat(sm[2]);
-            if (!isNaN(num)) {
+            if (!isNaN(num) && num <= MAX_CHAPTER) {
               let url = href;
               try { url = new URL(href, baseUrl).toString(); } catch {}
               candidates.push({ num, url });
@@ -212,7 +231,7 @@ function parseLastChapter(html, baseUrl) {
     let rm;
     while ((rm = rawRe.exec(html)) !== null) {
       const num = parseFloat(rm[2]);
-      if (!isNaN(num)) candidates.push({ num, url: baseUrl });
+      if (!isNaN(num) && num <= MAX_CHAPTER) candidates.push({ num, url: baseUrl });
     }
   }
 
@@ -286,8 +305,16 @@ function injectedExtract() {
       "ul.main.version-chap li a", ".eph-num a", "li.wp-manga-chapter a",
     ];
 
+    const MAX_CHAPTER = 9999;
+    const titleSlug = (() => {
+      try {
+        const parts = location.pathname.replace(/\/$/, "").split("/").filter(Boolean);
+        return parts.length >= 1 ? parts[parts.length - 1] : null;
+      } catch { return null; }
+    })();
+
     function tryExtract() {
-      const candidates = [];
+      const allC = [], specC = [];
       for (const sel of SELECTORS) {
         const els = document.querySelectorAll(sel);
         if (els.length > 0) {
@@ -295,20 +322,34 @@ function injectedExtract() {
             const text = (el.textContent || "").trim();
             const href = el.href || el.getAttribute("href") || "";
             const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
-            if (m) { const num = parseFloat(m[2]); if (!isNaN(num)) candidates.push({ num, url: el.href || href }); }
+            if (m) {
+              const num = parseFloat(m[2]);
+              if (!isNaN(num) && num <= MAX_CHAPTER) {
+                const c = { num, url: el.href || href };
+                allC.push(c);
+                if (titleSlug && href.includes(titleSlug)) specC.push(c);
+              }
+            }
           }
-          if (candidates.length) break;
+          if (allC.length) break;
         }
       }
-      if (!candidates.length) {
+      if (!allC.length) {
         document.querySelectorAll("a[href]").forEach((el) => {
           const text = (el.textContent || "").trim();
           const href = el.href || "";
           const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
-          if (m) { const num = parseFloat(m[2]); if (!isNaN(num)) candidates.push({ num, url: href }); }
+          if (m) {
+            const num = parseFloat(m[2]);
+            if (!isNaN(num) && num <= MAX_CHAPTER) {
+              const c = { num, url: href };
+              allC.push(c);
+              if (titleSlug && href.includes(titleSlug)) specC.push(c);
+            }
+          }
         });
       }
-      return candidates;
+      return specC.length > 0 ? specC : allC;
     }
 
     function extractCover() {
