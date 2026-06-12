@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw, Trash2 } from "lucide-react";
+import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw, Trash2, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -445,6 +445,27 @@ function sendToExtension(payload: Record<string, unknown>): Promise<Record<strin
 function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const [scraping, setScraping] = useState(false);
+  const [editSrcId, setEditSrcId] = useState<string | null>(null);
+  const [editUrl, setEditUrl] = useState("");
+  const [editLastSeen, setEditLastSeen] = useState("");
+
+  function startEdit(s: { id: string; url: string | null; last_seen_chapter: string | null }) {
+    setEditSrcId(s.id);
+    setEditUrl(s.url ?? "");
+    setEditLastSeen(s.last_seen_chapter ?? "");
+  }
+
+  async function saveEdit() {
+    if (!editSrcId) return;
+    await supabase.from("title_sources").update({
+      url: editUrl.trim() || null,
+      last_seen_chapter: editLastSeen.trim() || null,
+      last_error: null,
+    }).eq("id", editSrcId);
+    setEditSrcId(null);
+    qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+    qc.invalidateQueries({ queryKey: ["titles"] });
+  }
   const { data } = useQuery({
     queryKey: ["title-detail", titleId],
     queryFn: async () => {
@@ -699,26 +720,79 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
               const isDown = lastError === "404";
               const isRedirect = lastError === "redirect";
               const hasError = isDown || isRedirect;
+              const siteName = (s as { sites?: { name?: string } }).sites?.name ?? "Source";
+
+              // ── Mode édition ───────────────────────────────────────────────
+              if (editSrcId === s.id) {
+                return (
+                  <li key={s.id} className="rounded-md border border-accent/40 bg-accent/5 p-3 text-xs space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-accent">{siteName}</span>
+                      {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground">Lien</label>
+                      <input
+                        value={editUrl}
+                        onChange={e => setEditUrl(e.target.value)}
+                        className="mt-1 w-full rounded border border-input bg-input/50 px-2 py-1 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground">Dernier détecté</label>
+                      <input
+                        value={editLastSeen}
+                        onChange={e => setEditLastSeen(e.target.value)}
+                        placeholder="ex: 134"
+                        className="mt-1 w-full rounded border border-input bg-input/50 px-2 py-1 text-xs"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        onClick={() => setEditSrcId(null)}
+                        className="rounded px-3 py-1 text-muted-foreground hover:bg-secondary/60 transition">
+                        Annuler
+                      </button>
+                      <button
+                        onClick={saveEdit}
+                        className="flex items-center gap-1.5 rounded px-3 py-1 font-medium text-primary-foreground transition"
+                        style={{ background: "var(--gradient-primary)" }}>
+                        <Check className="h-3 w-3" /> Enregistrer
+                      </button>
+                    </div>
+                  </li>
+                );
+              }
+
+              // ── Affichage normal ───────────────────────────────────────────
               return (
                 <li key={s.id} className={`rounded-md border p-3 text-xs ${isDown ? "border-destructive/40 bg-destructive/5" : isRedirect ? "border-orange-500/30 bg-orange-500/5" : "border-border/60 bg-secondary/30"}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-medium">{(s as { sites?: { name?: string } }).sites?.name ?? "Source"}</span>
+                      <span className="font-medium">{siteName}</span>
                       {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
                       {isDown && <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-[10px] font-semibold text-destructive">⬤ Down</span>}
                       {isRedirect && <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-semibold text-orange-400">↪ Redirigé</span>}
                     </div>
-                    <button
-                      title="Supprimer cette source"
-                      onClick={async () => {
-                        if (!confirm("Supprimer cette source ?")) return;
-                        await supabase.from("title_sources").delete().eq("id", s.id);
-                        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
-                        qc.invalidateQueries({ queryKey: ["titles"] });
-                      }}
-                      className="shrink-0 rounded p-1 text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        title="Modifier cette source"
+                        onClick={() => startEdit(s)}
+                        className="rounded p-1 text-muted-foreground/50 hover:text-foreground hover:bg-secondary/60 transition">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        title="Supprimer cette source"
+                        onClick={async () => {
+                          if (!confirm("Supprimer cette source ?")) return;
+                          await supabase.from("title_sources").delete().eq("id", s.id);
+                          qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                          qc.invalidateQueries({ queryKey: ["titles"] });
+                        }}
+                        className="rounded p-1 text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-accent hover:underline">{s.url}</a>
                   {s.last_seen_chapter && !hasError && <div className="mt-1 text-muted-foreground">Dernier détecté : {s.last_seen_chapter}</div>}
