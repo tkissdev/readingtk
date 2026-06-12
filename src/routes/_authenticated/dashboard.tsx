@@ -472,7 +472,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
       const [title, progress, sources, chapters] = await Promise.all([
         supabase.from("titles").select("*").eq("id", titleId).maybeSingle(),
         supabase.from("reading_progress").select("*").eq("title_id", titleId).maybeSingle(),
-        supabase.from("title_sources").select("*, sites(name, base_url)").eq("title_id", titleId),
+        supabase.from("title_sources").select("*, sites(name, base_url, priority)").eq("title_id", titleId),
         supabase.from("chapters").select("*, sites(name)").eq("title_id", titleId).order("detected_at", { ascending: false }).limit(20),
       ]);
       return { title: title.data, progress: progress.data, sources: sources.data ?? [], chapters: chapters.data ?? [] };
@@ -714,9 +714,14 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
         <div className="mt-8">
           <h3 className="text-sm font-semibold">Sources ({data.sources.length})</h3>
           <ul className="mt-2 space-y-2">
-            {data.sources.map((s) => {
+            {[...data.sources].sort((a, b) => {
+              const pa = (a as any).sites?.priority ?? 0;
+              const pb = (b as any).sites?.priority ?? 0;
+              return pb - pa;
+            }).map((s) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const lastError = (s as any).last_error as string | null;
+              const sitePriority = (s as any).sites?.priority as number ?? 0;
               const isDown = lastError === "404";
               const isRedirect = lastError === "redirect";
               const hasError = isDown || isRedirect;
@@ -728,7 +733,9 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                   <li key={s.id} className="rounded-md border border-accent/40 bg-accent/5 p-3 text-xs space-y-2">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-accent">{siteName}</span>
-                      {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${sitePriority > 0 ? "bg-accent/20 text-accent" : "bg-secondary/60 text-muted-foreground"}`}>
+                        priorité {sitePriority}
+                      </span>
                     </div>
                     <div>
                       <label className="text-muted-foreground">Lien</label>
@@ -770,7 +777,9 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-medium">{siteName}</span>
-                      {s.is_primary && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] text-accent">primaire</span>}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${sitePriority > 0 ? "bg-accent/20 text-accent" : "bg-secondary/60 text-muted-foreground"}`}>
+                        priorité {sitePriority}
+                      </span>
                       {isDown && <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-[10px] font-semibold text-destructive">⬤ Down</span>}
                       {isRedirect && <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-semibold text-orange-400">↪ Redirigé</span>}
                     </div>
