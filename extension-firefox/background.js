@@ -184,6 +184,33 @@ async function sbPatch(path, body) {
 
 // ── HTML Parsing ───────────────────────────────────────────────────────────────
 
+// Extrait le type du titre (manga/manhwa/manhua/novel) depuis le HTML de la page
+function parseType(html) {
+  const typeBlockRe = /\btype\b[\s\S]{0,60}?\b(manhwa|manhua|manwha|manga|novel|webtoon)\b/i;
+  const m = typeBlockRe.exec(html);
+  if (m) {
+    let val = m[1].toLowerCase();
+    if (val === "manwha" || val === "webtoon") val = "manhwa";
+    return val;
+  }
+  const jsonLdRe = /<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi;
+  let jm;
+  while ((jm = jsonLdRe.exec(html)) !== null) {
+    try {
+      const obj = JSON.parse(jm[1]);
+      const genres = [].concat(obj.genre || obj.Genre || []);
+      for (const g of genres) {
+        const gl = (g || "").toLowerCase();
+        if (gl.includes("manhwa")) return "manhwa";
+        if (gl.includes("manhua")) return "manhua";
+        if (gl.includes("novel"))  return "novel";
+        if (gl.includes("manga"))  return "manga";
+      }
+    } catch {}
+  }
+  return null;
+}
+
 // Extrait l'URL de la couverture depuis la balise og:image
 function parseCoverUrl(html) {
   const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
@@ -321,7 +348,8 @@ async function fetchSilent(url) {
 
   const found = parseLastChapter(html, url);
   const coverUrl = parseCoverUrl(html);
-  return { found, is404: false, coverUrl, html: found ? null : html, debug: { pageTitle } };
+  const type = parseType(html);
+  return { found, is404: false, coverUrl, type, html: found ? null : html, debug: { pageTitle } };
 }
 
 // ── Fetch via onglet réel (fallback pour les sites JS-only) ────────────────────
@@ -388,6 +416,15 @@ function injectedExtract() {
         || null;
     }
 
+    function extractType() {
+      const text = document.body?.innerText || "";
+      const m = /\btype\s*[:\-]?\s*(manhwa|manhua|manwha|manga|novel|webtoon)\b/i.exec(text);
+      if (!m) return null;
+      let val = m[1].toLowerCase();
+      if (val === "manwha" || val === "webtoon") val = "manhwa";
+      return val;
+    }
+
     let elapsed = 0;
     const interval = setInterval(() => {
       const candidates = tryExtract();
@@ -400,12 +437,13 @@ function injectedExtract() {
         const is404 = /\b404\b/.test(titleLower) || /not.?found/i.test(titleLower) || /introuvable/i.test(titleLower)
           || (/\b404\b/.test(bodySnippet) && /\b(not.?found|error|erreur)\b/i.test(bodySnippet));
         const coverUrl = extractCover();
+        const type = extractType();
         if (!candidates.length) {
-          resolve({ found: null, is404, coverUrl, html: document.documentElement.outerHTML, debug: { title: pageTitle, elapsed } });
+          resolve({ found: null, is404, coverUrl, type, html: document.documentElement.outerHTML, debug: { title: pageTitle, elapsed } });
           return;
         }
         candidates.sort((a, b) => b.num - a.num);
-        resolve({ found: candidates[0], is404: false, coverUrl, html: null, debug: { title: pageTitle, elapsed } });
+        resolve({ found: candidates[0], is404: false, coverUrl, type, html: null, debug: { title: pageTitle, elapsed } });
       }
     }, 500);
   });
@@ -547,7 +585,7 @@ async function runCheck() {
     const notifyInApp = settings[0]?.in_app_notifications_enabled !== false;
 
     const titles = await sbGet(
-      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,cover_url,title_sources(id,url,site_id,is_primary,last_seen_chapter,last_error,sites(needs_tab))`
+      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,type,cover_url,title_sources(id,url,site_id,is_primary,last_seen_chapter,last_error,sites(needs_tab))`
     );
 
     // Sites globaux avec un template URL (pour l'auto-découverte)
@@ -604,6 +642,13 @@ async function runCheck() {
             if (coverUrl && (!title.cover_url || src.is_primary)) {
               await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: coverUrl });
               title.cover_url = coverUrl;
+            }
+
+            // Sauvegarder le type si détecté et absent (ou si source primaire)
+            const titleType = result.type ?? parseType(result.html ?? "");
+            if (titleType && (!title.type || src.is_primary)) {
+              await sbPatch(`/titles?id=eq.${title.id}`, { type: titleType });
+              title.type = titleType;
             }
 
             const { isNew, chapterId } = await saveChapter({
@@ -708,7 +753,7 @@ async function checkSingleTitle(titleId) {
   const format = settings[0]?.chapter_format === "text" ? "text" : "numeric";
 
   const titles = await sbGet(
-    `/titles?id=eq.${titleId}&select=id,name,cover_url,title_sources(id,url,site_id,is_primary,last_seen_chapter,last_error,sites(needs_tab))`
+    `/titles?id=eq.${titleId}&select=id,name,type,cover_url,title_sources(id,url,site_id,is_primary,last_seen_chapter,last_error,sites(needs_tab))`
   );
   const title = titles[0];
   if (!title) return { error: "Titre introuvable" };
@@ -747,6 +792,12 @@ async function checkSingleTitle(titleId) {
       if (coverUrl && (!title.cover_url || src.is_primary)) {
         await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: coverUrl });
         title.cover_url = coverUrl;
+      }
+
+      const titleType = result?.type ?? parseType(result?.html ?? "");
+      if (titleType && (!title.type || src.is_primary)) {
+        await sbPatch(`/titles?id=eq.${title.id}`, { type: titleType });
+        title.type = titleType;
       }
 
       await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead });
