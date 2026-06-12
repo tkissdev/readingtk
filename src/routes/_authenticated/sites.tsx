@@ -2,8 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Plus, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+
+type SortCol = "name" | "base_url" | "priority" | "enabled" | "is_down";
+
+function SortIcon({ col, sortBy, sortDir }: { col: SortCol; sortBy: SortCol | null; sortDir: "asc" | "desc" }) {
+  if (sortBy !== col) return <ChevronsUpDown className="inline ml-1 h-3 w-3 opacity-40" />;
+  return sortDir === "asc"
+    ? <ChevronUp className="inline ml-1 h-3 w-3" />
+    : <ChevronDown className="inline ml-1 h-3 w-3" />;
+}
 
 export const Route = createFileRoute("/_authenticated/sites")({
   head: () => ({ meta: [{ title: "Sites · ReadingTK" }] }),
@@ -16,10 +25,28 @@ function SitesPage() {
   const [baseUrl, setBaseUrl] = useState("");
   const [urlTemplate, setUrlTemplate] = useState("");
   const [priority, setPriority] = useState(0);
+  const [sortBy, setSortBy] = useState<SortCol | null>("priority");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  function handleSort(col: SortCol) {
+    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir("asc"); }
+  }
 
   const { data: sites } = useQuery({
     queryKey: ["sites"],
-    queryFn: async () => (await supabase.from("sites").select("*").order("priority", { ascending: false })).data ?? [],
+    queryFn: async () => (await supabase.from("sites").select("*")).data ?? [],
+  });
+
+  const sorted = (sites ?? []).slice().sort((a, b) => {
+    if (!sortBy) return 0;
+    let cmp = 0;
+    if (sortBy === "name") cmp = (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" });
+    else if (sortBy === "base_url") cmp = (a.base_url ?? "").localeCompare(b.base_url ?? "", undefined, { sensitivity: "base" });
+    else if (sortBy === "priority") cmp = (a.priority ?? 0) - (b.priority ?? 0);
+    else if (sortBy === "enabled") cmp = (a.enabled ? 1 : 0) - (b.enabled ? 1 : 0);
+    else if (sortBy === "is_down") cmp = ((a as any).is_down ? 1 : 0) - ((b as any).is_down ? 1 : 0);
+    return sortDir === "asc" ? cmp : -cmp;
   });
 
   const create = useMutation({
@@ -97,16 +124,24 @@ function SitesPage() {
         <table className="w-full text-sm">
           <thead className="bg-secondary/40 text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="px-4 py-3 text-left">Nom</th>
-              <th className="px-3 py-3 text-left">URL de base</th>
-              <th className="px-3 py-3 text-left">Template URL</th>
-              <th className="px-3 py-3 text-left">Priorité</th>
-              <th className="px-3 py-3 text-left">Activé</th>
+              {(["name", "base_url", null, "priority", "enabled"] as const).map((col, i) => {
+                const labels: Record<string, string> = { name: "Nom", base_url: "URL de base", priority: "Priorité", enabled: "Activé" };
+                if (col === null) return <th key={i} className="px-3 py-3 text-left">Template URL</th>;
+                return (
+                  <th key={col} className={`${i === 0 ? "px-4" : "px-3"} py-3 text-left`}>
+                    <button onClick={() => handleSort(col)}
+                      className="flex items-center hover:text-foreground transition-colors whitespace-nowrap">
+                      {labels[col]}
+                      <SortIcon col={col} sortBy={sortBy} sortDir={sortDir} />
+                    </button>
+                  </th>
+                );
+              })}
               <th className="px-3 py-3"></th>
             </tr>
           </thead>
           <tbody>
-            {(sites ?? []).map((s) => {
+            {sorted.map((s) => {
               const isDown = (s as any).is_down === true;
               return (
               <tr key={s.id} className={`border-t border-border/40 ${isDown ? "bg-red-500/5" : ""}`}>
@@ -152,7 +187,7 @@ function SitesPage() {
               </tr>
               );
             })}
-            {(sites ?? []).length === 0 && (
+            {sorted.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun site configuré.</td></tr>
             )}
           </tbody>
