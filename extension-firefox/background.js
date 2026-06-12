@@ -653,6 +653,69 @@ async function runCheck() {
   }
 }
 
+// ── Check d'un seul titre (déclenché depuis la page web via le content script) ─
+
+async function checkSingleTitle(titleId) {
+  const token = await getToken();
+  if (!token) return { error: "Non connecté" };
+
+  const storage = await storageGet("user_id");
+  const user_id = storage.user_id;
+  if (!user_id) return { error: "Pas de user_id" };
+
+  const settings = await sbGet(`/user_settings?user_id=eq.${user_id}&select=chapter_format`);
+  const format = settings[0]?.chapter_format === "text" ? "text" : "numeric";
+
+  const titles = await sbGet(
+    `/titles?id=eq.${titleId}&select=id,name,cover_url,title_sources(id,url,site_id,is_primary,last_seen_chapter,last_error,sites(needs_tab))`
+  );
+  const title = titles[0];
+  if (!title) return { error: "Titre introuvable" };
+
+  const sources = (title.title_sources || []).filter(s => s.url);
+  const progress = await sbGet(`/reading_progress?title_id=eq.${titleId}&select=last_chapter_read`);
+  const lastRead = parseFloat(progress[0]?.last_chapter_read ?? "") || -1;
+
+  let found = 0;
+  let errors = 0;
+
+  for (const src of sources) {
+    try {
+      const siteNeedsTab = src.sites?.needs_tab === true;
+      const { result } = await fetchForSite(src.url, src.site_id, siteNeedsTab);
+
+      if (result?.isRedirect) {
+        await sbPatch(`/title_sources?id=eq.${src.id}`, { last_error: "redirect", last_seen_chapter: null });
+        errors++;
+        continue;
+      }
+      if (result?.is404) {
+        await sbPatch(`/title_sources?id=eq.${src.id}`, { last_error: "404" });
+        if (src.site_id) await sbPatch(`/sites?id=eq.${src.site_id}`, { is_down: true, enabled: false });
+        errors++;
+        continue;
+      }
+
+      const chapter = result?.found ?? parseLastChapter(result?.html ?? "", src.url);
+      if (!chapter) continue;
+
+      const chapLabel = format === "numeric" ? String(chapter.num) : `Chapter ${chapter.num}`;
+      await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
+
+      const coverUrl = result?.coverUrl ?? parseCoverUrl(result?.html ?? "");
+      if (coverUrl && (!title.cover_url || src.is_primary)) {
+        await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: coverUrl });
+        title.cover_url = coverUrl;
+      }
+
+      await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead });
+      found++;
+    } catch (e) { console.error("[RTK] checkSingleTitle source error:", e?.message); errors++; }
+  }
+
+  return { found, errors };
+}
+
 // ── Alarm ──────────────────────────────────────────────────────────────────────
 
 async function setupAlarm() {
@@ -724,6 +787,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         sendResponse({ error: e.message });
       }
     })();
+    return true;
+  }
+  if (msg.type === "CHECK_TITLE_NOW") {
+    checkSingleTitle(msg.titleId).then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;
   }
   if (msg.type === "GET_STATUS") {

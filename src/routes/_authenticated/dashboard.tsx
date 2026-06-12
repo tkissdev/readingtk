@@ -422,8 +422,29 @@ function FilterGroup({ label, value, options, onChange }: { label: string; value
 
 // ── Title Drawer ───────────────────────────────────────────────────────────────
 
+// Envoie un message au background de l'extension via le content script relay
+function sendToExtension(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+  return new Promise((resolve) => {
+    const requestId = Math.random().toString(36).slice(2);
+    const timeout = setTimeout(() => {
+      window.removeEventListener("message", handler);
+      resolve({ error: "Extension non disponible" });
+    }, 120000);
+    function handler(event: MessageEvent) {
+      if (event.data?.source !== "readingtk-extension") return;
+      if (event.data?.requestId !== requestId) return;
+      clearTimeout(timeout);
+      window.removeEventListener("message", handler);
+      resolve(event.data.response ?? null);
+    }
+    window.addEventListener("message", handler);
+    window.postMessage({ source: "readingtk-web", requestId, payload }, "*");
+  });
+}
+
 function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => void }) {
   const qc = useQueryClient();
+  const [scraping, setScraping] = useState(false);
   const { data } = useQuery({
     queryKey: ["title-detail", titleId],
     queryFn: async () => {
@@ -505,7 +526,33 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
             )}
             <div className="min-w-0">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">{data.title.type ?? "titre"}</div>
-              <h2 className="mt-1 text-2xl font-bold leading-tight">{data.title.name}</h2>
+              <div className="mt-1 flex items-center gap-2">
+                <h2 className="text-2xl font-bold leading-tight">{data.title.name}</h2>
+                <button
+                  title="Scraper ce titre maintenant"
+                  disabled={scraping}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setScraping(true);
+                    try {
+                      const res = await sendToExtension({ type: "CHECK_TITLE_NOW", titleId });
+                      if (res?.error) {
+                        toast.error(res.error === "Extension non disponible"
+                          ? "Extension non disponible — installez l'extension ReadingTK"
+                          : String(res.error));
+                      } else {
+                        toast.success("Scraping terminé");
+                        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                        qc.invalidateQueries({ queryKey: ["titles"] });
+                      }
+                    } finally {
+                      setScraping(false);
+                    }
+                  }}
+                  className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent/10 hover:text-accent transition disabled:opacity-40">
+                  <RefreshCw className={`h-4 w-4 ${scraping ? "animate-spin" : ""}`} />
+                </button>
+              </div>
               {aliases.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {aliases.map((a, i) => (
