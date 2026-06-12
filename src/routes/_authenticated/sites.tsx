@@ -25,17 +25,22 @@ function SitesPage() {
   const [baseUrl, setBaseUrl] = useState("");
   const [urlTemplate, setUrlTemplate] = useState("");
   const [priority, setPriority] = useState(0);
-  const [sortBy, setSortBy] = useState<SortCol | null>("priority");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   function handleSort(col: SortCol) {
-    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortBy(col); setSortDir("asc"); }
+    if (sortBy === col) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(col);
+      // Priorité : premier clic = décroissant (le plus haut en premier)
+      setSortDir(col === "priority" ? "desc" : "asc");
+    }
   }
 
   const { data: sites } = useQuery({
     queryKey: ["sites"],
-    queryFn: async () => (await supabase.from("sites").select("*")).data ?? [],
+    queryFn: async () => (await supabase.from("sites").select("*").order("priority", { ascending: false })).data ?? [],
   });
 
   const sorted = (sites ?? []).slice().sort((a, b) => {
