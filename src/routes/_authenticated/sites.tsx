@@ -174,9 +174,16 @@ function SitesPage() {
                   />
                 </td>
                 <td className="px-3 py-3">
-                  <input type="number" defaultValue={s.priority}
-                    onBlur={(e) => update.mutate({ id: s.id, priority: parseInt(e.target.value) || 0 })}
-                    className="w-16 rounded-md border border-input bg-input/50 px-2 py-1 text-xs" />
+                  <input
+                    type="number"
+                    key={s.priority}
+                    defaultValue={s.priority}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val)) update.mutate({ id: s.id, priority: val });
+                    }}
+                    className="w-16 rounded-md border border-input bg-input/50 px-2 py-1 text-xs"
+                  />
                 </td>
                 <td className="px-3 py-3">
                   <button onClick={() => update.mutate({ id: s.id, enabled: !s.enabled })}
