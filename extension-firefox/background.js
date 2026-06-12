@@ -585,7 +585,7 @@ async function runCheck() {
     const notifyInApp = settings[0]?.in_app_notifications_enabled !== false;
 
     const titles = await sbGet(
-      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,type,cover_url,title_sources(id,url,site_id,is_primary,last_seen_chapter,last_error,sites(needs_tab))`
+      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,type,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
     );
 
     // Sites globaux avec un template URL (pour l'auto-découverte)
@@ -596,7 +596,9 @@ async function runCheck() {
     for (const title of titles) {
       if (await isAborted()) break;
 
-      const sources = (title.title_sources || []).filter(s => s.url);
+      const sources = (title.title_sources || [])
+        .filter(s => s.url)
+        .sort((a, b) => (b.sites?.priority ?? 0) - (a.sites?.priority ?? 0));
 
       try {
         const progress = await sbGet(`/reading_progress?title_id=eq.${title.id}&select=last_chapter_read`);
@@ -604,6 +606,8 @@ async function runCheck() {
 
         // Accumule tous les nouveaux chapitres trouvés pour ce titre (toutes sources confondues)
         const newChaptersList = [];
+        let bestCoverPriority = -1;
+        let bestTypePriority = -1;
 
         // ── 1. Scraper les sources existantes ──────────────────────────────────
         for (const src of sources) {
@@ -637,18 +641,21 @@ async function runCheck() {
             // Succès : mettre à jour le chapitre et effacer toute erreur précédente
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
 
-            // Sauvegarder la couverture si trouvée et absente (ou si source primaire)
+            // Couverture : la source avec la priorité la plus haute a autorité
+            const srcPriority = src.sites?.priority ?? 0;
             const coverUrl = result.coverUrl ?? parseCoverUrl(result.html ?? "");
-            if (coverUrl && (!title.cover_url || src.is_primary)) {
+            if (coverUrl && (!title.cover_url || srcPriority > bestCoverPriority)) {
               await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: coverUrl });
               title.cover_url = coverUrl;
+              bestCoverPriority = srcPriority;
             }
 
-            // Sauvegarder le type si détecté et absent (ou si source primaire)
+            // Type : même logique de priorité
             const titleType = result.type ?? parseType(result.html ?? "");
-            if (titleType && (!title.type || src.is_primary)) {
+            if (titleType && (!title.type || srcPriority > bestTypePriority)) {
               await sbPatch(`/titles?id=eq.${title.id}`, { type: titleType });
               title.type = titleType;
+              bestTypePriority = srcPriority;
             }
 
             const { isNew, chapterId } = await saveChapter({
@@ -753,17 +760,21 @@ async function checkSingleTitle(titleId) {
   const format = settings[0]?.chapter_format === "text" ? "text" : "numeric";
 
   const titles = await sbGet(
-    `/titles?id=eq.${titleId}&select=id,name,type,cover_url,title_sources(id,url,site_id,is_primary,last_seen_chapter,last_error,sites(needs_tab))`
+    `/titles?id=eq.${titleId}&select=id,name,type,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
   );
   const title = titles[0];
   if (!title) return { error: "Titre introuvable" };
 
-  const sources = (title.title_sources || []).filter(s => s.url);
+  const sources = (title.title_sources || [])
+    .filter(s => s.url)
+    .sort((a, b) => (b.sites?.priority ?? 0) - (a.sites?.priority ?? 0));
   const progress = await sbGet(`/reading_progress?title_id=eq.${titleId}&select=last_chapter_read`);
   const lastRead = parseFloat(progress[0]?.last_chapter_read ?? "") || -1;
 
   let found = 0;
   let errors = 0;
+  let bestCoverPriority = -1;
+  let bestTypePriority = -1;
 
   for (const src of sources) {
     try {
@@ -788,16 +799,19 @@ async function checkSingleTitle(titleId) {
       const chapLabel = format === "numeric" ? String(chapter.num) : `Chapter ${chapter.num}`;
       await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
 
+      const srcPriority = src.sites?.priority ?? 0;
       const coverUrl = result?.coverUrl ?? parseCoverUrl(result?.html ?? "");
-      if (coverUrl && (!title.cover_url || src.is_primary)) {
+      if (coverUrl && (!title.cover_url || srcPriority > bestCoverPriority)) {
         await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: coverUrl });
         title.cover_url = coverUrl;
+        bestCoverPriority = srcPriority;
       }
 
       const titleType = result?.type ?? parseType(result?.html ?? "");
-      if (titleType && (!title.type || src.is_primary)) {
+      if (titleType && (!title.type || srcPriority > bestTypePriority)) {
         await sbPatch(`/titles?id=eq.${title.id}`, { type: titleType });
         title.type = titleType;
+        bestTypePriority = srcPriority;
       }
 
       await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead });
