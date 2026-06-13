@@ -292,6 +292,24 @@ function isRedirectedAway(originalUrl, finalUrl) {
   return false;
 }
 
+// Vérifie qu'une URL de chapitre mène bien vers une page valide (pas 404, pas redirigée
+// vers un autre domaine). Retourne l'URL validée ou sourceUrl en fallback.
+async function validateChapterUrl(chapterUrl, sourceUrl) {
+  if (!chapterUrl || chapterUrl === sourceUrl) return chapterUrl;
+  try {
+    const res = await fetch(chapterUrl, {
+      method: "HEAD",
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.status === 404 || res.status === 410) return sourceUrl;
+    if (isRedirectedAway(chapterUrl, res.url)) return sourceUrl;
+    return chapterUrl;
+  } catch {
+    return chapterUrl;
+  }
+}
+
 // ── Fetch silencieux (aucun onglet ouvert, invisible pour l'utilisateur) ──────────
 
 async function fetchSilent(url) {
@@ -494,17 +512,21 @@ function titleToSlug(name) {
 }
 
 // Enregistre un chapitre en base. Retourne { isNew, chapterId } sans envoyer de notification.
-async function saveChapter({ titleId, siteId, chapLabel, chapUrl, lastRead }) {
+// sourceUrl est utilisé comme fallback si chapUrl s'avère invalide (404 / redirection).
+async function saveChapter({ titleId, siteId, chapLabel, chapUrl, lastRead, sourceUrl }) {
   const existing = await sbGet(
     `/chapters?title_id=eq.${titleId}&chapter_label=eq.${encodeURIComponent(chapLabel)}&site_id=eq.${siteId}&select=id`
   );
   if (existing.length) return { isNew: false, chapterId: existing[0].id };
 
+  // Nouveau chapitre : valider l'URL avant de la persister
+  const validatedUrl = sourceUrl ? await validateChapterUrl(chapUrl, sourceUrl) : chapUrl;
+
   const newChap = await sbPost("/chapters", {
     title_id: titleId,
     site_id: siteId || null,
     chapter_label: chapLabel,
-    chapter_url: chapUrl,
+    chapter_url: validatedUrl,
   });
 
   const num = parseFloat(chapLabel);
@@ -635,7 +657,7 @@ async function runCheck() {
             }
 
             const { isNew, chapterId } = await saveChapter({
-              titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead,
+              titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: src.url,
             });
             if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: src.site_id });
           } catch { errors++; }
@@ -673,7 +695,7 @@ async function runCheck() {
             }
 
             const { isNew, chapterId } = await saveChapter({
-              titleId: title.id, siteId: site.id, chapLabel, chapUrl: found.url, lastRead,
+              titleId: title.id, siteId: site.id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: templateUrl,
             });
             if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: site.id });
           } catch (e) { console.error("[RTK] Auto-discover error:", e?.message); errors++; }
@@ -787,7 +809,7 @@ async function checkSingleTitle(titleId) {
         bestTypePriority = srcPriority;
       }
 
-      await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead });
+      await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead, sourceUrl: src.url });
       found++;
     } catch { errors++; }
   }
