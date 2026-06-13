@@ -223,8 +223,11 @@ function parseLastChapter(html, baseUrl) {
   }
 
   // Préférer les liens spécifiques au titre : évite de ramasser les chapitres
-  // d'autres titres affichés dans la sidebar ou les "derniers chapitres"
-  let candidates = specificCandidates.length > 0 ? specificCandidates : allCandidates;
+  // d'autres titres affichés dans la sidebar ou les "derniers chapitres".
+  // Si on a un slug mais aucun lien spécifique, ne pas utiliser allCandidates
+  // (pourraient être des chapitres d'autres titres) : retourner null forcera le
+  // fallback via onglet qui utilise des sélecteurs CSS plus précis.
+  let candidates = specificCandidates.length > 0 ? specificCandidates : (titleSlug ? [] : allCandidates);
 
   if (!candidates.length) {
     try {
@@ -255,7 +258,9 @@ function parseLastChapter(html, baseUrl) {
     } catch {}
   }
 
-  if (!candidates.length) {
+  // Raw regex trop large (trouve tout /chapter-N/ dans le HTML, y compris les sidebars).
+  // Ne l'utiliser qu'en dernier recours quand on n'a pas de slug pour filtrer.
+  if (!candidates.length && !titleSlug) {
     const rawRe = /["'\/](chapter|chap|ch|episode|ep)[-_]?(\d+(?:\.\d+)?)["'\/]/gi;
     let rm;
     while ((rm = rawRe.exec(html)) !== null) {

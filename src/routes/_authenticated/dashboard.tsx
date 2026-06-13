@@ -136,15 +136,11 @@ function Dashboard() {
     },
   });
 
-  // Valeur consensuelle : la plus fréquente parmi les sources, la plus petite en cas d'égalité
+  // Valeur max : le chapitre le plus élevé détecté parmi toutes les sources
   const lastSeenOf = (t: Title) => {
     const nums = (t.title_sources || []).map((s) => parseFloat(s.last_seen_chapter ?? "")).filter((n) => !isNaN(n));
     if (!nums.length) return null;
-    const counts: Record<number, number> = {};
-    for (const n of nums) counts[n] = (counts[n] || 0) + 1;
-    const maxCount = Math.max(...Object.values(counts));
-    const topNums = Object.entries(counts).filter(([, c]) => c === maxCount).map(([n]) => parseFloat(n));
-    return String(Math.min(...topNums));
+    return String(Math.max(...nums));
   };
 
   const filtered = (titles ?? []).filter((t) => {
@@ -659,11 +655,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
               </div>
             );
 
-            const counts: Record<number, number> = {};
-            for (const { num } of sourceValues) counts[num] = (counts[num] || 0) + 1;
-            const maxCount = Math.max(...Object.values(counts));
-            const topNums = Object.entries(counts).filter(([, c]) => c === maxCount).map(([n]) => parseFloat(n));
-            const selectedNum = Math.min(...topNums);
+            const selectedNum = Math.max(...sourceValues.map(x => x.num));
             const selectedLabel = String(selectedNum);
 
             const chapterUrlRe = new RegExp(`(?:chapter|chap|ch|episode|ep)[-_/]?${selectedNum}(?:[^0-9]|$)`, "i");
