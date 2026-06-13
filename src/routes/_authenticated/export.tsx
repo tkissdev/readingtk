@@ -83,8 +83,8 @@ function ExportPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("chapters")
-        .select("title_id, chapter_url, chapter_label, created_at")
-        .order("created_at", { ascending: false });
+        .select("title_id, chapter_url, chapter_label")
+        .order("detected_at", { ascending: false });
       const map: Record<string, { url: string; label: string }> = {};
       for (const ch of data ?? []) {
         if (!map[ch.title_id] && ch.chapter_url) {
