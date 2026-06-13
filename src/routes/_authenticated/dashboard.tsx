@@ -115,6 +115,23 @@ function Dashboard() {
     } catch (e) { toast.error((e as Error).message); }
   }
 
+  // ── Realtime : mise à jour automatique après scraping ────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel("rtk-dashboard-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "title_sources" }, () => {
+        qc.invalidateQueries({ queryKey: ["titles"] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "titles" }, () => {
+        qc.invalidateQueries({ queryKey: ["titles"] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "user_settings" }, () => {
+        qc.invalidateQueries({ queryKey: ["last-check"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+
   // ── Data ─────────────────────────────────────────────────────────────────────
   const { data: lastCheck } = useQuery({
     queryKey: ["last-check"],
@@ -462,6 +479,20 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
     qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
     qc.invalidateQueries({ queryKey: ["titles"] });
   }
+  // Realtime : rafraîchir le volet dès que l'extension met à jour ce titre
+  useEffect(() => {
+    const channel = supabase
+      .channel(`rtk-drawer-${titleId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "title_sources" }, () => {
+        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "titles" }, () => {
+        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [titleId, qc]);
+
   const { data } = useQuery({
     queryKey: ["title-detail", titleId],
     queryFn: async () => {
