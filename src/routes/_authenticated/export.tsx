@@ -89,12 +89,14 @@ function ExportPage() {
         .select("title_id, chapter_url, chapter_label, sites(name)")
         .order("detected_at", { ascending: false });
 
+      const MAX_CHAPTER = 9999; // même limite que l'extension (évite les IDs de BDD)
+
       // Regrouper tous les chapitres par titre
       const byTitle: Record<string, { num: number; url: string; chapLabel: string; siteName: string }[]> = {};
       for (const ch of (data ?? []) as any[]) {
         if (!ch.chapter_url) continue;
         const num = parseFloat(ch.chapter_label ?? "");
-        if (isNaN(num)) continue;
+        if (isNaN(num) || num > MAX_CHAPTER) continue;
         let siteName: string = ch.sites?.name ?? "";
         if (!siteName) { try { siteName = new URL(ch.chapter_url).hostname; } catch {} }
         if (!byTitle[ch.title_id]) byTitle[ch.title_id] = [];
@@ -276,7 +278,7 @@ function ExportPage() {
         </div>
 
         {/* Rows */}
-        <div className="max-h-[420px] overflow-y-auto">
+        <div>
           {isLoading && (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">Chargement…</p>
           )}
