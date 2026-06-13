@@ -21,6 +21,8 @@ type TitleRow = {
   title_sources: { id: string; url: string; sites: { name: string } | null }[];
 };
 
+type ChapterLink = { url: string; siteName: string; chapLabel: string };
+
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
 const TYPES    = ["all", "manga", "manhua", "manhwa", "novel", "autre"];
@@ -77,19 +79,35 @@ function ExportPage() {
     },
   });
 
-  // Dernier chapitre par titre (map title_id → { url, label })
-  const { data: latestChapters = {} } = useQuery<Record<string, { url: string; label: string }>>({
+  // Pour chaque titre : tous les liens du chapitre le plus élevé (toutes sources)
+  // Reproduit la logique du volet "Dernier chapitre détecté"
+  const { data: latestChapters = {} } = useQuery<Record<string, ChapterLink[]>>({
     queryKey: ["chapters-latest-export"],
     queryFn: async () => {
       const { data } = await supabase
         .from("chapters")
-        .select("title_id, chapter_url, chapter_label")
+        .select("title_id, chapter_url, chapter_label, sites(name)")
         .order("detected_at", { ascending: false });
-      const map: Record<string, { url: string; label: string }> = {};
-      for (const ch of data ?? []) {
-        if (!map[ch.title_id] && ch.chapter_url) {
-          map[ch.title_id] = { url: ch.chapter_url, label: ch.chapter_label ?? "" };
-        }
+
+      // Regrouper tous les chapitres par titre
+      const byTitle: Record<string, { num: number; url: string; chapLabel: string; siteName: string }[]> = {};
+      for (const ch of (data ?? []) as any[]) {
+        if (!ch.chapter_url) continue;
+        const num = parseFloat(ch.chapter_label ?? "");
+        if (isNaN(num)) continue;
+        let siteName: string = ch.sites?.name ?? "";
+        if (!siteName) { try { siteName = new URL(ch.chapter_url).hostname; } catch {} }
+        if (!byTitle[ch.title_id]) byTitle[ch.title_id] = [];
+        byTitle[ch.title_id].push({ num, url: ch.chapter_url, chapLabel: ch.chapter_label ?? "", siteName });
+      }
+
+      // Pour chaque titre, garder uniquement les chapitres au numéro le plus élevé
+      const map: Record<string, ChapterLink[]> = {};
+      for (const [titleId, chapters] of Object.entries(byTitle)) {
+        const maxNum = Math.max(...chapters.map(c => c.num));
+        map[titleId] = chapters
+          .filter(c => c.num === maxNum)
+          .map(c => ({ url: c.url, siteName: c.siteName, chapLabel: c.chapLabel }));
       }
       return map;
     },
@@ -151,9 +169,9 @@ function ExportPage() {
     }
 
     if (filterLinks === "chapters" || filterLinks === "all") {
-      const ch = latestChapters[title.id];
-      if (ch?.url) {
-        links.push({ url: ch.url, label: `${title.name} — ${ch.label}` });
+      for (const ch of latestChapters[title.id] ?? []) {
+        const siteLabel = ch.siteName ? ` (${ch.siteName})` : "";
+        links.push({ url: ch.url, label: `${title.name} — ${ch.chapLabel}${siteLabel}` });
       }
     }
 
