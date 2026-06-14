@@ -70,11 +70,28 @@ function AuthPage() {
     setLoading(true);
     try {
       if (isSignup) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email, password,
           options: { emailRedirectTo: `${window.location.origin}/dashboard` },
         });
         if (error) throw error;
+
+        // Email déjà utilisé (ex. via Google/Discord/Twitch) : Supabase renvoie un
+        // utilisateur sans identités et ne crée PAS de mot de passe. On le détecte ici
+        // pour éviter un faux « Compte créé ! » suivi d'un échec de connexion.
+        if (data.user && (data.user.identities?.length ?? 0) === 0) {
+          toast.error(
+            "Cet email est déjà utilisé (Google, Discord ou Twitch). Connectez-vous avec ce service, puis définissez un mot de passe dans Paramètres."
+          );
+          setIsSignup(false);
+          return;
+        }
+
+        // Confirmation par email activée : pas de session tant que l'email n'est pas confirmé.
+        if (!data.session) {
+          toast.success("Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse.");
+          return;
+        }
         toast.success("Compte créé !");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });

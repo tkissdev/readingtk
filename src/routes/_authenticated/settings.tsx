@@ -54,6 +54,8 @@ function SettingsPage() {
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-bold">Paramètres</h1>
 
+      <AccountSection />
+
 <Section title="Notifications">
         <Toggle label="Notifications in-app" value={form.in_app_notifications_enabled} onChange={(v) => update("in_app_notifications_enabled", v)} />
         <div className="mt-3 flex items-center justify-between opacity-50">
@@ -97,6 +99,95 @@ function SettingsPage() {
         <Toggle label="Ignorer les doublons" value={form.bookmarks_ignore_duplicates} onChange={(v) => update("bookmarks_ignore_duplicates", v)} />
       </Section>
     </div>
+  );
+}
+
+// Permet de définir un mot de passe, y compris pour un compte créé via Google/Discord/Twitch.
+// Une fois défini, la connexion par email + mot de passe devient possible.
+function AccountSection() {
+  const [email, setEmail] = useState("");
+  const [providers, setProviders] = useState<string[]>([]);
+  const [hasPassword, setHasPassword] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const u = data.user;
+      if (!u) return;
+      setEmail(u.email ?? "");
+      const ids = u.identities ?? [];
+      setProviders(ids.map((i) => i.provider));
+      setHasPassword(ids.some((i) => i.provider === "email"));
+    });
+  }, []);
+
+  async function submit() {
+    if (pw.length < 6) { toast.error("Le mot de passe doit faire au moins 6 caractères"); return; }
+    if (pw !== pw2) { toast.error("Les deux mots de passe ne correspondent pas"); return; }
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setSaving(false);
+    if (error) { toast.error(error.message || "Échec de la définition du mot de passe"); return; }
+    toast.success("Mot de passe enregistré. Vous pouvez maintenant vous connecter par email.");
+    setPw(""); setPw2(""); setHasPassword(true);
+  }
+
+  const PROVIDER_LABELS: Record<string, string> = {
+    google: "Google", discord: "Discord", twitch: "Twitch", email: "Email",
+  };
+  const socialProviders = providers.filter((p) => p !== "email");
+
+  return (
+    <Section title="Compte">
+      <div className="space-y-1 text-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground">Email :</span>
+          <span className="font-medium">{email || "—"}</span>
+        </div>
+        {socialProviders.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground">Connexions :</span>
+            {socialProviders.map((p) => (
+              <span key={p} className="rounded-full bg-secondary/60 px-2 py-0.5 text-[11px]">
+                {PROVIDER_LABELS[p] ?? p}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 border-t border-border/40 pt-4">
+        <p className="text-sm font-medium">
+          {hasPassword ? "Modifier le mot de passe" : "Définir un mot de passe"}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {hasPassword
+            ? "Choisissez un nouveau mot de passe pour la connexion par email."
+            : "Ajoutez un mot de passe pour pouvoir vous connecter aussi avec votre email, en plus des autres services."}
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <input
+            type="password" placeholder="Nouveau mot de passe" minLength={6}
+            value={pw} onChange={(e) => setPw(e.target.value)}
+            className="w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+          />
+          <input
+            type="password" placeholder="Confirmer le mot de passe" minLength={6}
+            value={pw2} onChange={(e) => setPw2(e.target.value)}
+            className="w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <button
+          onClick={submit} disabled={saving || !pw || !pw2}
+          className="mt-3 rounded-md px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          {saving ? "..." : hasPassword ? "Enregistrer" : "Définir le mot de passe"}
+        </button>
+      </div>
+    </Section>
   );
 }
 
