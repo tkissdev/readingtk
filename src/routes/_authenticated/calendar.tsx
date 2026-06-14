@@ -31,6 +31,12 @@ type Draft = {
   time: string; // "HH:MM"
 };
 
+type TitleInfo = {
+  num: number | null;       // dernier numéro de chapitre détecté
+  chapterUrl: string | null; // lien vers ce chapitre
+  sourceUrl: string | null;  // lien vers la page de la série (repli)
+};
+
 // ── Constantes ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -69,6 +75,22 @@ function hhmm(t: string): string {
 }
 function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+// Construit le lien d'un chapitre cible en remplaçant le numéro dans l'URL du chapitre de base.
+// Heuristique : les URLs de chapitres se terminent en général par le numéro (…/chapter-52).
+function chapterUrlForNum(
+  chapterUrl: string | null, baseNum: number | null, targetNum: number, sourceUrl: string | null,
+): string | null {
+  if (chapterUrl && baseNum != null) {
+    if (targetNum === baseNum) return chapterUrl;
+    const baseStr = String(baseNum);
+    const idx = chapterUrl.lastIndexOf(baseStr);
+    if (idx !== -1) {
+      return chapterUrl.slice(0, idx) + String(targetNum) + chapterUrl.slice(idx + baseStr.length);
+    }
+  }
+  return sourceUrl ?? chapterUrl ?? null;
 }
 
 // Répartit les événements d'une journée en colonnes pour éviter les chevauchements
@@ -127,9 +149,9 @@ function CalendarPage() {
     },
   });
 
-  // Pour chaque titre : dernier numéro de chapitre détecté + lien vers la page de lecture.
+  // Pour chaque titre : dernier numéro de chapitre détecté + lien du chapitre + lien de la série.
   // Le numéro vient de title_sources.last_seen_chapter (fiable), le lien du chapitre correspondant.
-  const { data: titleInfo = {} } = useQuery<Record<string, { num: number | null; url: string | null }>>({
+  const { data: titleInfo = {} } = useQuery<Record<string, TitleInfo>>({
     queryKey: ["calendar-title-info"],
     queryFn: async () => {
       const MAX = 9999;
@@ -152,18 +174,22 @@ function CalendarPage() {
       }
 
       // URL du chapitre correspondant au numéro retenu (le plus récent en premier)
-      const urlByTitle: Record<string, string> = {};
+      const chapUrlByTitle: Record<string, string> = {};
       for (const c of (chaps ?? []) as any[]) {
         if (!c.chapter_url) continue;
         const target = numByTitle[c.title_id];
-        if (target == null || urlByTitle[c.title_id]) continue;
-        if (parseFloat(c.chapter_label ?? "") === target) urlByTitle[c.title_id] = c.chapter_url;
+        if (target == null || chapUrlByTitle[c.title_id]) continue;
+        if (parseFloat(c.chapter_label ?? "") === target) chapUrlByTitle[c.title_id] = c.chapter_url;
       }
 
-      const map: Record<string, { num: number | null; url: string | null }> = {};
+      const map: Record<string, TitleInfo> = {};
       const ids = new Set([...Object.keys(numByTitle), ...Object.keys(srcUrlByTitle)]);
       for (const id of ids) {
-        map[id] = { num: numByTitle[id] ?? null, url: urlByTitle[id] ?? srcUrlByTitle[id] ?? null };
+        map[id] = {
+          num: numByTitle[id] ?? null,
+          chapterUrl: chapUrlByTitle[id] ?? null,
+          sourceUrl: srcUrlByTitle[id] ?? null,
+        };
       }
       return map;
     },
@@ -378,8 +404,30 @@ function CalendarPage() {
                   occurAt < new Date(now.getFullYear(), now.getMonth(), now.getDate()) ||
                   (d === todayIdx && e.min < nowMin);
                 const info = e.title_id ? titleInfo[e.title_id] : undefined;
-                const chapNum = info?.num ?? null;
-                const link = info?.url ?? null;
+                const baseNum = info?.num ?? null;
+
+                // Numéro incrémenté selon la semaine : +1 par semaine après la dernière parution.
+                let chapNum: number | null = null;
+                let link: string | null = info?.chapterUrl ?? info?.sourceUrl ?? null;
+                if (baseNum != null) {
+                  const [hH, mM] = e.release_time.split(":").map((x) => parseInt(x, 10) || 0);
+                  // Référence = dernière occurrence de ce créneau déjà passée (= dernier chapitre détecté)
+                  const curWeek = startOfWeek(now);
+                  let ref = addDays(curWeek, e.day_of_week);
+                  ref = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), hH, mM, 0, 0);
+                  if (ref.getTime() > now.getTime()) ref = addDays(ref, -7);
+                  // Occurrence affichée (semaine en cours d'affichage)
+                  const occ = addDays(weekStart, e.day_of_week);
+                  const occDate = new Date(occ.getFullYear(), occ.getMonth(), occ.getDate(), hH, mM, 0, 0);
+                  const weeksDiff = Math.round((occDate.getTime() - ref.getTime()) / (7 * 86400000));
+                  const n = baseNum + weeksDiff;
+                  if (n >= 1) {
+                    chapNum = n;
+                    link = chapterUrlForNum(info?.chapterUrl ?? null, baseNum, n, info?.sourceUrl ?? null);
+                  } else {
+                    link = info?.sourceUrl ?? info?.chapterUrl ?? null;
+                  }
+                }
                 const sub = chapNum != null ? `Ch. ${chapNum} · ${hhmm(e.release_time)}` : hhmm(e.release_time);
                 const Body = (
                   <>
