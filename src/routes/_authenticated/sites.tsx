@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Trash2, Plus, AlertTriangle, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/i18n";
 
 type SortCol = "name" | "base_url" | "priority" | "enabled" | "is_down";
 
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/sites")({
 
 function SitesPage() {
   const qc = useQueryClient();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [urlTemplate, setUrlTemplate] = useState("");
@@ -68,7 +70,7 @@ function SitesPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Site créé");
+      toast.success(t("sites.created"));
       setName(""); setBaseUrl(""); setUrlTemplate(""); setPriority(0);
       qc.invalidateQueries({ queryKey: ["sites"] });
     },
@@ -93,34 +95,34 @@ function SitesPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-bold">Sites à scraper</h1>
-      <p className="mt-1 text-sm text-muted-foreground">La priorité la plus haute est scrappée en premier.</p>
+      <h1 className="text-2xl font-bold">{t("sites.title")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t("sites.subtitle")}</p>
 
       {/* Form */}
       <div className="mt-6 grid gap-2 rounded-xl border border-border/60 bg-card/40 p-4">
         <div className="grid gap-2 md:grid-cols-4">
-          <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)}
+          <input placeholder={t("sites.name")} value={name} onChange={(e) => setName(e.target.value)}
             className="rounded-md border border-input bg-input/50 px-3 py-2 text-sm" />
           <input placeholder="https://site.com" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)}
             className="rounded-md border border-input bg-input/50 px-3 py-2 text-sm md:col-span-2" />
-          <input type="number" placeholder="Priorité" value={priority} onChange={(e) => setPriority(parseInt(e.target.value) || 0)}
+          <input type="number" placeholder={t("sites.priority")} value={priority} onChange={(e) => setPriority(parseInt(e.target.value) || 0)}
             className="rounded-md border border-input bg-input/50 px-3 py-2 text-sm" />
         </div>
         <div className="flex flex-col gap-1">
           <input
-            placeholder="Template URL (optionnel) — ex: https://site.com/series/{slug}/"
+            placeholder={t("sites.templatePh")}
             value={urlTemplate}
             onChange={(e) => setUrlTemplate(e.target.value)}
             className="rounded-md border border-input bg-input/50 px-3 py-2 text-sm"
           />
           <p className="text-xs text-muted-foreground pl-1">
-            Si renseigné, le scraper cherchera automatiquement chaque titre sur ce site en remplaçant <code className="bg-secondary/60 px-1 rounded">{"{slug}"}</code> par le nom du titre (ex: "The Shepherd Wizard" → "the-shepherd-wizard").
+            {t("sites.templateHelp", { code: "{slug}" })}
           </p>
         </div>
         <button onClick={() => create.mutate()} disabled={!name || !baseUrl}
           className="inline-flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
           style={{ background: "var(--gradient-primary)" }}>
-          <Plus className="h-4 w-4" /> Ajouter le site
+          <Plus className="h-4 w-4" /> {t("sites.addBtn")}
         </button>
       </div>
 
@@ -130,8 +132,8 @@ function SitesPage() {
           <thead className="bg-secondary/40 text-xs uppercase text-muted-foreground">
             <tr>
               {(["name", "base_url", null, "priority", "enabled"] as const).map((col, i) => {
-                const labels: Record<string, string> = { name: "Nom", base_url: "URL de base", priority: "Priorité", enabled: "Activé" };
-                if (col === null) return <th key={i} className="px-3 py-3 text-left">Template URL</th>;
+                const labels: Record<string, string> = { name: t("sites.name"), base_url: t("sites.baseUrl"), priority: t("sites.priority"), enabled: t("sites.enabled") };
+                if (col === null) return <th key={i} className="px-3 py-3 text-left">{t("sites.templateUrl")}</th>;
                 return (
                   <th key={col} className={`${i === 0 ? "px-4" : "px-3"} py-3 text-left`}>
                     <button onClick={() => handleSort(col)}
@@ -155,7 +157,7 @@ function SitesPage() {
                     {s.name}
                     {isDown && (
                       <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-red-500/15 text-red-400">
-                        <AlertTriangle className="h-3 w-3" /> Down
+                        <AlertTriangle className="h-3 w-3" /> {t("sites.down")}
                       </span>
                     )}
                   </span>
@@ -200,7 +202,7 @@ function SitesPage() {
               );
             })}
             {sorted.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun site configuré.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">{t("sites.none")}</td></tr>
             )}
           </tbody>
         </table>

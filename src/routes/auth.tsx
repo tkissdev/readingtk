@@ -3,6 +3,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useI18n, LanguageSwitcher } from "@/i18n";
 
 const searchSchema = z.object({ mode: z.enum(["login", "signup"]).optional() });
 
@@ -44,6 +45,7 @@ const OAUTH_PROVIDERS: { id: OAuthProvider; label: string; icon: React.ReactNode
 function AuthPage() {
   const { mode } = Route.useSearch();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [isSignup, setIsSignup] = useState(mode === "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,7 +62,7 @@ function AuthPage() {
       },
     });
     if (error) {
-      toast.error(error.message || "Erreur de connexion");
+      toast.error(error.message || t("auth.errOAuth"));
       setOauthLoading(null);
     }
   }
@@ -80,43 +82,44 @@ function AuthPage() {
         // utilisateur sans identités et ne crée PAS de mot de passe. On le détecte ici
         // pour éviter un faux « Compte créé ! » suivi d'un échec de connexion.
         if (data.user && (data.user.identities?.length ?? 0) === 0) {
-          toast.error(
-            "Cet email est déjà utilisé (Google, Discord ou Twitch). Connectez-vous avec ce service, puis définissez un mot de passe dans Paramètres."
-          );
+          toast.error(t("auth.emailInUse"));
           setIsSignup(false);
           return;
         }
 
         // Confirmation par email activée : pas de session tant que l'email n'est pas confirmé.
         if (!data.session) {
-          toast.success("Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse.");
+          toast.success(t("auth.createdConfirm"));
           return;
         }
-        toast.success("Compte créé !");
+        toast.success(t("auth.created"));
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast.success("Connecté");
+        toast.success(t("auth.connected"));
       }
       navigate({ to: "/dashboard" });
     } catch (err) {
       const e = err as Error;
-      toast.error(e.message || "Erreur d'authentification");
+      toast.error(e.message || t("auth.errGeneric"));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4" style={{ backgroundImage: "var(--gradient-hero)" }}>
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4" style={{ backgroundImage: "var(--gradient-hero)" }}>
+      <div className="absolute right-4 top-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex justify-center">
           <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 180, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
         </Link>
         <div className="rounded-2xl border border-border/60 bg-card/80 p-8 backdrop-blur" style={{ boxShadow: "var(--shadow-card)" }}>
-          <h1 className="text-2xl font-semibold">{isSignup ? "Créer un compte" : "Connexion"}</h1>
+          <h1 className="text-2xl font-semibold">{isSignup ? t("auth.createTitle") : t("auth.loginTitle")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {isSignup ? "Commencez à suivre vos lectures." : "Heureux de vous revoir."}
+            {isSignup ? t("auth.createSub") : t("auth.loginSub")}
           </p>
 
           {/* Boutons OAuth */}
@@ -131,7 +134,7 @@ function AuthPage() {
                 {oauthLoading === id ? (
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 ) : icon}
-                Continuer avec {label}
+                {t("auth.continueWith", { provider: label })}
               </button>
             ))}
           </div>
@@ -139,20 +142,20 @@ function AuthPage() {
           {/* Séparateur */}
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">ou</span>
+            <span className="text-xs text-muted-foreground">{t("auth.or")}</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Email</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("auth.email")}</label>
               <input
                 type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Mot de passe</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("auth.password")}</label>
               <input
                 type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
                 className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
@@ -163,13 +166,13 @@ function AuthPage() {
               className="w-full rounded-md py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
               style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
             >
-              {loading ? "..." : isSignup ? "Créer le compte" : "Se connecter"}
+              {loading ? "..." : isSignup ? t("auth.createBtn") : t("auth.loginBtn")}
             </button>
           </form>
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            {isSignup ? "Déjà un compte ?" : "Pas encore de compte ?"}{" "}
+            {isSignup ? t("auth.haveAccount") : t("auth.noAccount")}{" "}
             <button onClick={() => setIsSignup(!isSignup)} className="font-medium text-accent hover:underline">
-              {isSignup ? "Se connecter" : "Créer un compte"}
+              {isSignup ? t("auth.toLogin") : t("auth.toCreate")}
             </button>
           </div>
         </div>

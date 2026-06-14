@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, Plus, Settings, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   head: () => ({ meta: [{ title: "Calendrier · ReadingTK" }] }),
@@ -39,8 +40,12 @@ type TitleInfo = {
 
 // ── Constantes ───────────────────────────────────────────────────────────────
 
-const DAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const DAY_FULL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+// Nom de jour localisé (lundi = index 0). 2024-01-01 est un lundi.
+function fmtDay(locale: string, mondayIdx: number, opt: "short" | "long"): string {
+  const d = new Date(2024, 0, 1 + mondayIdx);
+  const s = new Intl.DateTimeFormat(locale, { weekday: opt }).format(d).replace(/\.$/, "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 const EVENT_MIN_H = 36; // hauteur minimale d'un événement en px
 const BLOCK_MIN = 55; // écart visuel (minutes) pour le calcul des collisions
 
@@ -127,6 +132,10 @@ function layoutDay(events: (Schedule & { min: number })[]): Laid[] {
 
 function CalendarPage() {
   const qc = useQueryClient();
+  const { t, lang } = useI18n();
+  const locale = lang === "fr" ? "fr-FR" : "en-US";
+  const dayShort = useMemo(() => Array.from({ length: 7 }, (_, i) => fmtDay(locale, i, "short")), [locale]);
+  const dayFull = useMemo(() => Array.from({ length: 7 }, (_, i) => fmtDay(locale, i, "long")), [locale]);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [draft, setDraft] = useState<Draft | null>(null);
 
@@ -253,7 +262,7 @@ function CalendarPage() {
     if (!draft) return;
     const isCustom = !draft.title_id;
     if (isCustom && !draft.label.trim()) {
-      toast.error("Choisissez un titre ou saisissez un nom");
+      toast.error(t("cal.needTitle"));
       return;
     }
     const payload = {
@@ -267,17 +276,17 @@ function CalendarPage() {
       if (draft.id) {
         const { error } = await supabase.from("release_schedules").update(payload).eq("id", draft.id);
         if (error) throw error;
-        toast.success("Entrée modifiée");
+        toast.success(t("cal.modified"));
       } else {
         const { data: u } = await supabase.auth.getUser();
         const { error } = await supabase.from("release_schedules").insert({ ...payload, user_id: u.user!.id });
         if (error) throw error;
-        toast.success("Entrée ajoutée");
+        toast.success(t("cal.added"));
       }
       setDraft(null);
       qc.invalidateQueries({ queryKey: ["release-schedules"] });
     } catch (e: any) {
-      toast.error("Échec de l'enregistrement");
+      toast.error(t("cal.saveFail"));
       console.error(e);
     }
   }
@@ -287,24 +296,24 @@ function CalendarPage() {
     try {
       const { error } = await supabase.from("release_schedules").delete().eq("id", draft.id);
       if (error) throw error;
-      toast.success("Entrée supprimée");
+      toast.success(t("cal.deleted"));
       setDraft(null);
       qc.invalidateQueries({ queryKey: ["release-schedules"] });
     } catch (e) {
-      toast.error("Échec de la suppression");
+      toast.error(t("cal.deleteFail"));
     }
   }
 
-  const monthLabel = weekStart.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const monthLabel = weekStart.toLocaleDateString(locale, { month: "long", year: "numeric" });
 
   return (
     <div className="flex h-screen flex-col p-6">
       {/* ── En-tête ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Calendrier</h1>
+          <h1 className="text-2xl font-bold">{t("cal.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Jour et heure de parution de chaque titre, chaque semaine. Cliquez pour ajouter ou modifier.
+            {t("cal.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -312,12 +321,12 @@ function CalendarPage() {
             onClick={() => setWeekStart(startOfWeek(new Date()))}
             className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-secondary/40 hover:text-foreground"
           >
-            Aujourd'hui
+            {t("cal.today")}
           </button>
           <button
             onClick={() => setWeekStart((w) => addDays(w, -7))}
             className="rounded-md border border-border p-1.5 text-muted-foreground transition hover:bg-secondary/40 hover:text-foreground"
-            title="Semaine précédente"
+            title={t("cal.prevWeek")}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -325,7 +334,7 @@ function CalendarPage() {
           <button
             onClick={() => setWeekStart((w) => addDays(w, 7))}
             className="rounded-md border border-border p-1.5 text-muted-foreground transition hover:bg-secondary/40 hover:text-foreground"
-            title="Semaine suivante"
+            title={t("cal.nextWeek")}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -337,7 +346,7 @@ function CalendarPage() {
         {/* En-tête des jours */}
         <div className="flex shrink-0 border-b border-border/60">
           <div className="w-14 shrink-0" />
-          {DAY_NAMES.map((name, d) => {
+          {dayShort.map((name, d) => {
             const date = addDays(weekStart, d);
             const isToday = d === todayIdx;
             return (
@@ -371,7 +380,7 @@ function CalendarPage() {
           </div>
 
           {/* Colonnes des jours */}
-          {DAY_NAMES.map((_, d) => (
+          {dayShort.map((_, d) => (
             <div key={d} className="relative flex flex-1 flex-col border-l border-border/40">
               {/* Cellules horaires cliquables (1/24 chacune) */}
               {Array.from({ length: 24 }, (_, h) => (
@@ -397,7 +406,7 @@ function CalendarPage() {
               {byDay[d].map((e) => {
                 const widthPct = 100 / e.lanes;
                 const leftPct = e.lane * widthPct;
-                const name = e.label || e.titles?.name || "Sans titre";
+                const name = e.label || e.titles?.name || t("cal.untitled");
                 const color = e.color || colorFor(e.title_id || e.label || e.id);
                 // Date/heure réelle de cette occurrence → passé ou futur
                 const [hH, mM] = e.release_time.split(":").map((x) => parseInt(x, 10) || 0);
@@ -458,14 +467,14 @@ function CalendarPage() {
                         rel="noreferrer"
                         onClick={(ev) => ev.stopPropagation()}
                         className="flex h-full flex-col justify-center px-1.5 no-underline"
-                        title={`${name}${chapNum != null ? ` — chapitre ${chapNum}` : ""} (ouvrir sur le site)`}
+                        title={t("cal.openOnSite", { name, chap: chapNum != null ? t("cal.chapterOf", { n: chapNum }) : "" })}
                       >
                         {Body}
                       </a>
                     ) : (
                       <div
                         className="flex h-full cursor-default flex-col justify-center px-1.5"
-                        title={isFuture ? `${name} — parution à venir` : `${name} — ${hhmm(e.release_time)}`}
+                        title={isFuture ? t("cal.upcoming", { name }) : `${name} — ${hhmm(e.release_time)}`}
                       >
                         {Body}
                       </div>
@@ -475,7 +484,7 @@ function CalendarPage() {
                     <button
                       onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); openEdit(e); }}
                       className="absolute right-0.5 top-0.5 z-30 rounded p-0.5 text-muted-foreground opacity-60 transition hover:bg-background/70 hover:text-foreground group-hover:opacity-100"
-                      title="Modifier l'entrée"
+                      title={t("cal.editEntry")}
                     >
                       <Settings className="h-3 w-3" />
                     </button>
@@ -492,6 +501,7 @@ function CalendarPage() {
         <ScheduleDialog
           draft={draft}
           titles={titles}
+          dayFull={dayFull}
           onChange={setDraft}
           onSave={saveDraft}
           onDelete={draft.id ? deleteDraft : undefined}
@@ -505,15 +515,17 @@ function CalendarPage() {
 // ── Dialogue ─────────────────────────────────────────────────────────────────
 
 function ScheduleDialog({
-  draft, titles, onChange, onSave, onDelete, onClose,
+  draft, titles, dayFull, onChange, onSave, onDelete, onClose,
 }: {
   draft: Draft;
   titles: { id: string; name: string }[];
+  dayFull: string[];
   onChange: (d: Draft) => void;
   onSave: () => void;
   onDelete?: () => void;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const isCustom = !draft.title_id;
 
@@ -524,7 +536,7 @@ function ScheduleDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">{draft.id ? "Modifier l'entrée" : "Ajouter une entrée"}</h2>
+          <h2 className="text-lg font-bold">{draft.id ? t("cal.editEntryTitle") : t("cal.addEntry")}</h2>
           <button onClick={onClose} className="rounded p-1 text-muted-foreground hover:bg-secondary/40 hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
@@ -533,28 +545,28 @@ function ScheduleDialog({
         <div className="mt-4 space-y-4">
           {/* Titre */}
           <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Titre</label>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t("cal.titleField")}</label>
             <select
               value={draft.title_id}
               onChange={(e) => onChange({ ...draft, title_id: e.target.value })}
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
             >
-              {titles.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+              {titles.map((ti) => (
+                <option key={ti.id} value={ti.id}>{ti.name}</option>
               ))}
-              <option value="">— Nom personnalisé —</option>
+              <option value="">{t("cal.customName")}</option>
             </select>
           </div>
 
           {/* Nom personnalisé */}
           {isCustom && (
             <div>
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Nom</label>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t("cal.name")}</label>
               <input
                 type="text"
                 value={draft.label}
                 onChange={(e) => onChange({ ...draft, label: e.target.value })}
-                placeholder="Ex. Nouvelle parution"
+                placeholder={t("cal.namePh")}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
                 autoFocus
               />
@@ -564,19 +576,19 @@ function ScheduleDialog({
           {/* Jour + heure */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Jour</label>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t("cal.day")}</label>
               <select
                 value={draft.day_of_week}
                 onChange={(e) => onChange({ ...draft, day_of_week: parseInt(e.target.value, 10) })}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
               >
-                {DAY_FULL.map((name, i) => (
+                {dayFull.map((name, i) => (
                   <option key={i} value={i}>{name}</option>
                 ))}
               </select>
             </div>
             <div className="w-32">
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Heure</label>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t("cal.time")}</label>
               <input
                 type="time"
                 value={draft.time}
@@ -593,12 +605,12 @@ function ScheduleDialog({
               onClick={onDelete}
               className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-destructive transition hover:bg-destructive/10"
             >
-              <Trash2 className="h-4 w-4" /> Supprimer
+              <Trash2 className="h-4 w-4" /> {t("common.delete")}
             </button>
           ) : <span />}
           <div className="flex gap-2">
             <button onClick={onClose} className="rounded-md px-4 py-2 text-sm text-muted-foreground transition hover:bg-secondary/40">
-              Annuler
+              {t("common.cancel")}
             </button>
             <button
               onClick={async () => { setSaving(true); await onSave(); setSaving(false); }}
@@ -607,7 +619,7 @@ function ScheduleDialog({
               style={{ background: "var(--gradient-primary)" }}
             >
               {draft.id ? null : <Plus className="h-4 w-4" />}
-              {saving ? "..." : draft.id ? "Enregistrer" : "Ajouter"}
+              {saving ? "..." : draft.id ? t("common.save") : t("cal.addBtn")}
             </button>
           </div>
         </div>

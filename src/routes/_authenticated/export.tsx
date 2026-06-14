@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Download } from "lucide-react";
+import { useI18n, typeLabel, statusLabel } from "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/export")({
   head: () => ({ meta: [{ title: "Exporter bookmarks · ReadingTK" }] }),
@@ -28,17 +29,17 @@ type ChapterEntry = { num: number; url: string; siteName: string; chapLabel: str
 const TYPES    = ["all", "manga", "manhua", "manhwa", "novel", "autre"];
 const STATUSES = ["all", "ongoing", "paused", "dropped", "completed"];
 
-const LINK_LABELS: Record<LinkFilter, string> = {
-  sources:  "Sources",
-  chapters: "Dernier chapitre détecté",
-  all:      "Tous les liens",
+const LINK_KEYS: Record<LinkFilter, string> = {
+  sources:  "export.linkSources",
+  chapters: "export.linkChapters",
+  all:      "export.linkAll",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function FilterGroup({
-  values, current, onChange,
-}: { values: string[]; current: string; onChange: (v: string) => void }) {
+  values, current, onChange, labelFn,
+}: { values: string[]; current: string; onChange: (v: string) => void; labelFn?: (v: string) => string }) {
   return (
     <div className="flex flex-wrap gap-1">
       {values.map((v) => (
@@ -51,7 +52,7 @@ function FilterGroup({
               : "bg-secondary/60 text-muted-foreground hover:bg-secondary"
           }`}
         >
-          {v === "all" ? "Tous" : v.charAt(0).toUpperCase() + v.slice(1)}
+          {labelFn ? labelFn(v) : (v === "all" ? "Tous" : v.charAt(0).toUpperCase() + v.slice(1))}
         </button>
       ))}
     </div>
@@ -61,6 +62,7 @@ function FilterGroup({
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 function ExportPage() {
+  const { t } = useI18n();
   const [filterType,   setFilterType]   = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterLinks,  setFilterLinks]  = useState<LinkFilter>("sources");
@@ -225,23 +227,23 @@ function ExportPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">Exporter bookmarks</h1>
+      <h1 className="text-2xl font-bold">{t("export.title")}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Sélectionnez les titres et le type de liens à exporter au format HTML (importable dans tous les navigateurs).
+        {t("export.subtitle")}
       </p>
 
       {/* ── Filtres ── */}
       <div className="mt-6 space-y-3 rounded-xl border border-border/60 bg-card/40 p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">Type</span>
-          <FilterGroup values={TYPES} current={filterType} onChange={setFilterType} />
+          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">{t("filter.type")}</span>
+          <FilterGroup values={TYPES} current={filterType} onChange={setFilterType} labelFn={(v) => typeLabel(t, v)} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">Statut</span>
-          <FilterGroup values={STATUSES} current={filterStatus} onChange={setFilterStatus} />
+          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">{t("filter.status")}</span>
+          <FilterGroup values={STATUSES} current={filterStatus} onChange={setFilterStatus} labelFn={(v) => statusLabel(t, v)} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">Liens</span>
+          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">{t("export.links")}</span>
           <div className="flex flex-wrap gap-1">
             {(["sources", "chapters", "all"] as LinkFilter[]).map((v) => (
               <button
@@ -253,7 +255,7 @@ function ExportPage() {
                     : "bg-secondary/60 text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                {LINK_LABELS[v]}
+                {t(LINK_KEYS[v])}
               </button>
             ))}
           </div>
@@ -271,20 +273,20 @@ function ExportPage() {
               onChange={toggleAll}
               className="accent-accent"
             />
-            {allSelected ? "Tout désélectionner" : "Tout sélectionner"}
+            {allSelected ? t("export.deselectAll") : t("export.selectAll")}
           </label>
           <span className="text-xs text-muted-foreground">
-            {filtered.length} titre{filtered.length !== 1 ? "s" : ""}
+            {t("export.titleCount", { n: filtered.length })}
           </span>
         </div>
 
         {/* Rows */}
         <div>
           {isLoading && (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Chargement…</p>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("export.loading")}</p>
           )}
           {!isLoading && filtered.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun titre correspondant aux filtres.</p>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("export.noTitles")}</p>
           )}
           {filtered.map((title) => {
             const links = getLinks(title);
@@ -307,7 +309,7 @@ function ExportPage() {
                     <span className="truncate text-sm font-medium">{title.name}</span>
                     {title.type && (
                       <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] bg-secondary/60 text-muted-foreground">
-                        {title.type}
+                        {typeLabel(t, title.type)}
                       </span>
                     )}
                   </div>
@@ -329,7 +331,7 @@ function ExportPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground/50 italic">Aucun lien disponible pour ce filtre</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground/50 italic">{t("export.noLinks")}</p>
                   )}
                 </div>
               </label>
@@ -341,7 +343,7 @@ function ExportPage() {
       {/* ── Bouton export ── */}
       <div className="mt-4 flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {selectedCount} titre{selectedCount !== 1 ? "s" : ""} sélectionné{selectedCount !== 1 ? "s" : ""} · {linkCount} lien{linkCount !== 1 ? "s" : ""}
+          {t("export.summary", { titles: selectedCount, links: linkCount })}
         </p>
         <button
           onClick={exportBookmarks}
@@ -350,7 +352,7 @@ function ExportPage() {
           style={{ background: "var(--gradient-primary)" }}
         >
           <Download className="h-4 w-4" />
-          Exporter
+          {t("export.exportBtn")}
         </button>
       </div>
     </div>

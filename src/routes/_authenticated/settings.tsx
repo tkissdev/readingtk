@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useI18n, LanguageSwitcher } from "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Paramètres · ReadingTK" }] }),
@@ -23,6 +24,7 @@ type Settings = {
 
 function SettingsPage() {
   const qc = useQueryClient();
+  const { t } = useI18n();
   const { data } = useQuery({
     queryKey: ["user-settings-full"],
     queryFn: async () => (await supabase.from("user_settings").select("*").maybeSingle()).data as Settings | null,
@@ -37,13 +39,13 @@ function SettingsPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Paramètres enregistrés");
+      toast.success(t("set.saved"));
       qc.invalidateQueries({ queryKey: ["user-settings-full"] });
       qc.invalidateQueries({ queryKey: ["user-settings"] });
     },
   });
 
-  if (!form) return <div className="p-6 text-sm text-muted-foreground">Chargement...</div>;
+  if (!form) return <div className="p-6 text-sm text-muted-foreground">{t("set.loading")}</div>;
 
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setForm({ ...form, [key]: value });
@@ -52,23 +54,29 @@ function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">Paramètres</h1>
+      <h1 className="text-2xl font-bold">{t("set.title")}</h1>
 
       <AccountSection />
 
-<Section title="Notifications">
-        <Toggle label="Notifications in-app" value={form.in_app_notifications_enabled} onChange={(v) => update("in_app_notifications_enabled", v)} />
-        <div className="mt-3 flex items-center justify-between opacity-50">
-          <span className="text-sm">Notifications Email <span className="ml-2 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] uppercase">Coming soon</span></span>
-          <span className="text-xs text-muted-foreground">À venir</span>
+      <Section title={t("set.language")}>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">{t("set.languageDesc")}</span>
+          <LanguageSwitcher size={22} />
         </div>
       </Section>
 
-      <Section title="Format de chapitre">
+<Section title={t("set.notifications")}>
+        <Toggle label={t("set.inApp")} value={form.in_app_notifications_enabled} onChange={(v) => update("in_app_notifications_enabled", v)} />
+        <div className="mt-3 flex items-center justify-between opacity-50">
+          <span className="text-sm">{t("set.emailNotif")} <span className="ml-2 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] uppercase">{t("set.comingSoon")}</span></span>
+        </div>
+      </Section>
+
+      <Section title={t("set.chapterFormat")}>
         <div className="flex gap-2">
           {[
-            { v: "numeric", l: "Numérique (12, 12.5)" },
-            { v: "text", l: "Texte (Chapitre 12)" },
+            { v: "numeric", l: t("set.formatNumeric") },
+            { v: "text", l: t("set.formatText") },
           ].map((o) => (
             <button key={o.v} onClick={() => update("chapter_format", o.v)}
               className={`rounded-md px-3 py-2 text-xs ${form.chapter_format === o.v ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground"}`}>{o.l}</button>
@@ -76,27 +84,27 @@ function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Valeurs par défaut">
+      <Section title={t("set.defaults")}>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-muted-foreground">Type</label>
+            <label className="text-xs text-muted-foreground">{t("filter.type")}</label>
             <select value={form.default_type} onChange={(e) => update("default_type", e.target.value)}
               className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm">
-              {["manga", "manhua", "novel", "autre"].map((t) => <option key={t}>{t}</option>)}
+              {["manga", "manhua", "novel", "autre"].map((ty) => <option key={ty} value={ty}>{ty}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Statut</label>
+            <label className="text-xs text-muted-foreground">{t("filter.status")}</label>
             <select value={form.default_status} onChange={(e) => update("default_status", e.target.value)}
               className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm">
-              {["ongoing", "paused", "dropped", "completed"].map((t) => <option key={t}>{t}</option>)}
+              {["ongoing", "paused", "dropped", "completed"].map((st) => <option key={st} value={st}>{st}</option>)}
             </select>
           </div>
         </div>
       </Section>
 
-      <Section title="Import bookmarks">
-        <Toggle label="Ignorer les doublons" value={form.bookmarks_ignore_duplicates} onChange={(v) => update("bookmarks_ignore_duplicates", v)} />
+      <Section title={t("set.bookmarksImport")}>
+        <Toggle label={t("set.ignoreDuplicates")} value={form.bookmarks_ignore_duplicates} onChange={(v) => update("bookmarks_ignore_duplicates", v)} />
       </Section>
     </div>
   );
@@ -105,6 +113,7 @@ function SettingsPage() {
 // Permet de définir un mot de passe, y compris pour un compte créé via Google/Discord/Twitch.
 // Une fois défini, la connexion par email + mot de passe devient possible.
 function AccountSection() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [providers, setProviders] = useState<string[]>([]);
   const [hasPassword, setHasPassword] = useState(false);
@@ -124,13 +133,13 @@ function AccountSection() {
   }, []);
 
   async function submit() {
-    if (pw.length < 6) { toast.error("Le mot de passe doit faire au moins 6 caractères"); return; }
-    if (pw !== pw2) { toast.error("Les deux mots de passe ne correspondent pas"); return; }
+    if (pw.length < 6) { toast.error(t("set.pwTooShort")); return; }
+    if (pw !== pw2) { toast.error(t("set.pwMismatch")); return; }
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
     setSaving(false);
-    if (error) { toast.error(error.message || "Échec de la définition du mot de passe"); return; }
-    toast.success("Mot de passe enregistré. Vous pouvez maintenant vous connecter par email.");
+    if (error) { toast.error(error.message || t("set.pwFail")); return; }
+    toast.success(t("set.pwSaved"));
     setPw(""); setPw2(""); setHasPassword(true);
   }
 
@@ -140,15 +149,15 @@ function AccountSection() {
   const socialProviders = providers.filter((p) => p !== "email");
 
   return (
-    <Section title="Compte">
+    <Section title={t("set.account")}>
       <div className="space-y-1 text-sm">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground">Email :</span>
+          <span className="text-muted-foreground">{t("set.emailLabel")}</span>
           <span className="font-medium">{email || "—"}</span>
         </div>
         {socialProviders.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground">Connexions :</span>
+            <span className="text-muted-foreground">{t("set.connections")}</span>
             {socialProviders.map((p) => (
               <span key={p} className="rounded-full bg-secondary/60 px-2 py-0.5 text-[11px]">
                 {PROVIDER_LABELS[p] ?? p}
@@ -160,21 +169,19 @@ function AccountSection() {
 
       <div className="mt-4 border-t border-border/40 pt-4">
         <p className="text-sm font-medium">
-          {hasPassword ? "Modifier le mot de passe" : "Définir un mot de passe"}
+          {hasPassword ? t("set.changePassword") : t("set.setPassword")}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {hasPassword
-            ? "Choisissez un nouveau mot de passe pour la connexion par email."
-            : "Ajoutez un mot de passe pour pouvoir vous connecter aussi avec votre email, en plus des autres services."}
+          {hasPassword ? t("set.changePasswordDesc") : t("set.setPasswordDesc")}
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <input
-            type="password" placeholder="Nouveau mot de passe" minLength={6}
+            type="password" placeholder={t("set.newPassword")} minLength={6}
             value={pw} onChange={(e) => setPw(e.target.value)}
             className="w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
           <input
-            type="password" placeholder="Confirmer le mot de passe" minLength={6}
+            type="password" placeholder={t("set.confirmPassword")} minLength={6}
             value={pw2} onChange={(e) => setPw2(e.target.value)}
             className="w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
@@ -184,7 +191,7 @@ function AccountSection() {
           className="mt-3 rounded-md px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
           style={{ background: "var(--gradient-primary)" }}
         >
-          {saving ? "..." : hasPassword ? "Enregistrer" : "Définir le mot de passe"}
+          {saving ? "..." : hasPassword ? t("common.save") : t("set.setPasswordBtn")}
         </button>
       </div>
     </Section>

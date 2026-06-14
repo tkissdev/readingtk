@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, BookOpen, CalendarDays, Database, Globe, Sparkles, Zap } from "lucide-react";
+import { useI18n, LanguageSwitcher } from "@/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -14,14 +15,15 @@ export const Route = createFileRoute("/")({
 });
 
 const FEATURES = [
-  { icon: BookOpen,     title: "Suivi par titre",       desc: "Dernier chapitre lu, statut — tout au même endroit." },
-  { icon: Globe,        title: "Multi-sources",          desc: "Une priorité par site, ajoutez vos liens de lecture préférés." },
-  { icon: Zap,          title: "Check à la demande",    desc: "Détection heuristique des nouveaux chapitres en un clic." },
-  { icon: CalendarDays, title: "Calendrier automatique", desc: "Jour et heure de parution de chaque titre, projetés semaine après semaine." },
-  { icon: Bell,         title: "Notifications",          desc: "Un badge dès qu'un nouveau chapitre apparaît." },
-];
+  { icon: BookOpen,     key: "track" },
+  { icon: Globe,        key: "sources" },
+  { icon: Zap,          key: "check" },
+  { icon: CalendarDays, key: "calendar" },
+  { icon: Bell,         key: "notif" },
+] as const;
 
 function Landing() {
+  const { t } = useI18n();
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
 
@@ -31,8 +33,9 @@ function Landing() {
           <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 140, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
         </Link>
         <nav className="flex items-center gap-3">
+          <LanguageSwitcher className="mr-1" />
           <Link to="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
-            Connexion
+            {t("landing.signin")}
           </Link>
           <Link
             to="/auth"
@@ -40,7 +43,7 @@ function Landing() {
             className="rounded-md px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90"
             style={{ background: "var(--gradient-primary)" }}
           >
-            Créer un compte
+            {t("landing.createAccount")}
           </Link>
         </nav>
       </header>
@@ -55,14 +58,14 @@ function Landing() {
             style={{ background: "radial-gradient(ellipse at center, oklch(0.55 0.18 268 / 0.25) 0%, transparent 70%)" }}
           />
           <h1 className="mb-5 text-5xl font-extrabold leading-tight">
-            Votre bibliothèque,<br />
+            {t("landing.hero1")}<br />
             <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(135deg, oklch(0.70 0.20 268), oklch(0.85 0.15 250))" }}>
-              enfin intelligente
+              {t("landing.hero2")}
             </span>
           </h1>
           <p className="mb-9 text-lg leading-relaxed text-muted-foreground">
-            Suivez la progression de vos mangas, manhuas et novels.<br />
-            Centralisez vos liens de lecture et soyez notifié dès qu'un nouveau chapitre sort.
+            {t("landing.heroSub1")}<br />
+            {t("landing.heroSub2")}
           </p>
           <div className="flex justify-center gap-3">
             <Link
@@ -71,28 +74,28 @@ function Landing() {
               className="rounded-md px-7 py-3 text-sm font-semibold text-white transition hover:opacity-90"
               style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
             >
-              Commencer maintenant
+              {t("landing.start")}
             </Link>
             <Link
               to="/auth"
               className="rounded-md border border-border bg-card/60 px-7 py-3 text-sm font-medium transition hover:bg-card"
             >
-              Se connecter
+              {t("landing.signin")}
             </Link>
           </div>
         </section>
 
         {/* Feature cards */}
         <section className="grid w-full max-w-5xl grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-          {FEATURES.map(({ icon: Icon, title, desc }) => (
+          {FEATURES.map(({ icon: Icon, key }) => (
             <div
-              key={title}
+              key={key}
               className="flex flex-col gap-2.5 rounded-xl border border-border bg-card/60 p-6 backdrop-blur transition hover:border-accent/60"
               style={{ boxShadow: "var(--shadow-card)" }}
             >
               <Icon className="h-6 w-6 text-accent" />
-              <h3 className="text-sm font-semibold">{title}</h3>
-              <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
+              <h3 className="text-sm font-semibold">{t(`landing.f.${key}.t`)}</h3>
+              <p className="text-xs leading-relaxed text-muted-foreground">{t(`landing.f.${key}.d`)}</p>
             </div>
           ))}
         </section>
@@ -102,10 +105,10 @@ function Landing() {
       <footer className="flex items-center justify-center gap-2 border-t border-border py-4 text-xs text-muted-foreground">
         <span>ReadingTK v0.1</span>
         <span>·</span>
-        <span>Self-hosted ready</span>
+        <span>{t("landing.footerSelfHosted")}</span>
         <span>·</span>
         <Database className="inline h-3 w-3" />
-        <span>Supabase backend</span>
+        <span>{t("landing.footerBackend")}</span>
       </footer>
     </div>
   );

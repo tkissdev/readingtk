@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw, Trash2, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n, statusLabel, typeLabel } from "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Bibliothèque · ReadingTK" }] }),
@@ -31,6 +32,7 @@ function SortIcon({ col, sortBy, sortDir }: { col: SortBy; sortBy: SortBy | null
 
 function Dashboard() {
   const qc = useQueryClient();
+  const { t: tr, lang } = useI18n();
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
@@ -107,7 +109,7 @@ function Dashboard() {
         await supabase.from("titles").delete().eq("id", secId);
       }
 
-      toast.success("Titres fusionnés");
+      toast.success(tr("dash.merged"));
       qc.invalidateQueries({ queryKey: ["titles"] });
       setMergeMode(false);
       setMergeSelection(new Set());
@@ -202,58 +204,58 @@ function Dashboard() {
         <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-card/60 px-3 py-2">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher un titre ou variante..."
+            placeholder={tr("dash.search")}
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
         </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap gap-4">
-          <FilterGroup label="Type" value={type} options={TYPES} onChange={setType} />
-          <FilterGroup label="Statut" value={status} options={STATUSES} onChange={setStatus} />
+          <FilterGroup label={tr("filter.type")} value={type} options={TYPES} onChange={setType} labelFn={(v) => typeLabel(tr, v)} />
+          <FilterGroup label={tr("filter.status")} value={status} options={STATUSES} onChange={setStatus} labelFn={(v) => statusLabel(tr, v)} />
         </div>
         {!mergeMode ? (
           <div className="flex items-center gap-2">
             {lastCheck && (
               <span className="text-muted-foreground/60">
-                Dernier scraping : {new Date(lastCheck).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                {tr("dash.lastScraping", { date: new Date(lastCheck).toLocaleString(lang === "fr" ? "fr-FR" : "en-US", { dateStyle: "short", timeStyle: "short" }) })}
               </span>
             )}
             <button onClick={() => qc.invalidateQueries({ queryKey: ["titles"] })}
               className="flex items-center gap-1.5 rounded-full bg-secondary/40 px-3 py-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition">
-              <RefreshCw className="h-3 w-3" /> Actualiser
+              <RefreshCw className="h-3 w-3" /> {tr("dash.refresh")}
             </button>
             <button onClick={toggleMergeMode}
               className="flex items-center gap-1.5 rounded-full bg-secondary/40 px-3 py-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition">
-              <GitMerge className="h-3 w-3" /> Fusionner
+              <GitMerge className="h-3 w-3" /> {tr("dash.merge")}
             </button>
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">{mergeSelection.size} sélectionné(s)</span>
+            <span className="text-muted-foreground">{tr("dash.selected", { n: mergeSelection.size })}</span>
             {mergeSelection.size >= 2 && (
               <button onClick={() => setShowMergeModal(true)}
                 className="rounded-full bg-accent px-3 py-1.5 font-medium text-accent-foreground transition">
-                Fusionner ({mergeSelection.size})
+                {tr("dash.mergeN", { n: mergeSelection.size })}
               </button>
             )}
             <button onClick={toggleMergeMode}
               className="rounded-full bg-secondary/40 px-3 py-1.5 text-muted-foreground hover:bg-secondary transition">
-              Annuler
+              {tr("common.cancel")}
             </button>
           </div>
         )}
       </div>
 
       {isLoading ? (
-        <div className="rounded-xl border border-border/60 bg-card/40 p-10 text-center text-sm text-muted-foreground">Chargement...</div>
+        <div className="rounded-xl border border-border/60 bg-card/40 p-10 text-center text-sm text-muted-foreground">{tr("common.loading")}</div>
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 bg-card/40 p-16 text-center">
           <Sparkles className="mx-auto h-8 w-8 text-accent" />
-          <h2 className="mt-3 text-lg font-semibold">Votre bibliothèque est vide</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Ajoutez vos premiers titres pour commencer.</p>
+          <h2 className="mt-3 text-lg font-semibold">{tr("dash.emptyTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{tr("dash.emptyDesc")}</p>
           <Link to="/titles/add" className="mt-4 inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-primary-foreground" style={{ background: "var(--gradient-primary)" }}>
-            <Plus className="h-4 w-4" /> Ajouter un titre
+            <Plus className="h-4 w-4" /> {tr("nav.addTitle")}
           </Link>
         </div>
       ) : (
@@ -272,7 +274,7 @@ function Dashboard() {
                   <th key={col} className={`${i === 0 ? "px-3" : "px-2"} py-2 text-left`}>
                     <button onClick={(e) => { e.stopPropagation(); handleSort(col); }}
                       className="flex items-center hover:text-foreground transition-colors">
-                      {col === "name" ? "Titre" : col === "type" ? "Type" : col === "status" ? "Statut" : col === "lu" ? "Lu" : "Détecté"}
+                      {col === "name" ? tr("dash.colTitle") : col === "type" ? tr("filter.type") : col === "status" ? tr("filter.status") : col === "lu" ? tr("dash.colRead") : tr("dash.colDetected")}
                       <SortIcon col={col} sortBy={sortBy} sortDir={sortDir} />
                     </button>
                   </th>
@@ -307,14 +309,14 @@ function Dashboard() {
                           {t.name}
                           {(t.aliases ?? []).length > 0 && (
                             <span className="ml-1.5 text-xs font-normal text-muted-foreground/60">
-                              +{(t.aliases ?? []).length} variante{(t.aliases ?? []).length > 1 ? "s" : ""}
+                              {tr((t.aliases ?? []).length > 1 ? "dash.variantsMany" : "dash.variantsOne", { n: (t.aliases ?? []).length })}
                             </span>
                           )}
                         </span>
                       </div>
                     </td>
                     <td className="px-2 py-2 text-xs">
-                      <span className="rounded-full bg-secondary/60 px-2 py-0.5 text-muted-foreground">{t.status ?? "—"}</span>
+                      <span className="rounded-full bg-secondary/60 px-2 py-0.5 text-muted-foreground">{t.status ? statusLabel(tr, t.status) : "—"}</span>
                     </td>
                     <td className="px-2 py-2 text-xs">{lastRead ?? "—"}</td>
                     <td className="px-2 py-2 text-xs whitespace-nowrap">
@@ -349,6 +351,7 @@ function MergeModal({ selectedTitles, onConfirm, onClose }: {
   onConfirm: (primaryId: string) => Promise<void>;
   onClose: () => void;
 }) {
+  const { t: tr } = useI18n();
   const [primaryId, setPrimaryId] = useState(selectedTitles[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
   const others = selectedTitles.filter(t => t.id !== primaryId);
@@ -356,9 +359,9 @@ function MergeModal({ selectedTitles, onConfirm, onClose }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-        <h2 className="text-lg font-bold">Fusionner les titres</h2>
+        <h2 className="text-lg font-bold">{tr("merge.title")}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Choisissez le nom principal. Les autres seront conservés comme variantes de recherche.
+          {tr("merge.desc")}
         </p>
         <div className="mt-4 space-y-2">
           {selectedTitles.map(t => (
@@ -368,7 +371,7 @@ function MergeModal({ selectedTitles, onConfirm, onClose }: {
               <div>
                 <div className="text-sm font-medium">{t.name}</div>
                 {(t.aliases ?? []).length > 0 && (
-                  <div className="text-xs text-muted-foreground">variantes : {(t.aliases ?? []).join(", ")}</div>
+                  <div className="text-xs text-muted-foreground">{tr("merge.variants", { list: (t.aliases ?? []).join(", ") })}</div>
                 )}
               </div>
             </label>
@@ -376,19 +379,19 @@ function MergeModal({ selectedTitles, onConfirm, onClose }: {
         </div>
         {others.length > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
-            Seront conservés comme variantes : <span className="text-foreground/70">{others.map(t => `"${t.name}"`).join(", ")}</span>
+            {tr("merge.willKeep", { list: "" })}<span className="text-foreground/70">{others.map(t => `"${t.name}"`).join(", ")}</span>
           </p>
         )}
         <div className="mt-6 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-md px-4 py-2 text-sm text-muted-foreground hover:bg-secondary/40 transition">
-            Annuler
+            {tr("common.cancel")}
           </button>
           <button
             onClick={async () => { setLoading(true); await onConfirm(primaryId); setLoading(false); }}
             disabled={loading}
             className="rounded-md px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
             style={{ background: "var(--gradient-primary)" }}>
-            {loading ? "..." : "Fusionner"}
+            {loading ? "..." : tr("dash.merge")}
           </button>
         </div>
       </div>
@@ -407,17 +410,18 @@ const TYPE_STYLES: Record<string, string> = {
 };
 
 function TypeBadge({ type }: { type: string | null }) {
+  const { t: tr } = useI18n();
   const cls = TYPE_STYLES[type ?? ""] ?? TYPE_STYLES.autre;
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${cls}`}>
-      {type ?? "—"}
+      {type ? typeLabel(tr, type) : "—"}
     </span>
   );
 }
 
 // ── Filter Group ───────────────────────────────────────────────────────────────
 
-function FilterGroup({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+function FilterGroup({ label, value, options, onChange, labelFn }: { label: string; value: string; options: string[]; onChange: (v: string) => void; labelFn?: (v: string) => string }) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-muted-foreground">{label}:</span>
@@ -425,7 +429,7 @@ function FilterGroup({ label, value, options, onChange }: { label: string; value
         {options.map((o) => (
           <button key={o} onClick={() => onChange(o)}
             className={`rounded-full px-2.5 py-1 text-xs transition ${value === o ? "bg-accent text-accent-foreground" : "bg-secondary/40 text-muted-foreground hover:bg-secondary"}`}>
-            {o}
+            {labelFn ? labelFn(o) : o}
           </button>
         ))}
       </div>
@@ -457,6 +461,7 @@ function sendToExtension(payload: Record<string, unknown>): Promise<Record<strin
 
 function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => void }) {
   const qc = useQueryClient();
+  const { t: tr } = useI18n();
   const [scraping, setScraping] = useState(false);
   const [editSrcId, setEditSrcId] = useState<string | null>(null);
   const [editUrl, setEditUrl] = useState("");
@@ -520,7 +525,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Progression enregistrée");
+      toast.success(tr("drawer.progressSaved"));
       qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
       qc.invalidateQueries({ queryKey: ["titles"] });
     },
@@ -548,7 +553,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Titre supprimé");
+      toast.success(tr("drawer.titleDeleted"));
       qc.invalidateQueries({ queryKey: ["titles"] });
       onClose();
     },
@@ -573,11 +578,11 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
               <div className="h-28 w-20 shrink-0 rounded-lg bg-secondary/60" />
             )}
             <div className="min-w-0">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">{data.title.type ?? "titre"}</div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">{data.title.type ? typeLabel(tr, data.title.type) : tr("drawer.titleFallback")}</div>
               <div className="mt-1 flex items-center gap-2">
                 <h2 className="text-2xl font-bold leading-tight">{data.title.name}</h2>
                 <button
-                  title="Scraper ce titre maintenant"
+                  title={tr("drawer.scrapeNow")}
                   disabled={scraping}
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -586,10 +591,10 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                       const res = await sendToExtension({ type: "CHECK_TITLE_NOW", titleId });
                       if (res?.error) {
                         toast.error(res.error === "Extension non disponible"
-                          ? "Extension non disponible — installez l'extension ReadingTK"
+                          ? tr("drawer.extUnavailable")
                           : String(res.error));
                       } else {
-                        toast.success("Scraping terminé");
+                        toast.success(tr("drawer.scrapeDone"));
                         qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
                         qc.invalidateQueries({ queryKey: ["titles"] });
                       }
@@ -614,7 +619,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
         </div>
 
         <div className="mt-6">
-          <label className="text-xs font-medium text-muted-foreground">Dernier chapitre lu</label>
+          <label className="text-xs font-medium text-muted-foreground">{tr("drawer.lastRead")}</label>
           <div className="mt-1 flex gap-2">
             <button
               onClick={() => {
@@ -642,30 +647,30 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
             </button>
             <button onClick={() => saveProgress.mutate(lastRead)}
               className="rounded-md px-4 text-sm font-medium text-primary-foreground" style={{ background: "var(--gradient-primary)" }}>
-              Enregistrer
+              {tr("common.save")}
             </button>
           </div>
         </div>
 
         <div className="mt-6 flex gap-6">
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground">Type</label>
+            <label className="text-xs font-medium text-muted-foreground">{tr("filter.type")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
-              {["manga", "manhua", "manhwa", "novel", "autre"].map((t) => (
-                <button key={t} onClick={() => updateType.mutate(t)}
-                  className={`rounded-full px-3 py-1 text-xs ${data.title?.type === t ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground hover:bg-secondary"}`}>
-                  {t}
+              {["manga", "manhua", "manhwa", "novel", "autre"].map((ty) => (
+                <button key={ty} onClick={() => updateType.mutate(ty)}
+                  className={`rounded-full px-3 py-1 text-xs ${data.title?.type === ty ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground hover:bg-secondary"}`}>
+                  {typeLabel(tr, ty)}
                 </button>
               ))}
             </div>
           </div>
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground">Statut</label>
+            <label className="text-xs font-medium text-muted-foreground">{tr("filter.status")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {["ongoing", "paused", "dropped", "completed"].map((s) => (
                 <button key={s} onClick={() => updateStatus.mutate(s)}
                   className={`rounded-full px-3 py-1 text-xs ${data.title?.status === s ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground hover:bg-secondary"}`}>
-                  {s}
+                  {statusLabel(tr, s)}
                 </button>
               ))}
             </div>
@@ -681,8 +686,8 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
 
             if (sourceValues.length === 0) return (
               <div>
-                <h3 className="text-sm font-semibold">Dernier chapitre détecté</h3>
-                <p className="mt-2 text-xs text-muted-foreground">Aucun chapitre détecté pour l'instant.</p>
+                <h3 className="text-sm font-semibold">{tr("drawer.detectedTitle")}</h3>
+                <p className="mt-2 text-xs text-muted-foreground">{tr("drawer.detectedNone")}</p>
               </div>
             );
 
@@ -706,7 +711,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
 
             return (
               <div>
-                <h3 className="text-sm font-semibold">Dernier chapitre détecté : <span className="text-accent">{selectedLabel}</span></h3>
+                <h3 className="text-sm font-semibold">{tr("drawer.detectedPrefix")}<span className="text-accent">{selectedLabel}</span></h3>
                 <div className="mt-2 space-y-1">
                   {links.map((link) => (
                     <div key={link.chapId} className="flex items-center gap-1">
@@ -716,7 +721,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                         <span>{link.siteName} — {link.url}</span>
                       </a>
                       <button
-                        title="Supprimer ce chapitre"
+                        title={tr("drawer.deleteChapter")}
                         onClick={async (e) => {
                           e.preventDefault();
                           await supabase.from("chapters").delete().eq("id", link.chapId);
@@ -735,7 +740,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
         </div>
 
         <div className="mt-8">
-          <h3 className="text-sm font-semibold">Sources ({data.sources.length})</h3>
+          <h3 className="text-sm font-semibold">{tr("drawer.sources", { n: data.sources.length })}</h3>
           <ul className="mt-2 space-y-2">
             {[...data.sources].sort((a, b) => {
               const pa = (a as any).sites?.priority ?? 0;
@@ -757,11 +762,11 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-accent">{siteName}</span>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${sitePriority > 0 ? "bg-accent/20 text-accent" : "bg-secondary/60 text-muted-foreground"}`}>
-                        priorité {sitePriority}
+                        {tr("drawer.priority", { n: sitePriority })}
                       </span>
                     </div>
                     <div>
-                      <label className="text-muted-foreground">Lien</label>
+                      <label className="text-muted-foreground">{tr("drawer.link")}</label>
                       <input
                         value={editUrl}
                         onChange={e => setEditUrl(e.target.value)}
@@ -769,11 +774,11 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground">Dernier détecté</label>
+                      <label className="text-muted-foreground">{tr("drawer.lastDetected")}</label>
                       <input
                         value={editLastSeen}
                         onChange={e => setEditLastSeen(e.target.value)}
-                        placeholder="ex: 134"
+                        placeholder={tr("drawer.lastDetectedPh")}
                         className="mt-1 w-full rounded border border-input bg-input/50 px-2 py-1 text-xs"
                       />
                     </div>
@@ -781,13 +786,13 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                       <button
                         onClick={() => setEditSrcId(null)}
                         className="rounded px-3 py-1 text-muted-foreground hover:bg-secondary/60 transition">
-                        Annuler
+                        {tr("common.cancel")}
                       </button>
                       <button
                         onClick={saveEdit}
                         className="flex items-center gap-1.5 rounded px-3 py-1 font-medium text-primary-foreground transition"
                         style={{ background: "var(--gradient-primary)" }}>
-                        <Check className="h-3 w-3" /> Enregistrer
+                        <Check className="h-3 w-3" /> {tr("common.save")}
                       </button>
                     </div>
                   </li>
@@ -801,22 +806,22 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-medium">{siteName}</span>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${sitePriority > 0 ? "bg-accent/20 text-accent" : "bg-secondary/60 text-muted-foreground"}`}>
-                        priorité {sitePriority}
+                        {tr("drawer.priority", { n: sitePriority })}
                       </span>
-                      {isDown && <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-[10px] font-semibold text-destructive">⬤ Down</span>}
-                      {isRedirect && <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-semibold text-orange-400">↪ Redirigé</span>}
+                      {isDown && <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-[10px] font-semibold text-destructive">⬤ {tr("drawer.down")}</span>}
+                      {isRedirect && <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-semibold text-orange-400">↪ {tr("drawer.redirected")}</span>}
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
                       <button
-                        title="Modifier cette source"
+                        title={tr("drawer.editSource")}
                         onClick={() => startEdit(s)}
                         className="rounded p-1 text-muted-foreground/50 hover:text-foreground hover:bg-secondary/60 transition">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        title="Supprimer cette source"
+                        title={tr("drawer.deleteSource")}
                         onClick={async () => {
-                          if (!confirm("Supprimer cette source ?")) return;
+                          if (!confirm(tr("drawer.confirmDeleteSource"))) return;
                           await supabase.from("title_sources").delete().eq("id", s.id);
                           qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
                           qc.invalidateQueries({ queryKey: ["titles"] });
@@ -827,17 +832,17 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                     </div>
                   </div>
                   <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-accent hover:underline">{s.url}</a>
-                  {s.last_seen_chapter && !hasError && <div className="mt-1 text-muted-foreground">Dernier détecté : {s.last_seen_chapter}</div>}
+                  {s.last_seen_chapter && !hasError && <div className="mt-1 text-muted-foreground">{tr("drawer.lastDetectedColon", { n: s.last_seen_chapter })}</div>}
                 </li>
               );
             })}
-            {data.sources.length === 0 && <li className="text-xs text-muted-foreground">Aucune source.</li>}
+            {data.sources.length === 0 && <li className="text-xs text-muted-foreground">{tr("drawer.noSources")}</li>}
           </ul>
         </div>
 
         <div className="mt-10 border-t border-border/40 pt-4">
-          <button onClick={() => { if (confirm("Supprimer ce titre ?")) deleteTitle.mutate(); }} className="text-xs text-destructive hover:underline">
-            Supprimer ce titre
+          <button onClick={() => { if (confirm(tr("drawer.confirmDeleteTitle"))) deleteTitle.mutate(); }} className="text-xs text-destructive hover:underline">
+            {tr("drawer.deleteTitleBtn")}
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({ meta: [{ title: "Import bookmarks · ReadingTK" }] }),
@@ -164,6 +165,7 @@ function unescapeHtml(text: string): string {
 
 function ImportPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [items, setItems] = useState<ParsedItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -204,7 +206,7 @@ function ImportPage() {
       out.push({ url, sourceUrl, title, chapterNum, selected: true, domain });
     }
     setItems(out);
-    toast.success(`${out.length} liens trouvés`);
+    toast.success(t("import.linksFound", { n: out.length }));
   }
 
   async function handleFile(file: File) {
@@ -309,21 +311,21 @@ function ImportPage() {
       await supabase.from("imports").insert({
         user_id: userId, source: "html_bookmarks", raw_json: { count: selected.length },
       });
-      toast.success(`${groups.size} titre(s) importé(s) depuis ${selected.length} favoris`);
+      toast.success(t("import.imported", { titles: groups.size, count: selected.length }));
       navigate({ to: "/dashboard" });
     } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); }
   }
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-bold">Importer des bookmarks</h1>
+      <h1 className="text-2xl font-bold">{t("import.title")}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Exportez vos favoris au format HTML depuis votre navigateur (Chrome/Firefox : Gérer les favoris → Exporter).
+        {t("import.subtitle")}
       </p>
 
       <label className="mt-6 flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/60 bg-card/40 p-10 text-sm hover:bg-card/60">
         <Upload className="h-5 w-5 text-accent" />
-        <span>Cliquer pour choisir un fichier HTML</span>
+        <span>{t("import.choose")}</span>
         <input type="file" accept=".html,text/html" className="hidden"
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
       </label>
@@ -331,11 +333,11 @@ function ImportPage() {
       {items.length > 0 && (
         <>
           <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">{items.filter((i) => i.selected).length} / {items.length} sélectionnés</div>
+            <div className="text-sm text-muted-foreground">{t("import.selectedCount", { a: items.filter((i) => i.selected).length, b: items.length })}</div>
             <button onClick={doImport} disabled={loading}
               className="rounded-md px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
               style={{ background: "var(--gradient-primary)" }}>
-              {loading ? "..." : "Importer la sélection"}
+              {loading ? "..." : t("import.importSelection")}
             </button>
           </div>
           <div className="mt-3 max-h-[60vh] overflow-y-auto rounded-xl border border-border/60 bg-card/40">
@@ -353,7 +355,7 @@ function ImportPage() {
                         onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} />
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                      {it.chapterNum ? `ch. ${it.chapterNum}` : ""}
+                      {it.chapterNum ? t("import.chapShort", { n: it.chapterNum }) : ""}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{it.domain}</td>
                   </tr>

@@ -4,6 +4,7 @@ import { LayoutGrid, CalendarDays, Globe, Bell, Settings, Upload, Download, Plus
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useI18n, LanguageSwitcher } from "@/i18n";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -22,6 +23,7 @@ function AuthedLayout() {
   const queryClient = useQueryClient();
   const location   = useLocation();
   const { user }   = Route.useRouteContext();
+  const { t }      = useI18n();
 
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("sidebar-collapsed") === "true"
@@ -53,22 +55,22 @@ function AuthedLayout() {
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
-    toast.success("Déconnecté");
+    toast.success(t("nav.loggedOut"));
     router.navigate({ to: "/auth", replace: true });
   }
 
   const navItems = [
-    { to: "/dashboard",     label: "Bibliothèque", icon: LayoutGrid },
-    { to: "/calendar",      label: "Calendrier",    icon: CalendarDays },
-    { to: "/sites",         label: "Sites",         icon: Globe },
-    { to: "/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
-    { to: "/settings",      label: "Paramètres",    icon: Settings },
+    { to: "/dashboard",     label: t("nav.library"),       icon: LayoutGrid },
+    { to: "/calendar",      label: t("nav.calendar"),      icon: CalendarDays },
+    { to: "/sites",         label: t("nav.sites"),         icon: Globe },
+    { to: "/notifications", label: t("nav.notifications"), icon: Bell, badge: unreadCount },
+    { to: "/settings",      label: t("nav.settings"),      icon: Settings },
   ] as const;
 
   const extraItems = [
-    { to: "/titles/add", label: "Ajouter un titre",    icon: Plus },
-    { to: "/import",     label: "Importer bookmarks",  icon: Upload },
-    { to: "/export",     label: "Exporter bookmarks",  icon: Download },
+    { to: "/titles/add", label: t("nav.addTitle"), icon: Plus },
+    { to: "/import",     label: t("nav.import"),   icon: Upload },
+    { to: "/export",     label: t("nav.export"),   icon: Download },
   ] as const;
 
   const avatarLetter = (user?.email?.[0] ?? "U").toUpperCase();
@@ -98,7 +100,7 @@ function AuthedLayout() {
           )}
           <button
             onClick={toggle}
-            title={collapsed ? "Agrandir" : "Réduire"}
+            title={collapsed ? t("nav.expand") : t("nav.collapse")}
             className="shrink-0 rounded px-1.5 py-1 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
           >
             {collapsed ? "»" : "«"}
@@ -195,13 +197,18 @@ function AuthedLayout() {
             )}
           </div>
 
+          {/* Sélecteur de langue */}
+          <div className={collapsed ? "flex justify-center" : ""}>
+            <LanguageSwitcher size={collapsed ? 16 : 18} />
+          </div>
+
           {/* Logout button (expanded only) */}
           {!collapsed && (
             <button
               onClick={signOut}
               className="w-full rounded border border-border px-2 py-1 text-left text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
             >
-              Déconnexion
+              {t("nav.logout")}
             </button>
           )}
 
@@ -216,7 +223,7 @@ function AuthedLayout() {
                 onClick={signOut}
                 className="rounded border border-border px-2 py-1 text-left text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
               >
-                Déconnexion
+                {t("nav.logout")}
               </button>
             </div>
           )}

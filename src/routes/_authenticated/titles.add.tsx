@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/titles/add")({
   head: () => ({ meta: [{ title: "Ajouter des titres · ReadingTK" }] }),
@@ -74,6 +75,7 @@ function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
 
 function AddTitles() {
   const navigate = useNavigate();
+  const { t: tr } = useI18n();
   const [tab, setTab] = useState<"manual" | "urls">("urls");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -104,7 +106,7 @@ function AddTitles() {
       }));
       const { error } = await supabase.from("titles").insert(rows);
       if (error) throw error;
-      toast.success(`${rows.length} titre(s) créé(s)`);
+      toast.success(tr("add.created", { n: rows.length }));
       navigate({ to: "/dashboard" });
     } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); }
   }
@@ -218,27 +220,25 @@ function AddTitles() {
         await supabase.from("title_sources").insert({ title_id: titleId, site_id: siteId, url: sourceUrl, is_primary: true });
       }
 
-      toast.success(`${lines.length} URL(s) importée(s) ✓`);
+      toast.success(tr("add.urlsImported", { n: lines.length }));
       navigate({ to: "/dashboard" });
     } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); }
   }
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">Ajouter des titres</h1>
+      <h1 className="text-2xl font-bold">{tr("add.title")}</h1>
       <div className="mt-6 flex gap-2 border-b border-border/60">
-        {(["urls", "manual"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium ${tab === t ? "border-b-2 border-accent text-foreground" : "text-muted-foreground"}`}>
-            {t === "manual" ? "Ajout manuel" : "Ajout via URLs"}
+        {(["urls", "manual"] as const).map((tabKey) => (
+          <button key={tabKey} onClick={() => setTab(tabKey)}
+            className={`px-4 py-2 text-sm font-medium ${tab === tabKey ? "border-b-2 border-accent text-foreground" : "text-muted-foreground"}`}>
+            {tabKey === "manual" ? tr("add.tabManual") : tr("add.tabUrls")}
           </button>
         ))}
       </div>
       <div className="mt-6 space-y-4">
         <p className="text-xs text-muted-foreground">
-          {tab === "manual"
-            ? "Un titre par ligne."
-            : "Une URL par ligne. Le domaine sera associé automatiquement à un site existant, et le template d'URL sera déduit."}
+          {tab === "manual" ? tr("add.manualHelp") : tr("add.urlsHelp")}
         </p>
         <textarea
           value={text} onChange={(e) => setText(e.target.value)} rows={12}
@@ -250,7 +250,7 @@ function AddTitles() {
           disabled={loading || !text.trim()}
           className="rounded-md px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
           style={{ background: "var(--gradient-primary)" }}
-        >{loading ? "..." : "Créer"}</button>
+        >{loading ? "..." : tr("common.create")}</button>
       </div>
     </div>
   );

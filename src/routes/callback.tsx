@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/callback")({
   ssr: false,
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/callback")({
 
 function AuthCallback() {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   useEffect(() => {
     // Supabase automatically consumes the token from the URL hash on init.
@@ -38,7 +40,7 @@ function AuthCallback() {
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-3">
         <span className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-        <p className="text-sm text-muted-foreground">Connexion en cours...</p>
+        <p className="text-sm text-muted-foreground">{t("callback.connecting")}</p>
       </div>
     </div>
   );
