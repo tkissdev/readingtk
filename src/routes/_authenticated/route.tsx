@@ -134,7 +134,7 @@ function AuthedLayout() {
           </div>
 
           {/* Sélecteur de langue */}
-          <div className={collapsed ? "flex justify-center" : ""}>
+          <div className="flex justify-center">
             <LanguageSwitcher size={collapsed ? 16 : 18} />
           </div>
 
