@@ -9,6 +9,7 @@ type Dict = Record<string, string>;
 const fr: Dict = {
   // Commun
   "common.cancel": "Annuler",
+  "common.confirm": "Confirmer",
   "common.save": "Enregistrer",
   "common.add": "Ajouter",
   "common.delete": "Supprimer",
@@ -235,6 +236,9 @@ const fr: Dict = {
   "notif.allMarked": "Tout marqué lu",
   "notif.titleDeleted": "Titre supprimé",
   "notif.markRead": "Marquer comme lu",
+  "notif.deleteAll": "Tout supprimer",
+  "notif.deleteAllConfirm": "Supprimer toutes les notifications ?",
+  "notif.allDeleted": "Toutes les notifications supprimées",
   "notif.empty": "Aucune notification pour l'instant.",
 
   // Import
@@ -278,6 +282,7 @@ const fr: Dict = {
 
 const en: Dict = {
   "common.cancel": "Cancel",
+  "common.confirm": "Confirm",
   "common.save": "Save",
   "common.add": "Add",
   "common.delete": "Delete",
@@ -490,6 +495,9 @@ const en: Dict = {
   "notif.allMarked": "All marked as read",
   "notif.titleDeleted": "Deleted title",
   "notif.markRead": "Mark as read",
+  "notif.deleteAll": "Delete all",
+  "notif.deleteAllConfirm": "Delete all notifications?",
+  "notif.allDeleted": "All notifications deleted",
   "notif.empty": "No notification yet.",
 
   "import.metaTitle": "Import bookmarks · ReadingTK",

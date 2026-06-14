@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bell, Check } from "lucide-react";
+import { Bell, Check, Trash2 } from "lucide-react";
 import { useI18n } from "@/i18n";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({ meta: [{ title: "Notifications · ReadingTK" }] }),
@@ -20,6 +21,7 @@ function NotificationsPage() {
   const qc = useQueryClient();
   const { t, lang } = useI18n();
   const locale = lang === "fr" ? "fr-FR" : "en-US";
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { data } = useQuery({
     queryKey: ["notifications"],
     queryFn: async (): Promise<Notif[]> => {
@@ -45,12 +47,61 @@ function NotificationsPage() {
     },
   });
 
+  const deleteAll = useMutation({
+    mutationFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) return;
+      const { error } = await supabase.from("notifications").delete().eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["notifications-unread"] });
+      toast.success(t("notif.allDeleted"));
+      setConfirmDelete(false);
+    },
+  });
+
   return (
     <div className="mx-auto max-w-3xl p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("notif.title")}</h1>
-        <button onClick={() => { markRead.mutate(undefined); toast.success(t("notif.allMarked")); }}
-          className="rounded-md border border-border bg-card px-3 py-1.5 text-xs hover:bg-accent/10">{t("notif.markAllRead")}</button>
+        <div className="relative flex items-center gap-2">
+          {/* Bouton tout supprimer */}
+          <div className="relative">
+            <button
+              onClick={() => setConfirmDelete(p => !p)}
+              className="flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:border-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-3 w-3" />
+              {t("notif.deleteAll")}
+            </button>
+            {confirmDelete && (
+              <div className="absolute right-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-border bg-card p-3 shadow-xl">
+                <p className="mb-2 text-xs text-muted-foreground">{t("notif.deleteAllConfirm")}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => deleteAll.mutate()}
+                    disabled={deleteAll.isPending}
+                    className="flex-1 rounded-md bg-destructive px-2 py-1 text-xs font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+                  >
+                    {t("common.confirm")}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="flex-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-secondary"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Bouton tout marquer comme lu */}
+          <button onClick={() => { markRead.mutate(undefined); toast.success(t("notif.allMarked")); }}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs hover:bg-accent/10">{t("notif.markAllRead")}</button>
+        </div>
       </div>
 
       <ul className="mt-6 space-y-2">
