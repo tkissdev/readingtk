@@ -107,6 +107,64 @@ function AuthedLayout() {
           </button>
         </div>
 
+        {/* Account / langue / déconnexion */}
+        <div
+          className="relative border-b border-border"
+          style={{
+            padding: collapsed ? "10px 0" : "10px 16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            alignItems: collapsed ? "center" : undefined,
+          }}
+        >
+          {/* Avatar row */}
+          <div className="flex items-center gap-2">
+            <div
+              onClick={collapsed ? () => setShowPopup(p => !p) : undefined}
+              title={collapsed ? user?.email : undefined}
+              className={`flex shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${collapsed ? "cursor-pointer hover:opacity-80" : ""}`}
+              style={{ width: 26, height: 26, background: "var(--gradient-primary)" }}
+            >
+              {avatarLetter}
+            </div>
+            {!collapsed && (
+              <span className="truncate text-[11px] text-muted-foreground">{user?.email}</span>
+            )}
+          </div>
+
+          {/* Sélecteur de langue */}
+          <div className={collapsed ? "flex justify-center" : ""}>
+            <LanguageSwitcher size={collapsed ? 16 : 18} />
+          </div>
+
+          {/* Logout button (expanded only) */}
+          {!collapsed && (
+            <button
+              onClick={signOut}
+              className="w-full rounded border border-border px-2 py-1 text-left text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+            >
+              {t("nav.logout")}
+            </button>
+          )}
+
+          {/* Popup (collapsed) */}
+          {collapsed && showPopup && (
+            <div
+              className="flex flex-col gap-1.5 rounded border border-border bg-card p-2 shadow-xl"
+              style={{ position: "fixed", left: 60, top: 100, minWidth: 160, zIndex: 1000 }}
+            >
+              <div className="truncate px-1 text-[11px] text-muted-foreground">{user?.email}</div>
+              <button
+                onClick={signOut}
+                className="rounded border border-border px-2 py-1 text-left text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+              >
+                {t("nav.logout")}
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Nav */}
         <nav className="flex flex-1 flex-col gap-0.5 px-2">
           {navItems.map((it) => {
@@ -171,63 +229,6 @@ function AuthedLayout() {
           </div>
         </nav>
 
-        {/* Bottom — user */}
-        <div
-          className="relative mt-auto border-t border-border"
-          style={{
-            padding: collapsed ? "12px 0 0" : "12px 16px 0",
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            alignItems: collapsed ? "center" : undefined,
-          }}
-        >
-          {/* Avatar row */}
-          <div className="flex items-center gap-2">
-            <div
-              onClick={collapsed ? () => setShowPopup(p => !p) : undefined}
-              title={collapsed ? user?.email : undefined}
-              className={`flex shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${collapsed ? "cursor-pointer hover:opacity-80" : ""}`}
-              style={{ width: 26, height: 26, background: "var(--gradient-primary)" }}
-            >
-              {avatarLetter}
-            </div>
-            {!collapsed && (
-              <span className="truncate text-[11px] text-muted-foreground">{user?.email}</span>
-            )}
-          </div>
-
-          {/* Sélecteur de langue */}
-          <div className={collapsed ? "flex justify-center" : ""}>
-            <LanguageSwitcher size={collapsed ? 16 : 18} />
-          </div>
-
-          {/* Logout button (expanded only) */}
-          {!collapsed && (
-            <button
-              onClick={signOut}
-              className="w-full rounded border border-border px-2 py-1 text-left text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
-            >
-              {t("nav.logout")}
-            </button>
-          )}
-
-          {/* Popup (collapsed) */}
-          {collapsed && showPopup && (
-            <div
-              className="flex flex-col gap-1.5 rounded border border-border bg-card p-2 shadow-xl"
-              style={{ position: "fixed", left: 60, bottom: 16, minWidth: 160, zIndex: 1000 }}
-            >
-              <div className="truncate px-1 text-[11px] text-muted-foreground">{user?.email}</div>
-              <button
-                onClick={signOut}
-                className="rounded border border-border px-2 py-1 text-left text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
-              >
-                {t("nav.logout")}
-              </button>
-            </div>
-          )}
-        </div>
       </aside>
 
       <main className="flex-1 overflow-x-hidden">
