@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Settings, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
@@ -35,8 +35,8 @@ type Draft = {
 
 const DAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const DAY_FULL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const EVENT_MIN_H = 28; // hauteur minimale d'un événement en px
-const BLOCK_MIN = 50; // écart visuel (minutes) pour le calcul des collisions
+const EVENT_MIN_H = 36; // hauteur minimale d'un événement en px
+const BLOCK_MIN = 55; // écart visuel (minutes) pour le calcul des collisions
 
 const PALETTE = ["#6366f1", "#0ea5e9", "#f59e0b", "#ec4899", "#10b981", "#8b5cf6", "#ef4444", "#14b8a6"];
 function colorFor(key: string): string {
@@ -127,12 +127,60 @@ function CalendarPage() {
     },
   });
 
+  // Pour chaque titre : dernier numéro de chapitre détecté + lien vers la page de lecture.
+  // Le numéro vient de title_sources.last_seen_chapter (fiable), le lien du chapitre correspondant.
+  const { data: titleInfo = {} } = useQuery<Record<string, { num: number | null; url: string | null }>>({
+    queryKey: ["calendar-title-info"],
+    queryFn: async () => {
+      const MAX = 9999;
+      const [{ data: srcs }, { data: chaps }] = await Promise.all([
+        supabase.from("title_sources").select("title_id, url, last_seen_chapter"),
+        supabase
+          .from("chapters")
+          .select("title_id, chapter_label, chapter_url, published_at")
+          .order("published_at", { ascending: false, nullsFirst: false }),
+      ]);
+
+      const numByTitle: Record<string, number> = {};
+      const srcUrlByTitle: Record<string, string> = {};
+      for (const s of (srcs ?? []) as any[]) {
+        const n = parseFloat(s.last_seen_chapter ?? "");
+        if (!isNaN(n) && n <= MAX) {
+          numByTitle[s.title_id] = Math.max(numByTitle[s.title_id] ?? -Infinity, n);
+        }
+        if (s.url && !srcUrlByTitle[s.title_id]) srcUrlByTitle[s.title_id] = s.url;
+      }
+
+      // URL du chapitre correspondant au numéro retenu (le plus récent en premier)
+      const urlByTitle: Record<string, string> = {};
+      for (const c of (chaps ?? []) as any[]) {
+        if (!c.chapter_url) continue;
+        const target = numByTitle[c.title_id];
+        if (target == null || urlByTitle[c.title_id]) continue;
+        if (parseFloat(c.chapter_label ?? "") === target) urlByTitle[c.title_id] = c.chapter_url;
+      }
+
+      const map: Record<string, { num: number | null; url: string | null }> = {};
+      const ids = new Set([...Object.keys(numByTitle), ...Object.keys(srcUrlByTitle)]);
+      for (const id of ids) {
+        map[id] = { num: numByTitle[id] ?? null, url: urlByTitle[id] ?? srcUrlByTitle[id] ?? null };
+      }
+      return map;
+    },
+  });
+
   // Rafraîchissement automatique quand le scraping met à jour les horaires
   useEffect(() => {
     const channel = supabase
       .channel("rtk-calendar-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "release_schedules" }, () => {
         qc.invalidateQueries({ queryKey: ["release-schedules"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "title_sources" }, () => {
+        qc.invalidateQueries({ queryKey: ["calendar-title-info"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "chapters" }, () => {
+        qc.invalidateQueries({ queryKey: ["calendar-title-info"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -329,11 +377,20 @@ function CalendarPage() {
                 const isPast =
                   occurAt < new Date(now.getFullYear(), now.getMonth(), now.getDate()) ||
                   (d === todayIdx && e.min < nowMin);
+                const info = e.title_id ? titleInfo[e.title_id] : undefined;
+                const chapNum = info?.num ?? null;
+                const link = info?.url ?? null;
+                const sub = chapNum != null ? `Ch. ${chapNum} · ${hhmm(e.release_time)}` : hhmm(e.release_time);
+                const Body = (
+                  <>
+                    <div className="truncate pr-4 text-[11px] font-semibold leading-tight text-foreground">{name}</div>
+                    <div className="truncate text-[10px] leading-tight text-muted-foreground">{sub}</div>
+                  </>
+                );
                 return (
-                  <button
+                  <div
                     key={e.id}
-                    onClick={(ev) => { ev.stopPropagation(); openEdit(e); }}
-                    className="absolute z-20 flex flex-col justify-center overflow-hidden rounded-md border px-1.5 text-left transition hover:brightness-110"
+                    className="group absolute z-20 overflow-hidden rounded-md border transition hover:brightness-110"
                     style={{
                       top: `${(e.min / 1440) * 100}%`,
                       height: EVENT_MIN_H,
@@ -344,11 +401,34 @@ function CalendarPage() {
                       borderLeft: `3px solid ${color}`,
                       opacity: isPast ? 0.45 : 1,
                     }}
-                    title={`${name} — ${hhmm(e.release_time)}`}
                   >
-                    <div className="truncate text-[11px] font-semibold leading-tight text-foreground">{name}</div>
-                    <div className="truncate text-[10px] leading-tight text-muted-foreground">{hhmm(e.release_time)}</div>
-                  </button>
+                    {/* Corps : ouvre le chapitre sur le site externe si un lien existe */}
+                    {link ? (
+                      <a
+                        href={link}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(ev) => ev.stopPropagation()}
+                        className="flex h-full flex-col justify-center px-1.5 no-underline"
+                        title={`${name}${chapNum != null ? ` — chapitre ${chapNum}` : ""} (ouvrir sur le site)`}
+                      >
+                        {Body}
+                      </a>
+                    ) : (
+                      <div className="flex h-full cursor-default flex-col justify-center px-1.5" title={`${name} — ${hhmm(e.release_time)}`}>
+                        {Body}
+                      </div>
+                    )}
+
+                    {/* Roue dentelée : modifier l'entrée */}
+                    <button
+                      onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); openEdit(e); }}
+                      className="absolute right-0.5 top-0.5 z-30 rounded p-0.5 text-muted-foreground opacity-60 transition hover:bg-background/70 hover:text-foreground group-hover:opacity-100"
+                      title="Modifier l'entrée"
+                    >
+                      <Settings className="h-3 w-3" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
