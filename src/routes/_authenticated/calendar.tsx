@@ -364,17 +364,15 @@ function CalendarPage() {
           })}
         </div>
 
-        {/* Corps : remplit la hauteur restante, chaque heure = 1/24 de l'espace */}
+        {/* Corps : remplit la hauteur restante, 25 lignes (24h + rangée 00:00 en bas) */}
         <div className="flex min-h-0 flex-1">
           {/* Colonne des heures */}
           <div className="flex w-14 shrink-0 flex-col">
-            {Array.from({ length: 24 }, (_, h) => (
+            {Array.from({ length: 25 }, (_, h) => (
               <div key={h} className="relative flex-1 border-b border-border/20">
-                {h > 0 && (
-                  <span className="absolute -top-2 right-1.5 text-[10px] text-muted-foreground">
-                    {String(h).padStart(2, "0")}:00
-                  </span>
-                )}
+                <span className={`absolute right-1.5 text-[10px] text-muted-foreground ${h === 0 ? "top-0.5" : "-top-2"}`}>
+                  {h === 24 ? "00:00" : `${String(h).padStart(2, "0")}:00`}
+                </span>
               </div>
             ))}
           </div>
@@ -382,7 +380,7 @@ function CalendarPage() {
           {/* Colonnes des jours */}
           {dayShort.map((_, d) => (
             <div key={d} className="relative flex flex-1 flex-col border-l border-border/40">
-              {/* Cellules horaires cliquables (1/24 chacune) */}
+              {/* Cellules horaires cliquables (24h) + rangée décorative 00:00 */}
               {Array.from({ length: 24 }, (_, h) => (
                 <div
                   key={h}
@@ -390,12 +388,13 @@ function CalendarPage() {
                   className="flex-1 cursor-pointer border-b border-border/20 transition hover:bg-accent/5"
                 />
               ))}
+              <div className="flex-1 border-b border-border/20" />
 
               {/* Ligne "maintenant" */}
               {d === todayIdx && (
                 <div
                   className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
-                  style={{ top: `${(nowMin / 1440) * 100}%` }}
+                  style={{ top: `${(nowMin / 1500) * 100}%` }}
                 >
                   <div className="h-2 w-2 -translate-x-1 rounded-full bg-red-500" />
                   <div className="h-px flex-1 bg-red-500" />
@@ -449,7 +448,7 @@ function CalendarPage() {
                     key={e.id}
                     className="group absolute z-20 overflow-hidden rounded-md border transition hover:brightness-110"
                     style={{
-                      top: `${(e.min / 1440) * 100}%`,
+                      top: `${(e.min / 1500) * 100}%`,
                       height: EVENT_MIN_H,
                       left: `calc(${leftPct}% + 2px)`,
                       width: `calc(${widthPct}% - 4px)`,
