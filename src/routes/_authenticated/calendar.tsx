@@ -399,10 +399,12 @@ function CalendarPage() {
                 const leftPct = e.lane * widthPct;
                 const name = e.label || e.titles?.name || "Sans titre";
                 const color = e.color || colorFor(e.title_id || e.label || e.id);
-                const occurAt = addDays(weekStart, d);
-                const isPast =
-                  occurAt < new Date(now.getFullYear(), now.getMonth(), now.getDate()) ||
-                  (d === todayIdx && e.min < nowMin);
+                // Date/heure réelle de cette occurrence → passé ou futur
+                const [hH, mM] = e.release_time.split(":").map((x) => parseInt(x, 10) || 0);
+                const occBase = addDays(weekStart, d);
+                const occDateTime = new Date(occBase.getFullYear(), occBase.getMonth(), occBase.getDate(), hH, mM, 0, 0);
+                const isFuture = occDateTime.getTime() > now.getTime();
+
                 const info = e.title_id ? titleInfo[e.title_id] : undefined;
                 const baseNum = info?.num ?? null;
 
@@ -410,16 +412,12 @@ function CalendarPage() {
                 let chapNum: number | null = null;
                 let link: string | null = info?.chapterUrl ?? info?.sourceUrl ?? null;
                 if (baseNum != null) {
-                  const [hH, mM] = e.release_time.split(":").map((x) => parseInt(x, 10) || 0);
                   // Référence = dernière occurrence de ce créneau déjà passée (= dernier chapitre détecté)
                   const curWeek = startOfWeek(now);
                   let ref = addDays(curWeek, e.day_of_week);
                   ref = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), hH, mM, 0, 0);
                   if (ref.getTime() > now.getTime()) ref = addDays(ref, -7);
-                  // Occurrence affichée (semaine en cours d'affichage)
-                  const occ = addDays(weekStart, e.day_of_week);
-                  const occDate = new Date(occ.getFullYear(), occ.getMonth(), occ.getDate(), hH, mM, 0, 0);
-                  const weeksDiff = Math.round((occDate.getTime() - ref.getTime()) / (7 * 86400000));
+                  const weeksDiff = Math.round((occDateTime.getTime() - ref.getTime()) / (7 * 86400000));
                   const n = baseNum + weeksDiff;
                   if (n >= 1) {
                     chapNum = n;
@@ -429,6 +427,8 @@ function CalendarPage() {
                   }
                 }
                 const sub = chapNum != null ? `Ch. ${chapNum} · ${hhmm(e.release_time)}` : hhmm(e.release_time);
+                // Futur = grisé + non cliquable (sauf la roue dentelée) ; passé = cliquable vers le site
+                const bodyClickable = !isFuture && !!link;
                 const Body = (
                   <>
                     <div className="truncate pr-4 text-[11px] font-semibold leading-tight text-foreground">{name}</div>
@@ -447,13 +447,13 @@ function CalendarPage() {
                       background: `${color}22`,
                       borderColor: `${color}66`,
                       borderLeft: `3px solid ${color}`,
-                      opacity: isPast ? 0.45 : 1,
+                      opacity: isFuture ? 0.5 : 1,
                     }}
                   >
-                    {/* Corps : ouvre le chapitre sur le site externe si un lien existe */}
-                    {link ? (
+                    {/* Corps : ouvre le chapitre sur le site externe (parutions passées uniquement) */}
+                    {bodyClickable ? (
                       <a
-                        href={link}
+                        href={link!}
                         target="_blank"
                         rel="noreferrer"
                         onClick={(ev) => ev.stopPropagation()}
@@ -463,7 +463,10 @@ function CalendarPage() {
                         {Body}
                       </a>
                     ) : (
-                      <div className="flex h-full cursor-default flex-col justify-center px-1.5" title={`${name} — ${hhmm(e.release_time)}`}>
+                      <div
+                        className="flex h-full cursor-default flex-col justify-center px-1.5"
+                        title={isFuture ? `${name} — parution à venir` : `${name} — ${hhmm(e.release_time)}`}
+                      >
                         {Body}
                       </div>
                     )}
