@@ -18,10 +18,10 @@ type TitleRow = {
   name: string;
   type: string | null;
   status: string | null;
-  title_sources: { id: string; url: string; sites: { name: string } | null }[];
+  title_sources: { id: string; url: string; last_seen_chapter: string | null; sites: { name: string } | null }[];
 };
 
-type ChapterLink = { url: string; siteName: string; chapLabel: string };
+type ChapterEntry = { num: number; url: string; siteName: string; chapLabel: string };
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
@@ -73,43 +73,35 @@ function ExportPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("titles")
-        .select("id, name, type, status, title_sources(id, url, sites(name))")
+        .select("id, name, type, status, title_sources(id, url, last_seen_chapter, sites(name))")
         .order("name");
       return (data ?? []) as TitleRow[];
     },
   });
 
-  // Pour chaque titre : tous les liens du chapitre le plus élevé (toutes sources)
-  // Reproduit la logique du volet "Dernier chapitre détecté"
-  const { data: latestChapters = {} } = useQuery<Record<string, ChapterLink[]>>({
-    queryKey: ["chapters-latest-export"],
+  // Tous les chapitres valides indexés par title_id.
+  // Le numéro sélectionné par titre est déterminé depuis title_sources.last_seen_chapter
+  // (même logique que le volet de droite), pas depuis cette table.
+  const { data: chaptersMap = {} } = useQuery<Record<string, ChapterEntry[]>>({
+    queryKey: ["chapters-export-v3"],
     queryFn: async () => {
+      const MAX_CHAPTER = 9999;
       const { data } = await supabase
         .from("chapters")
         .select("title_id, chapter_url, chapter_label, sites(name)")
         .order("detected_at", { ascending: false });
 
-      const MAX_CHAPTER = 9999; // même limite que l'extension (évite les IDs de BDD)
-
-      // Regrouper tous les chapitres par titre
-      const byTitle: Record<string, { num: number; url: string; chapLabel: string; siteName: string }[]> = {};
+      const map: Record<string, ChapterEntry[]> = {};
+      const seenUrls = new Set<string>();
       for (const ch of (data ?? []) as any[]) {
-        if (!ch.chapter_url) continue;
+        if (!ch.chapter_url || seenUrls.has(ch.chapter_url)) continue;
         const num = parseFloat(ch.chapter_label ?? "");
         if (isNaN(num) || num > MAX_CHAPTER) continue;
+        seenUrls.add(ch.chapter_url);
         let siteName: string = ch.sites?.name ?? "";
         if (!siteName) { try { siteName = new URL(ch.chapter_url).hostname; } catch {} }
-        if (!byTitle[ch.title_id]) byTitle[ch.title_id] = [];
-        byTitle[ch.title_id].push({ num, url: ch.chapter_url, chapLabel: ch.chapter_label ?? "", siteName });
-      }
-
-      // Pour chaque titre, garder uniquement les chapitres au numéro le plus élevé
-      const map: Record<string, ChapterLink[]> = {};
-      for (const [titleId, chapters] of Object.entries(byTitle)) {
-        const maxNum = Math.max(...chapters.map(c => c.num));
-        map[titleId] = chapters
-          .filter(c => c.num === maxNum)
-          .map(c => ({ url: c.url, siteName: c.siteName, chapLabel: c.chapLabel }));
+        if (!map[ch.title_id]) map[ch.title_id] = [];
+        map[ch.title_id].push({ num, url: ch.chapter_url, chapLabel: ch.chapter_label ?? "", siteName });
       }
       return map;
     },
@@ -171,9 +163,18 @@ function ExportPage() {
     }
 
     if (filterLinks === "chapters" || filterLinks === "all") {
-      for (const ch of latestChapters[title.id] ?? []) {
-        const siteLabel = ch.siteName ? ` (${ch.siteName})` : "";
-        links.push({ url: ch.url, label: `${title.name} — ${ch.chapLabel}${siteLabel}` });
+      const MAX_CHAPTER = 9999;
+      const nums = (title.title_sources ?? [])
+        .map((s) => parseFloat(s.last_seen_chapter ?? ""))
+        .filter((n) => !isNaN(n) && n <= MAX_CHAPTER);
+      if (nums.length > 0) {
+        const selectedNum = Math.max(...nums);
+        const allForTitle = chaptersMap[title.id] ?? [];
+        const matching = allForTitle.filter((ch) => ch.num === selectedNum);
+        for (const ch of matching) {
+          const siteLabel = ch.siteName ? ` (${ch.siteName})` : "";
+          links.push({ url: ch.url, label: `${title.name} — ${ch.chapLabel}${siteLabel}` });
+        }
       }
     }
 

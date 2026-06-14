@@ -218,6 +218,72 @@ function parseCoverUrl(html) {
   return m ? m[1] : null;
 }
 
+// Convertit un texte de date (absolu ou relatif, EN/FR) en ISO, ou null.
+// Gère : "2 days ago", "il y a 3 heures", "June 10, 2024", "2024-06-10", "10/06/2024".
+function parseHumanDate(text) {
+  if (!text) return null;
+  const t = String(text).trim();
+  if (!t) return null;
+  const low = t.toLowerCase();
+  const now = new Date();
+
+  if (/\b(just now|à l'instant|a l'instant|maintenant)\b/.test(low)) return now.toISOString();
+  if (/\b(yesterday|hier)\b/.test(low)) { const d = new Date(now); d.setDate(d.getDate() - 1); return d.toISOString(); }
+  if (/\b(today|aujourd'hui|aujourdhui)\b/.test(low)) return now.toISOString();
+
+  // Relatif : "2 days ago", "il y a 3 heures"
+  const isRel = /ago|il y a|plus tôt|plus tot/.test(low);
+  const rel = low.match(/(\d+)\s*(secondes?|seconds?|minutes?|mins?|heures?|hours?|hrs?|jours?|days?|semaines?|weeks?|mois|months?|années?|annees?|ans?|years?)/);
+  if (isRel && rel) {
+    const n = parseInt(rel[1], 10);
+    const u = rel[2];
+    const d = new Date(now);
+    if (/^(seconde|second)/.test(u)) d.setSeconds(d.getSeconds() - n);
+    else if (/^(minute|min)/.test(u)) d.setMinutes(d.getMinutes() - n);
+    else if (/^(heure|hour|hr)/.test(u)) d.setHours(d.getHours() - n);
+    else if (/^(jour|day)/.test(u)) d.setDate(d.getDate() - n);
+    else if (/^(semaine|week)/.test(u)) d.setDate(d.getDate() - n * 7);
+    else if (/^(mois|month)/.test(u)) d.setMonth(d.getMonth() - n);
+    else d.setFullYear(d.getFullYear() - n);
+    return d.toISOString();
+  }
+
+  const inRange = (ms) => { const y = new Date(ms).getFullYear(); return y >= 2000 && y <= now.getFullYear() + 1; };
+
+  // Date avec nom de mois anglais : "June 10, 2024" ou "Jun 10 2024" ou "10 June 2024"
+  const monthName = low.match(/\d{1,2}\s+[a-z]+\.?\s*,?\s*\d{4}|[a-z]+\.?\s+\d{1,2}\s*,?\s*\d{4}/i);
+  if (monthName) {
+    const p = Date.parse(monthName[0]);
+    if (!isNaN(p) && inRange(p)) return new Date(p).toISOString();
+  }
+
+  // ISO ou format directement reconnu
+  const direct = Date.parse(t);
+  if (!isNaN(direct) && inRange(direct)) return new Date(direct).toISOString();
+
+  // DD/MM/YYYY ou DD-MM-YYYY (interprétation jour-mois, pas mois-jour)
+  const dm = t.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})\b/);
+  if (dm) {
+    let dd = parseInt(dm[1], 10), mm = parseInt(dm[2], 10), yy = parseInt(dm[3], 10);
+    if (yy < 100) yy += 2000;
+    if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+      const d = new Date(yy, mm - 1, dd);
+      if (!isNaN(d.getTime()) && inRange(d.getTime())) return d.toISOString();
+    }
+  }
+  return null;
+}
+
+// Extrait une date de parution dans une fenêtre HTML située juste après un lien de chapitre.
+function extractDateFromHtmlWindow(html, fromIndex) {
+  if (fromIndex == null) return null;
+  const win = html.slice(fromIndex, fromIndex + 600);
+  const dtAttr = win.match(/datetime=["']([^"']+)["']/i);
+  if (dtAttr) { const p = parseHumanDate(dtAttr[1]); if (p) return p; }
+  const stripped = win.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return parseHumanDate(stripped);
+}
+
 function parseLastChapter(html, baseUrl) {
   const chapterNumRe = /(chapter|chapitre|chap|ch\.?|episode|ep\.?)[-_\/\s]?(\d+(?:\.\d+)?)/i;
   // Numéro max plausible : évite de confondre des IDs de BDD avec des numéros de chapitre
@@ -245,7 +311,7 @@ function parseLastChapter(html, baseUrl) {
       if (!isNaN(num) && num <= MAX_CHAPTER) {
         let url = href;
         try { url = new URL(href, baseUrl).toString(); } catch {}
-        const candidate = { num, url };
+        const candidate = { num, url, idx: anchorRe.lastIndex };
         allCandidates.push(candidate);
         // Spécifique = le lien contient le slug du titre (ex: killer-pietro-89829cb7)
         if (titleSlug && href.includes(titleSlug)) specificCandidates.push(candidate);
@@ -302,7 +368,9 @@ function parseLastChapter(html, baseUrl) {
 
   if (!candidates.length) return null;
   candidates.sort((a, b) => b.num - a.num);
-  return candidates[0];
+  const best = candidates[0];
+  const publishedAt = extractDateFromHtmlWindow(html, best.idx);
+  return { num: best.num, url: best.url, publishedAt };
 }
 
 // Détecte si une URL a été redirigée vers un autre site ou la page d'accueil du site.
@@ -394,6 +462,59 @@ function injectedExtract() {
       } catch { return null; }
     })();
 
+    // Parseur de date inline (le contexte injecté n'a pas accès aux fonctions externes)
+    function parseHumanDate(text) {
+      if (!text) return null;
+      const t = String(text).trim();
+      if (!t) return null;
+      const low = t.toLowerCase();
+      const now = new Date();
+      if (/\b(just now|à l'instant|a l'instant|maintenant)\b/.test(low)) return now.toISOString();
+      if (/\b(yesterday|hier)\b/.test(low)) { const d = new Date(now); d.setDate(d.getDate() - 1); return d.toISOString(); }
+      if (/\b(today|aujourd'hui|aujourdhui)\b/.test(low)) return now.toISOString();
+      const isRel = /ago|il y a|plus tôt|plus tot/.test(low);
+      const rel = low.match(/(\d+)\s*(secondes?|seconds?|minutes?|mins?|heures?|hours?|hrs?|jours?|days?|semaines?|weeks?|mois|months?|années?|annees?|ans?|years?)/);
+      if (isRel && rel) {
+        const n = parseInt(rel[1], 10), u = rel[2], d = new Date(now);
+        if (/^(seconde|second)/.test(u)) d.setSeconds(d.getSeconds() - n);
+        else if (/^(minute|min)/.test(u)) d.setMinutes(d.getMinutes() - n);
+        else if (/^(heure|hour|hr)/.test(u)) d.setHours(d.getHours() - n);
+        else if (/^(jour|day)/.test(u)) d.setDate(d.getDate() - n);
+        else if (/^(semaine|week)/.test(u)) d.setDate(d.getDate() - n * 7);
+        else if (/^(mois|month)/.test(u)) d.setMonth(d.getMonth() - n);
+        else d.setFullYear(d.getFullYear() - n);
+        return d.toISOString();
+      }
+      const inRange = (ms) => { const y = new Date(ms).getFullYear(); return y >= 2000 && y <= now.getFullYear() + 1; };
+      const monthName = low.match(/\d{1,2}\s+[a-z]+\.?\s*,?\s*\d{4}|[a-z]+\.?\s+\d{1,2}\s*,?\s*\d{4}/i);
+      if (monthName) { const p = Date.parse(monthName[0]); if (!isNaN(p) && inRange(p)) return new Date(p).toISOString(); }
+      const direct = Date.parse(t);
+      if (!isNaN(direct) && inRange(direct)) return new Date(direct).toISOString();
+      const dm = t.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})\b/);
+      if (dm) {
+        let dd = parseInt(dm[1], 10), mm = parseInt(dm[2], 10), yy = parseInt(dm[3], 10);
+        if (yy < 100) yy += 2000;
+        if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) { const d = new Date(yy, mm - 1, dd); if (!isNaN(d.getTime()) && inRange(d.getTime())) return d.toISOString(); }
+      }
+      return null;
+    }
+
+    // Cherche une date de parution proche d'un lien de chapitre dans le DOM
+    function findDateForEl(el) {
+      if (!el) return null;
+      const scope = el.closest("li, tr, .wp-manga-chapter, .chapter-item, .eph-num, .chapter, .a-h") || el.parentElement || el;
+      const timeEl = scope.querySelector("time[datetime], time");
+      if (timeEl) { const p = parseHumanDate(timeEl.getAttribute("datetime") || timeEl.textContent); if (p) return p; }
+      const sels = [".chapter-release-date", ".chapterdate", ".chapter-date", ".releasedate", ".date", "[class*='date']", "[class*='time']", "span", "i", "em"];
+      for (const sel of sels) {
+        for (const de of scope.querySelectorAll(sel)) {
+          const p = parseHumanDate((de.textContent || "").trim());
+          if (p) return p;
+        }
+      }
+      return null;
+    }
+
     function tryExtract() {
       const allC = [], specC = [];
       for (const sel of SELECTORS) {
@@ -406,7 +527,7 @@ function injectedExtract() {
             if (m) {
               const num = parseFloat(m[2]);
               if (!isNaN(num) && num <= MAX_CHAPTER) {
-                const c = { num, url: el.href || href };
+                const c = { num, url: el.href || href, el };
                 allC.push(c);
                 if (titleSlug && href.includes(titleSlug)) specC.push(c);
               }
@@ -423,7 +544,7 @@ function injectedExtract() {
           if (m) {
             const num = parseFloat(m[2]);
             if (!isNaN(num) && num <= MAX_CHAPTER) {
-              const c = { num, url: href };
+              const c = { num, url: href, el };
               allC.push(c);
               if (titleSlug && href.includes(titleSlug)) specC.push(c);
             }
@@ -466,7 +587,9 @@ function injectedExtract() {
           return;
         }
         candidates.sort((a, b) => b.num - a.num);
-        resolve({ found: candidates[0], is404: false, coverUrl, type, html: null, debug: { title: pageTitle, elapsed } });
+        const top = candidates[0];
+        const publishedAt = findDateForEl(top.el);
+        resolve({ found: { num: top.num, url: top.url, publishedAt }, is404: false, coverUrl, type, html: null, debug: { title: pageTitle, elapsed } });
       }
     }, 500);
   });
@@ -543,11 +666,17 @@ function titleToSlug(name) {
 
 // Enregistre un chapitre en base. Retourne { isNew, chapterId } sans envoyer de notification.
 // sourceUrl est utilisé comme fallback si chapUrl s'avère invalide (404 / redirection).
-async function saveChapter({ titleId, siteId, chapLabel, chapUrl, lastRead, sourceUrl }) {
+async function saveChapter({ titleId, siteId, chapLabel, chapUrl, lastRead, sourceUrl, publishedAt }) {
   const existing = await sbGet(
-    `/chapters?title_id=eq.${titleId}&chapter_label=eq.${encodeURIComponent(chapLabel)}&site_id=eq.${siteId}&select=id`
+    `/chapters?title_id=eq.${titleId}&chapter_label=eq.${encodeURIComponent(chapLabel)}&site_id=eq.${siteId}&select=id,published_at`
   );
-  if (existing.length) return { isNew: false, chapterId: existing[0].id };
+  if (existing.length) {
+    // Renseigner la date de parution si on vient de la découvrir
+    if (publishedAt && !existing[0].published_at) {
+      await sbPatch(`/chapters?id=eq.${existing[0].id}`, { published_at: publishedAt });
+    }
+    return { isNew: false, chapterId: existing[0].id };
+  }
 
   // Nouveau chapitre : valider l'URL avant de la persister
   const validatedUrl = sourceUrl ? await validateChapterUrl(chapUrl, sourceUrl) : chapUrl;
@@ -557,12 +686,36 @@ async function saveChapter({ titleId, siteId, chapLabel, chapUrl, lastRead, sour
     site_id: siteId || null,
     chapter_label: chapLabel,
     chapter_url: validatedUrl,
+    published_at: publishedAt || null,
   });
 
   const num = parseFloat(chapLabel);
   const isNew = isNaN(num) || isNaN(lastRead) ? lastRead < 0 : num > lastRead;
 
   return { isNew, chapterId: newChap[0]?.id ?? null };
+}
+
+// Met à jour l'horaire de parution hebdomadaire d'un titre à partir d'une date détectée.
+// N'écrase jamais un horaire défini manuellement par l'utilisateur (manual = true).
+async function upsertSchedule({ userId, titleId, publishedAt }) {
+  if (!userId || !titleId || !publishedAt) return;
+  const d = new Date(publishedAt);
+  if (isNaN(d.getTime())) return;
+  const dow = (d.getDay() + 6) % 7; // 0 = Lundi ... 6 = Dimanche
+  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+  try {
+    const existing = await sbGet(`/release_schedules?title_id=eq.${titleId}&select=id,manual`);
+    const auto = existing.find((s) => s.manual === false);
+    if (auto) {
+      await sbPatch(`/release_schedules?id=eq.${auto.id}`, {
+        day_of_week: dow, release_time: time, updated_at: new Date().toISOString(),
+      });
+    } else if (!existing.length) {
+      await sbPost("/release_schedules", {
+        user_id: userId, title_id: titleId, day_of_week: dow, release_time: time, manual: false,
+      });
+    }
+  } catch (e) { console.warn("[RTK] upsertSchedule échoué", e?.message); }
 }
 
 // Choisit le meilleur chapitre parmi une liste : valeur la plus fréquente, minimum en cas d'égalité.
@@ -686,9 +839,9 @@ async function runCheck() {
             }
 
             const { isNew, chapterId } = await saveChapter({
-              titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: src.url,
+              titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: src.url, publishedAt: found.publishedAt,
             });
-            if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: src.site_id });
+            if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: src.site_id, publishedAt: found.publishedAt });
           } catch (e) { console.error("[RTK] Source error:", e.message); errors++; }
         }
 
@@ -725,9 +878,9 @@ async function runCheck() {
             }
 
             const { isNew, chapterId } = await saveChapter({
-              titleId: title.id, siteId: site.id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: templateUrl,
+              titleId: title.id, siteId: site.id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: templateUrl, publishedAt: found.publishedAt,
             });
-            if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: site.id });
+            if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: site.id, publishedAt: found.publishedAt });
           } catch (e) { console.error("[RTK] Auto-discover error:", e.message); errors++; }
         }
 
@@ -735,6 +888,10 @@ async function runCheck() {
         if (newChaptersList.length > 0) {
           const best = pickBestChapter(newChaptersList);
           detected++;
+
+          // Mettre à jour l'horaire de parution du calendrier (si une date a été détectée)
+          const pub = best.publishedAt || newChaptersList.find((c) => c.publishedAt)?.publishedAt;
+          if (pub) await upsertSchedule({ userId: user_id, titleId: title.id, publishedAt: pub });
 
           if (notifyInApp && best.chapterId) {
             await sbPost("/notifications", {
@@ -841,7 +998,8 @@ async function checkSingleTitle(titleId) {
         bestTypePriority = srcPriority;
       }
 
-      await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead, sourceUrl: src.url });
+      await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead, sourceUrl: src.url, publishedAt: chapter.publishedAt });
+      if (chapter.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chapter.publishedAt });
       found++;
     } catch (e) { console.error("[RTK] checkSingleTitle source error:", e?.message); errors++; }
   }

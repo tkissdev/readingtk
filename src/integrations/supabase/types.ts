@@ -193,14 +193,71 @@ export type Database = {
           },
         ]
       }
+      release_schedules: {
+        Row: {
+          color: string | null
+          created_at: string
+          day_of_week: number
+          id: string
+          label: string | null
+          manual: boolean
+          release_time: string
+          title_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          day_of_week: number
+          id?: string
+          label?: string | null
+          manual?: boolean
+          release_time?: string
+          title_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          label?: string | null
+          manual?: boolean
+          release_time?: string
+          title_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_schedules_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "titles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "release_schedules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sites: {
         Row: {
           base_url: string
           created_at: string
           enabled: boolean
           id: string
+          is_down: boolean | null
           name: string
+          needs_tab: boolean | null
           priority: number
+          url_template: string | null
           user_id: string
         }
         Insert: {
@@ -208,8 +265,11 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          is_down?: boolean | null
           name: string
+          needs_tab?: boolean | null
           priority?: number
+          url_template?: string | null
           user_id: string
         }
         Update: {
@@ -217,8 +277,11 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          is_down?: boolean | null
           name?: string
+          needs_tab?: boolean | null
           priority?: number
+          url_template?: string | null
           user_id?: string
         }
         Relationships: [
@@ -236,6 +299,7 @@ export type Database = {
           created_at: string
           id: string
           is_primary: boolean
+          last_error: string | null
           last_seen_chapter: string | null
           site_id: string | null
           title_id: string
@@ -245,6 +309,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_primary?: boolean
+          last_error?: string | null
           last_seen_chapter?: string | null
           site_id?: string | null
           title_id: string
@@ -254,6 +319,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_primary?: boolean
+          last_error?: string | null
           last_seen_chapter?: string | null
           site_id?: string | null
           title_id?: string
@@ -278,6 +344,7 @@ export type Database = {
       }
       titles: {
         Row: {
+          aliases: string[] | null
           cover_url: string | null
           created_at: string
           id: string
@@ -287,6 +354,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          aliases?: string[] | null
           cover_url?: string | null
           created_at?: string
           id?: string
@@ -296,6 +364,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          aliases?: string[] | null
           cover_url?: string | null
           created_at?: string
           id?: string
