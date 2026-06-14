@@ -539,7 +539,10 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
       const { error } = await supabase.from("titles").update({ status }).eq("id", titleId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["titles"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["titles"] });
+      qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+    },
   });
 
   const updateType = useMutation({
@@ -547,7 +550,10 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
       const { error } = await supabase.from("titles").update({ type }).eq("id", titleId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["titles"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["titles"] });
+      qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+    },
   });
 
   const deleteTitle = useMutation({
