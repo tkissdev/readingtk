@@ -18,7 +18,7 @@ type Title = {
   title_sources: { last_seen_chapter: string | null }[];
 };
 
-const TYPES = ["all", "manga", "manhua", "novel", "autre"];
+const TYPES = ["all", "manga", "manhua", "manhwa", "novel", "autre"];
 const STATUSES = ["all", "ongoing", "paused", "dropped", "completed"];
 
 type SortBy = "name" | "type" | "status" | "lu" | "detected";
@@ -210,9 +210,12 @@ function Dashboard() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <FilterGroup label={tr("filter.type")} value={type} options={TYPES} onChange={setType} labelFn={(v) => typeLabel(tr, v)} />
           <FilterGroup label={tr("filter.status")} value={status} options={STATUSES} onChange={setStatus} labelFn={(v) => statusLabel(tr, v)} />
+          <span className="text-muted-foreground/60">
+            {tr("dash.titleCount", { n: filtered.length, total: (titles ?? []).length })}
+          </span>
         </div>
         {!mergeMode ? (
           <div className="flex items-center gap-2">
