@@ -128,6 +128,8 @@ const fr: Dict = {
   "merge.willKeep": "Seront conservés comme variantes : {list}",
 
   // Drawer
+  "drawer.renameTitle": "Renommer le titre",
+  "drawer.renameFail": "Erreur lors du renommage",
   "drawer.scrapeNow": "Scraper ce titre maintenant",
   "drawer.extUnavailable": "Extension non disponible — installez l'extension ReadingTK",
   "drawer.scrapeDone": "Scraping terminé",
@@ -392,6 +394,8 @@ const en: Dict = {
   "merge.variants": "variants: {list}",
   "merge.willKeep": "Will be kept as variants: {list}",
 
+  "drawer.renameTitle": "Rename title",
+  "drawer.renameFail": "Error renaming title",
   "drawer.scrapeNow": "Scrape this title now",
   "drawer.extUnavailable": "Extension unavailable — install the ReadingTK extension",
   "drawer.scrapeDone": "Scraping done",

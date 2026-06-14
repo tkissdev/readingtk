@@ -469,6 +469,8 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   const [editSrcId, setEditSrcId] = useState<string | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [editLastSeen, setEditLastSeen] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
 
   function startEdit(s: { id: string; url: string | null; last_seen_chapter: string | null }) {
     setEditSrcId(s.id);
@@ -556,6 +558,32 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
     },
   });
 
+  const renameTitleMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from("titles").update({ name }).eq("id", titleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["titles"] });
+      qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+      setEditingName(false);
+    },
+    onError: () => toast.error(tr("drawer.renameFail")),
+  });
+
+  function startEditName(currentName: string) {
+    setNameValue(currentName);
+    setEditingName(true);
+  }
+  function commitName() {
+    const trimmed = nameValue.trim();
+    if (trimmed && trimmed !== data?.title?.name) {
+      renameTitleMutation.mutate(trimmed);
+    } else {
+      setEditingName(false);
+    }
+  }
+
   const deleteTitle = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("titles").delete().eq("id", titleId);
@@ -589,7 +617,35 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
             <div className="min-w-0">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">{data.title.type ? typeLabel(tr, data.title.type) : tr("drawer.titleFallback")}</div>
               <div className="mt-1 flex items-center gap-2">
-                <h2 className="text-2xl font-bold leading-tight">{data.title.name}</h2>
+                {editingName ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      autoFocus
+                      value={nameValue}
+                      onChange={(e) => setNameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitName();
+                        if (e.key === "Escape") setEditingName(false);
+                      }}
+                      onBlur={commitName}
+                      className="rounded-md border border-accent bg-background px-2 py-1 text-xl font-bold outline-none"
+                    />
+                    <button onClick={commitName} className="rounded p-1 text-accent hover:bg-accent/10">
+                      <Check className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-2xl font-bold leading-tight">{data.title.name}</h2>
+                    <button
+                      onClick={() => startEditName(data.title!.name)}
+                      title={tr("drawer.renameTitle")}
+                      className="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-secondary/60 hover:text-foreground group-hover:opacity-100 hover:opacity-100"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
                 <button
                   title={tr("drawer.scrapeNow")}
                   disabled={scraping}
