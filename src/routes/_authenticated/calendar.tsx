@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
@@ -35,9 +35,8 @@ type Draft = {
 
 const DAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const DAY_FULL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const HOUR_H = 48; // hauteur d'une heure en px
-const DAY_H = 24 * HOUR_H;
-const BLOCK_MIN = 50; // durée visuelle d'un événement (minutes) pour le calcul des collisions
+const EVENT_MIN_H = 28; // hauteur minimale d'un événement en px
+const BLOCK_MIN = 50; // écart visuel (minutes) pour le calcul des collisions
 
 const PALETTE = ["#6366f1", "#0ea5e9", "#f59e0b", "#ec4899", "#10b981", "#8b5cf6", "#ef4444", "#14b8a6"];
 function colorFor(key: string): string {
@@ -108,7 +107,6 @@ function CalendarPage() {
   const qc = useQueryClient();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [draft, setDraft] = useState<Draft | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: schedules = [] } = useQuery<Schedule[]>({
     queryKey: ["release-schedules"],
@@ -139,11 +137,6 @@ function CalendarPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
-
-  // Position de défilement initiale : vers 7h
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 7 * HOUR_H;
-  }, []);
 
   // Événements répartis par jour avec gestion des chevauchements
   const byDay = useMemo(() => {
@@ -265,10 +258,10 @@ function CalendarPage() {
         </div>
       </div>
 
-      {/* ── Grille ── */}
+      {/* ── Grille (24h visibles, sans défilement) ── */}
       <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/40">
         {/* En-tête des jours */}
-        <div className="flex shrink-0 border-b border-border/60 pr-[10px]">
+        <div className="flex shrink-0 border-b border-border/60">
           <div className="w-14 shrink-0" />
           {DAY_NAMES.map((name, d) => {
             const date = addDays(weekStart, d);
@@ -288,82 +281,78 @@ function CalendarPage() {
           })}
         </div>
 
-        {/* Zone scrollable */}
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex" style={{ height: DAY_H }}>
-            {/* Colonne des heures */}
-            <div className="w-14 shrink-0">
-              {Array.from({ length: 24 }, (_, h) => (
-                <div key={h} className="relative border-b border-border/20" style={{ height: HOUR_H }}>
-                  {h > 0 && (
-                    <span className="absolute -top-2 right-1.5 text-[10px] text-muted-foreground">
-                      {String(h).padStart(2, "0")}:00
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Colonnes des jours */}
-            {DAY_NAMES.map((_, d) => (
-              <div key={d} className="relative flex-1 border-l border-border/40">
-                {/* Cellules horaires cliquables */}
-                {Array.from({ length: 24 }, (_, h) => (
-                  <div
-                    key={h}
-                    onClick={() => openAdd(d, h)}
-                    className="cursor-pointer border-b border-border/20 transition hover:bg-accent/5"
-                    style={{ height: HOUR_H }}
-                  />
-                ))}
-
-                {/* Ligne "maintenant" */}
-                {d === todayIdx && (
-                  <div
-                    className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
-                    style={{ top: (nowMin / 60) * HOUR_H }}
-                  >
-                    <div className="h-2 w-2 -translate-x-1 rounded-full bg-red-500" />
-                    <div className="h-px flex-1 bg-red-500" />
-                  </div>
+        {/* Corps : remplit la hauteur restante, chaque heure = 1/24 de l'espace */}
+        <div className="flex min-h-0 flex-1">
+          {/* Colonne des heures */}
+          <div className="flex w-14 shrink-0 flex-col">
+            {Array.from({ length: 24 }, (_, h) => (
+              <div key={h} className="relative flex-1 border-b border-border/20">
+                {h > 0 && (
+                  <span className="absolute -top-2 right-1.5 text-[10px] text-muted-foreground">
+                    {String(h).padStart(2, "0")}:00
+                  </span>
                 )}
-
-                {/* Événements */}
-                {byDay[d].map((e) => {
-                  const top = (e.min / 60) * HOUR_H;
-                  const widthPct = 100 / e.lanes;
-                  const leftPct = e.lane * widthPct;
-                  const name = e.label || e.titles?.name || "Sans titre";
-                  const color = e.color || colorFor(e.title_id || e.label || e.id);
-                  const occurAt = addDays(weekStart, d);
-                  const isPast =
-                    occurAt < new Date(now.getFullYear(), now.getMonth(), now.getDate()) ||
-                    (d === todayIdx && e.min < nowMin);
-                  return (
-                    <button
-                      key={e.id}
-                      onClick={(ev) => { ev.stopPropagation(); openEdit(e); }}
-                      className="absolute z-20 overflow-hidden rounded-md border px-1.5 py-1 text-left transition hover:brightness-110"
-                      style={{
-                        top,
-                        height: Math.max((BLOCK_MIN / 60) * HOUR_H, 34),
-                        left: `calc(${leftPct}% + 2px)`,
-                        width: `calc(${widthPct}% - 4px)`,
-                        background: `${color}22`,
-                        borderColor: `${color}66`,
-                        borderLeft: `3px solid ${color}`,
-                        opacity: isPast ? 0.45 : 1,
-                      }}
-                      title={`${name} — ${hhmm(e.release_time)}`}
-                    >
-                      <div className="truncate text-[11px] font-semibold leading-tight text-foreground">{name}</div>
-                      <div className="text-[10px] leading-tight text-muted-foreground">{hhmm(e.release_time)}</div>
-                    </button>
-                  );
-                })}
               </div>
             ))}
           </div>
+
+          {/* Colonnes des jours */}
+          {DAY_NAMES.map((_, d) => (
+            <div key={d} className="relative flex flex-1 flex-col border-l border-border/40">
+              {/* Cellules horaires cliquables (1/24 chacune) */}
+              {Array.from({ length: 24 }, (_, h) => (
+                <div
+                  key={h}
+                  onClick={() => openAdd(d, h)}
+                  className="flex-1 cursor-pointer border-b border-border/20 transition hover:bg-accent/5"
+                />
+              ))}
+
+              {/* Ligne "maintenant" */}
+              {d === todayIdx && (
+                <div
+                  className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
+                  style={{ top: `${(nowMin / 1440) * 100}%` }}
+                >
+                  <div className="h-2 w-2 -translate-x-1 rounded-full bg-red-500" />
+                  <div className="h-px flex-1 bg-red-500" />
+                </div>
+              )}
+
+              {/* Événements (positionnés en % de la journée) */}
+              {byDay[d].map((e) => {
+                const widthPct = 100 / e.lanes;
+                const leftPct = e.lane * widthPct;
+                const name = e.label || e.titles?.name || "Sans titre";
+                const color = e.color || colorFor(e.title_id || e.label || e.id);
+                const occurAt = addDays(weekStart, d);
+                const isPast =
+                  occurAt < new Date(now.getFullYear(), now.getMonth(), now.getDate()) ||
+                  (d === todayIdx && e.min < nowMin);
+                return (
+                  <button
+                    key={e.id}
+                    onClick={(ev) => { ev.stopPropagation(); openEdit(e); }}
+                    className="absolute z-20 flex flex-col justify-center overflow-hidden rounded-md border px-1.5 text-left transition hover:brightness-110"
+                    style={{
+                      top: `${(e.min / 1440) * 100}%`,
+                      height: EVENT_MIN_H,
+                      left: `calc(${leftPct}% + 2px)`,
+                      width: `calc(${widthPct}% - 4px)`,
+                      background: `${color}22`,
+                      borderColor: `${color}66`,
+                      borderLeft: `3px solid ${color}`,
+                      opacity: isPast ? 0.45 : 1,
+                    }}
+                    title={`${name} — ${hhmm(e.release_time)}`}
+                  >
+                    <div className="truncate text-[11px] font-semibold leading-tight text-foreground">{name}</div>
+                    <div className="truncate text-[10px] leading-tight text-muted-foreground">{hhmm(e.release_time)}</div>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
