@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, BookOpen, Database, Globe, Sparkles, Zap } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, Database, Globe, Sparkles, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -14,10 +14,11 @@ export const Route = createFileRoute("/")({
 });
 
 const FEATURES = [
-  { icon: BookOpen, title: "Suivi par titre",     desc: "Dernier chapitre lu, statut, notes — tout au même endroit." },
-  { icon: Globe,    title: "Multi-sources",        desc: "Une priorité par site, ajoutez vos liens de lecture préférés." },
-  { icon: Zap,      title: "Check à la demande",  desc: "Détection heuristique des nouveaux chapitres en un clic." },
-  { icon: Bell,     title: "Notifications",        desc: "Un badge dès qu'un nouveau chapitre apparaît." },
+  { icon: BookOpen,     title: "Suivi par titre",       desc: "Dernier chapitre lu, statut — tout au même endroit." },
+  { icon: Globe,        title: "Multi-sources",          desc: "Une priorité par site, ajoutez vos liens de lecture préférés." },
+  { icon: Zap,          title: "Check à la demande",    desc: "Détection heuristique des nouveaux chapitres en un clic." },
+  { icon: CalendarDays, title: "Calendrier automatique", desc: "Jour et heure de parution de chaque titre, projetés semaine après semaine." },
+  { icon: Bell,         title: "Notifications",          desc: "Un badge dès qu'un nouveau chapitre apparaît." },
 ];
 
 function Landing() {
@@ -82,7 +83,7 @@ function Landing() {
         </section>
 
         {/* Feature cards */}
-        <section className="grid w-full max-w-5xl grid-cols-2 gap-4 md:grid-cols-4">
+        <section className="grid w-full max-w-5xl grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
           {FEATURES.map(({ icon: Icon, title, desc }) => (
             <div
               key={title}
