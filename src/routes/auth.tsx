@@ -42,7 +42,7 @@ const OAUTH_PROVIDERS: { id: OAuthProvider; label: string; icon: React.ReactNode
   { id: "twitch",  label: "Twitch",  icon: <TwitchIcon />,  color: "hover:border-[#9146FF]/50 hover:bg-[#9146FF]/10" },
 ];
 
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+const TURNSTILE_SITE_KEY = "0x4AAAAAADkziG-qWDY0deWY";
 
 function AuthPage() {
   const { mode } = Route.useSearch();
