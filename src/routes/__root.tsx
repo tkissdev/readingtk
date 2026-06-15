@@ -62,7 +62,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "ReadingTK — Suivez vos lectures intelligemment" },
       { name: "description", content: "Centralisez vos mangas, manhuas et novels. Détection automatique de nouveaux chapitres." },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
