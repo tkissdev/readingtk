@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -42,6 +42,8 @@ const OAUTH_PROVIDERS: { id: OAuthProvider; label: string; icon: React.ReactNode
   { id: "twitch",  label: "Twitch",  icon: <TwitchIcon />,  color: "hover:border-[#9146FF]/50 hover:bg-[#9146FF]/10" },
 ];
 
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+
 function AuthPage() {
   const { mode } = Route.useSearch();
   const navigate = useNavigate();
@@ -51,6 +53,57 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  // Charge le script Turnstile une seule fois
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+    if (document.getElementById("cf-turnstile-script")) return;
+    const script = document.createElement("script");
+    script.id = "cf-turnstile-script";
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    script.async = true;
+    document.head.appendChild(script);
+  }, []);
+
+  // Rend le widget Turnstile dans le div dédié
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !turnstileRef.current) return;
+
+    const tryRender = () => {
+      const w = (window as any).turnstile;
+      if (w) {
+        if (widgetIdRef.current) w.remove(widgetIdRef.current);
+        widgetIdRef.current = w.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (token: string) => setCaptchaToken(token),
+          "expired-callback": () => setCaptchaToken(null),
+          "error-callback": () => setCaptchaToken(null),
+          theme: "dark",
+        });
+      } else {
+        setTimeout(tryRender, 200);
+      }
+    };
+    tryRender();
+
+    return () => {
+      if (widgetIdRef.current && (window as any).turnstile) {
+        (window as any).turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+  }, []);
+
+  function resetCaptcha() {
+    const w = (window as any).turnstile;
+    if (w && widgetIdRef.current) {
+      w.reset(widgetIdRef.current);
+      setCaptchaToken(null);
+    }
+  }
 
   async function handleOAuth(provider: OAuthProvider) {
     setOauthLoading(provider);
@@ -69,12 +122,19 @@ function AuthPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      toast.error(t("auth.captchaRequired"));
+      return;
+    }
     setLoading(true);
     try {
       if (isSignup) {
         const { data, error } = await supabase.auth.signUp({
           email, password,
-          options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+          options: {
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+            captchaToken: captchaToken ?? undefined,
+          },
         });
         if (error) throw error;
 
@@ -84,17 +144,22 @@ function AuthPage() {
         if (data.user && (data.user.identities?.length ?? 0) === 0) {
           toast.error(t("auth.emailInUse"));
           setIsSignup(false);
+          resetCaptcha();
           return;
         }
 
         // Confirmation par email activée : pas de session tant que l'email n'est pas confirmé.
         if (!data.session) {
           toast.success(t("auth.createdConfirm"));
+          resetCaptcha();
           return;
         }
         toast.success(t("auth.created"));
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email, password,
+          options: { captchaToken: captchaToken ?? undefined },
+        });
         if (error) throw error;
         toast.success(t("auth.connected"));
       }
@@ -102,6 +167,7 @@ function AuthPage() {
     } catch (err) {
       const e = err as Error;
       toast.error(e.message || t("auth.errGeneric"));
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
@@ -161,8 +227,14 @@ function AuthPage() {
                 className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </div>
+
+            {/* Widget Turnstile — visible uniquement si la clé est définie */}
+            {TURNSTILE_SITE_KEY && (
+              <div ref={turnstileRef} className="flex justify-center" />
+            )}
+
             <button
-              type="submit" disabled={loading || oauthLoading !== null}
+              type="submit" disabled={loading || oauthLoading !== null || (!!TURNSTILE_SITE_KEY && !captchaToken)}
               className="w-full rounded-md py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
               style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
             >

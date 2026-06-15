@@ -88,6 +88,7 @@ const fr: Dict = {
   "auth.connected": "Connecté",
   "auth.errOAuth": "Erreur de connexion",
   "auth.errGeneric": "Erreur d'authentification",
+  "auth.captchaRequired": "Veuillez valider le captcha avant de continuer",
 
   // Callback
   "callback.connecting": "Connexion en cours…",
@@ -361,6 +362,7 @@ const en: Dict = {
   "auth.connected": "Signed in",
   "auth.errOAuth": "Sign-in error",
   "auth.errGeneric": "Authentication error",
+  "auth.captchaRequired": "Please complete the captcha before continuing",
 
   "callback.connecting": "Signing in…",
 
