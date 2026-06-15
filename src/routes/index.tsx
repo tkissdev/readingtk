@@ -115,7 +115,7 @@ function Landing() {
 
       {/* Footer */}
       <footer className="flex items-center justify-center gap-2 border-t border-border py-4 text-xs text-muted-foreground">
-        <span>ReadingTK v1.04</span>
+        <span>ReadingTK v1.05</span>
         <span>·</span>
         <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
       </footer>
