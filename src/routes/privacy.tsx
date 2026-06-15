@@ -34,7 +34,7 @@ function PrivacyFR() {
             <p>
               ReadingTK est un service de suivi de lectures (mangas, manhuas, novels) accessible à l'adresse{" "}
               <a href="https://readingtk.net" className="text-accent hover:underline">readingtk.net</a>.
-              Le service est opéré par <strong className="text-foreground">TKSDev</strong> (contact : tkissdev@gmail.com).
+              Le service est opéré par <strong className="text-foreground">TKISSDev</strong> (contact : tkissdev@gmail.com).
             </p>
           </section>
 
@@ -169,7 +169,7 @@ function PrivacyEN() {
             <p>
               ReadingTK is a reading tracker for manga, manhwa, and novels, available at{" "}
               <a href="https://readingtk.net" className="text-accent hover:underline">readingtk.net</a>.
-              The service is operated by <strong className="text-foreground">TKSDev</strong> (contact: tkissdev@gmail.com).
+              The service is operated by <strong className="text-foreground">TKISSDev</strong> (contact: tkissdev@gmail.com).
             </p>
           </section>
 
