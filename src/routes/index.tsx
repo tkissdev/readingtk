@@ -109,6 +109,8 @@ function Landing() {
         <span>·</span>
         <Database className="inline h-3 w-3" />
         <span>{t("landing.footerBackend")}</span>
+        <span>·</span>
+        <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
       </footer>
     </div>
   );

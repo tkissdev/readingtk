@@ -65,6 +65,7 @@ const fr: Dict = {
   "landing.f.notif.d": "Un badge dès qu'un nouveau chapitre apparaît.",
   "landing.footerSelfHosted": "Prêt pour l'auto-hébergement",
   "landing.footerBackend": "Backend Supabase",
+  "landing.footerPrivacy": "Politique de confidentialité",
 
   // Auth
   "auth.metaTitle": "Connexion · ReadingTK",
@@ -340,6 +341,7 @@ const en: Dict = {
   "landing.f.notif.d": "A badge as soon as a new chapter appears.",
   "landing.footerSelfHosted": "Self-hosted ready",
   "landing.footerBackend": "Supabase backend",
+  "landing.footerPrivacy": "Privacy Policy",
 
   "auth.metaTitle": "Sign in · ReadingTK",
   "auth.createTitle": "Create an account",
