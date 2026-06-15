@@ -5,10 +5,22 @@ import { useI18n, LanguageSwitcher } from "@/i18n";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ReadingTK — Votre bibliothèque de lecture, enfin intelligent" },
-      { name: "description", content: "Suivez vos mangas, manhuas, manhwas et novels. Centralisez vos sources et soyez notifié à chaque nouveau chapitre." },
-      { property: "og:title", content: "ReadingTK" },
-      { property: "og:description", content: "Votre bibliothèque de lecture, enfin intelligent." },
+      { title: "ReadingTK — Tracker manga, manhwa & novel | Suivi automatique des chapitres" },
+      { name: "description", content: "Suivez vos mangas, manhuas, manhwas et novels en un seul endroit. Détection automatique des nouveaux chapitres, notifications instantanées et calendrier de parution. Gratuit." },
+      { name: "keywords", content: "tracker manga, suivi manga, nouveau chapitre manga, notification manga, reading tracker, manhwa tracker, manhwa suivi, novel tracker, lecture manga, chapitre manga" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://readingtk.net/" },
+      { property: "og:title", content: "ReadingTK — Tracker manga, manhwa & novel" },
+      { property: "og:description", content: "Suivez vos mangas, manhuas, manhwas et novels en un seul endroit. Notifications automatiques dès qu'un nouveau chapitre sort." },
+      { property: "og:image", content: "https://readingtk.net/og-image.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:locale", content: "fr_FR" },
+      { property: "og:site_name", content: "ReadingTK" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "ReadingTK — Tracker manga, manhwa & novel" },
+      { name: "twitter:description", content: "Suivez vos mangas et manhwas. Notifications automatiques dès qu'un nouveau chapitre sort." },
+      { name: "twitter:image", content: "https://readingtk.net/og-image.png" },
     ],
   }),
   component: Landing,
@@ -103,7 +115,7 @@ function Landing() {
 
       {/* Footer */}
       <footer className="flex items-center justify-center gap-2 border-t border-border py-4 text-xs text-muted-foreground">
-        <span>ReadingTK v1.03</span>
+        <span>ReadingTK v1.04</span>
         <span>·</span>
         <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
       </footer>

@@ -59,12 +59,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ReadingTK — Suivez vos lectures intelligemment" },
-      { name: "description", content: "Centralisez vos mangas, manhuas, manhwas et novels. Détection automatique de nouveaux chapitres." },
+      { title: "ReadingTK — Tracker manga, manhwa & novel | Suivi automatique des chapitres" },
+      { name: "description", content: "Centralisez vos mangas, manhuas, manhwas et novels. Détection automatique de nouveaux chapitres et notifications instantanées." },
+      { name: "robots", content: "index, follow" },
+      { name: "author", content: "TKISSDev" },
+      { name: "theme-color", content: "#0f0f0f" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "canonical", href: "https://readingtk.net/" },
     ],
   }),
   shellComponent: RootShell,
@@ -73,10 +77,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+const JSON_LD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "ReadingTK",
+  "url": "https://readingtk.net",
+  "description": "Tracker de lecture manga, manhwa, manhuas et novels. Détection automatique des nouveaux chapitres et notifications instantanées.",
+  "applicationCategory": "EntertainmentApplication",
+  "operatingSystem": "Web",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "author": { "@type": "Organization", "name": "TKISSDev", "email": "tkissdev@gmail.com" },
+  "inLanguage": ["fr", "en"],
+});
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="fr">
-      <head><HeadContent /></head>
+      <head>
+        <HeadContent />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON_LD }} />
+      </head>
       <body>
         {children}
         <Scripts />

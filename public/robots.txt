@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /callback
+Disallow: /auth
+
+Sitemap: https://readingtk.net/sitemap.xml
