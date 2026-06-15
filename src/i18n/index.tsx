@@ -44,12 +44,12 @@ const fr: Dict = {
   "nav.loggedOut": "Déconnecté",
 
   // Landing
-  "landing.metaTitle": "ReadingTK — Votre bibliothèque de lecture, enfin intelligente",
+  "landing.metaTitle": "ReadingTK — Votre bibliothèque de lecture, enfin intelligent",
   "landing.metaDesc": "Suivez vos mangas, manhuas, manhwas et novels. Centralisez vos sources et soyez notifié à chaque nouveau chapitre.",
   "landing.signin": "Connexion",
   "landing.createAccount": "Créer un compte",
   "landing.hero1": "Votre tracker de lecture,",
-  "landing.hero2": "enfin intelligente",
+  "landing.hero2": "enfin intelligent",
   "landing.heroSub1": "Suivez la progression de vos mangas, manhuas, manhwas et novels.",
   "landing.heroSub2": "Centralisez vos liens de lecture et soyez notifié dès qu'un nouveau chapitre sort.",
   "landing.start": "Commencer maintenant",
