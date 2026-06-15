@@ -37,8 +37,8 @@ function Dashboard() {
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortBy | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = useState<SortBy | null>(() => (localStorage.getItem("dash-sort-col") as SortBy | null) ?? null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(() => (localStorage.getItem("dash-sort-dir") as "asc" | "desc") ?? "asc");
 
   // ── Merge mode ───────────────────────────────────────────────────────────────
   const [mergeMode, setMergeMode] = useState(false);
@@ -194,8 +194,16 @@ function Dashboard() {
     : filtered;
 
   function handleSort(col: SortBy) {
-    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortBy(col); setSortDir("asc"); }
+    if (sortBy === col) {
+      const next = sortDir === "asc" ? "desc" : "asc";
+      setSortDir(next);
+      localStorage.setItem("dash-sort-dir", next);
+    } else {
+      setSortBy(col);
+      setSortDir("asc");
+      localStorage.setItem("dash-sort-col", col);
+      localStorage.setItem("dash-sort-dir", "asc");
+    }
   }
 
   return (
