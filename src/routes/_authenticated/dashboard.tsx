@@ -185,9 +185,10 @@ function Dashboard() {
           const bV = parseFloat(b.reading_progress?.last_chapter_read ?? "");
           cmp = (isNaN(aV) ? -1 : aV) - (isNaN(bV) ? -1 : bV);
         } else if (sortBy === "detected") {
-          const aV = parseFloat(lastSeenOf(a) ?? "");
-          const bV = parseFloat(lastSeenOf(b) ?? "");
-          cmp = (isNaN(aV) ? -1 : aV) - (isNaN(bV) ? -1 : bV);
+          const isNewA = (() => { const s = lastSeenOf(a); const r = a.reading_progress?.last_chapter_read; return s != null && (!r || parseFloat(s) > parseFloat(r || "0")); })();
+          const isNewB = (() => { const s = lastSeenOf(b); const r = b.reading_progress?.last_chapter_read; return s != null && (!r || parseFloat(s) > parseFloat(r || "0")); })();
+          if (isNewA !== isNewB) cmp = isNewA ? -1 : 1;
+          else cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
         }
         return sortDir === "asc" ? cmp : -cmp;
       })
