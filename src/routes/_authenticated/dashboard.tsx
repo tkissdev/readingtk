@@ -649,7 +649,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                     <button
                       onClick={() => startEditName(data.title!.name)}
                       title={tr("drawer.renameTitle")}
-                      className="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-secondary/60 hover:text-foreground group-hover:opacity-100 hover:opacity-100"
+                      className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent/10 hover:text-accent transition"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
