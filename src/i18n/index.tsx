@@ -48,7 +48,7 @@ const fr: Dict = {
   "landing.metaDesc": "Suivez vos mangas, manhuas et novels. Centralisez vos sources et soyez notifié à chaque nouveau chapitre.",
   "landing.signin": "Connexion",
   "landing.createAccount": "Créer un compte",
-  "landing.hero1": "Votre bibliothèque,",
+  "landing.hero1": "Votre tracker de lecture,",
   "landing.hero2": "enfin intelligente",
   "landing.heroSub1": "Suivez la progression de vos mangas, manhuas et novels.",
   "landing.heroSub2": "Centralisez vos liens de lecture et soyez notifié dès qu'un nouveau chapitre sort.",
