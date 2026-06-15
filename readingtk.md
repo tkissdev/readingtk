@@ -7,6 +7,17 @@ Application web de suivi de lecture (manga, manhwa, manhua, novel).
 
 ---
 
+## Versioning
+
+La version affichée dans le footer (`src/routes/index.tsx`) suit ce format : **v1.00, v1.01, v1.02…**
+
+**Règle :** à chaque commit, incrémenter la version de **+0.01**.  
+Exemple : v1.00 → v1.01 → v1.02 → … → v1.09 → v1.10 → etc.
+
+La version est écrite en dur dans le footer : `<span>ReadingTK vX.XX</span>`
+
+---
+
 ## Stack technique
 
 | Couche | Technologie |

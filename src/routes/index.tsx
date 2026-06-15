@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, BookOpen, CalendarDays, Database, Globe, Sparkles, Zap } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, Globe, Zap } from "lucide-react";
 import { useI18n, LanguageSwitcher } from "@/i18n";
 
 export const Route = createFileRoute("/")({
@@ -103,12 +103,7 @@ function Landing() {
 
       {/* Footer */}
       <footer className="flex items-center justify-center gap-2 border-t border-border py-4 text-xs text-muted-foreground">
-        <span>ReadingTK v0.1</span>
-        <span>·</span>
-        <span>{t("landing.footerSelfHosted")}</span>
-        <span>·</span>
-        <Database className="inline h-3 w-3" />
-        <span>{t("landing.footerBackend")}</span>
+        <span>ReadingTK v1.00</span>
         <span>·</span>
         <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
       </footer>
