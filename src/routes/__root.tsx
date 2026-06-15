@@ -60,7 +60,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "ReadingTK — Suivez vos lectures intelligemment" },
-      { name: "description", content: "Centralisez vos mangas, manhuas et novels. Détection automatique de nouveaux chapitres." },
+      { name: "description", content: "Centralisez vos mangas, manhuas, manhwas et novels. Détection automatique de nouveaux chapitres." },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

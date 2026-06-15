@@ -6,7 +6,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "ReadingTK — Votre bibliothèque de lecture, enfin intelligente" },
-      { name: "description", content: "Suivez vos mangas, manhuas et novels. Centralisez vos sources et soyez notifié à chaque nouveau chapitre." },
+      { name: "description", content: "Suivez vos mangas, manhuas, manhwas et novels. Centralisez vos sources et soyez notifié à chaque nouveau chapitre." },
       { property: "og:title", content: "ReadingTK" },
       { property: "og:description", content: "Votre bibliothèque de lecture, enfin intelligente." },
     ],
@@ -103,7 +103,7 @@ function Landing() {
 
       {/* Footer */}
       <footer className="flex items-center justify-center gap-2 border-t border-border py-4 text-xs text-muted-foreground">
-        <span>ReadingTK v1.01</span>
+        <span>ReadingTK v1.02</span>
         <span>·</span>
         <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
       </footer>
