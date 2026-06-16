@@ -742,6 +742,30 @@ async function isAborted() {
   return data.check_abort === true;
 }
 
+// ── Upload couverture vers Supabase Storage ────────────────────────────────────
+
+async function uploadCoverToStorage(imageUrl, titleId, userId) {
+  if (!imageUrl || imageUrl.includes(`${SUPABASE_URL}/storage`)) return imageUrl;
+  try {
+    const token = await getToken();
+    const imgRes = await fetch(imageUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; ReadingTK/1.0)" },
+    });
+    if (!imgRes.ok) return null;
+    const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+    const blob = await imgRes.blob();
+    const path = `${userId}/${titleId}.${ext}`;
+    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/covers/${path}`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": contentType, "x-upsert": "true" },
+      body: blob,
+    });
+    if (!uploadRes.ok) { console.error("[RTK] Cover upload failed:", await uploadRes.text()); return null; }
+    return `${SUPABASE_URL}/storage/v1/object/public/covers/${path}`;
+  } catch (e) { console.error("[RTK] Cover upload error:", e?.message); return null; }
+}
+
 // ── Check principal ────────────────────────────────────────────────────────────
 
 async function runCheck() {
@@ -826,8 +850,10 @@ async function runCheck() {
             const srcPriority = src.sites?.priority ?? 0;
             const coverUrl = result.coverUrl ?? parseCoverUrl(result.html ?? "");
             if (coverUrl && (!title.cover_url || srcPriority > bestCoverPriority)) {
-              await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: coverUrl });
-              title.cover_url = coverUrl;
+              const storedUrl = await uploadCoverToStorage(coverUrl, title.id, user_id);
+              const finalCoverUrl = storedUrl || coverUrl;
+              await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: finalCoverUrl });
+              title.cover_url = finalCoverUrl;
               bestCoverPriority = srcPriority;
             }
 
@@ -987,8 +1013,10 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
       const srcPriority = src.sites?.priority ?? 0;
       const coverUrl = result?.coverUrl ?? parseCoverUrl(result?.html ?? "");
       if (coverUrl && (!title.cover_url || srcPriority > bestCoverPriority)) {
-        await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: coverUrl });
-        title.cover_url = coverUrl;
+        const storedUrl = await uploadCoverToStorage(coverUrl, title.id, user_id);
+        const finalCoverUrl = storedUrl || coverUrl;
+        await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: finalCoverUrl });
+        title.cover_url = finalCoverUrl;
         bestCoverPriority = srcPriority;
       }
 

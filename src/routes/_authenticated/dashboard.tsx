@@ -650,6 +650,25 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
     }
   }
 
+  async function saveCover(rawUrl: string) {
+    const url = rawUrl.trim() || null;
+    if (!url) {
+      await supabase.from("titles").update({ cover_url: null }).eq("id", titleId);
+    } else if (url.includes("supabase.co/storage")) {
+      await supabase.from("titles").update({ cover_url: url }).eq("id", titleId);
+    } else {
+      const { error } = await supabase.functions.invoke("cache-cover", {
+        body: { imageUrl: url, titleId },
+      });
+      if (error) {
+        await supabase.from("titles").update({ cover_url: url }).eq("id", titleId);
+      }
+    }
+    qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+    qc.invalidateQueries({ queryKey: ["titles"] });
+    setEditingCover(false);
+  }
+
   const deleteTitle = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("titles").delete().eq("id", titleId);
@@ -699,14 +718,8 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                     type="url"
                     value={coverUrlInput}
                     onChange={(e) => setCoverUrlInput(e.target.value)}
-                    onKeyDown={async (e) => {
-                      if (e.key === "Enter") {
-                        const url = coverUrlInput.trim() || null;
-                        await supabase.from("titles").update({ cover_url: url }).eq("id", titleId);
-                        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
-                        qc.invalidateQueries({ queryKey: ["titles"] });
-                        setEditingCover(false);
-                      }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveCover(coverUrlInput);
                       if (e.key === "Escape") setEditingCover(false);
                     }}
                     placeholder="https://..."
@@ -714,13 +727,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                   />
                   <div className="flex gap-1">
                     <button
-                      onClick={async () => {
-                        const url = coverUrlInput.trim() || null;
-                        await supabase.from("titles").update({ cover_url: url }).eq("id", titleId);
-                        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
-                        qc.invalidateQueries({ queryKey: ["titles"] });
-                        setEditingCover(false);
-                      }}
+                      onClick={() => saveCover(coverUrlInput)}
                       className="flex-1 rounded bg-accent/20 px-1 py-0.5 text-[10px] text-accent hover:bg-accent/30 transition">
                       <Check className="mx-auto h-3 w-3" />
                     </button>
