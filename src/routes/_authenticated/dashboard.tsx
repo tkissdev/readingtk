@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw, Trash2, Pencil, Check } from "lucide-react";
+import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw, Trash2, Pencil, Check, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n, statusLabel, typeLabel } from "@/i18n";
 
@@ -481,6 +481,8 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState("");
   const [autoDiscover, setAutoDiscover] = useState(false);
+  const [editingCover, setEditingCover] = useState(false);
+  const [coverUrlInput, setCoverUrlInput] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -631,15 +633,68 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
       <div className="pointer-events-auto h-full w-full max-w-xl overflow-y-auto border-l border-border/60 bg-card p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4 min-w-0">
-            {(data.title as { cover_url?: string | null }).cover_url ? (
-              <img
-                src={(data.title as { cover_url?: string | null }).cover_url!}
-                alt=""
-                className="h-28 w-20 shrink-0 rounded-lg object-cover object-top shadow-md"
-              />
-            ) : (
-              <div className="h-28 w-20 shrink-0 rounded-lg bg-secondary/60" />
-            )}
+            <div className="shrink-0 flex flex-col gap-1.5">
+              <div
+                className="relative group cursor-pointer"
+                onClick={() => { setCoverUrlInput((data.title as { cover_url?: string | null }).cover_url ?? ""); setEditingCover(v => !v); }}
+                title={tr("drawer.editCover")}
+              >
+                {(data.title as { cover_url?: string | null }).cover_url ? (
+                  <img
+                    src={(data.title as { cover_url?: string | null }).cover_url!}
+                    alt=""
+                    className="h-28 w-20 rounded-lg object-cover object-top shadow-md"
+                  />
+                ) : (
+                  <div className="h-28 w-20 rounded-lg bg-secondary/60 flex items-center justify-center">
+                    <Camera className="h-6 w-6 text-muted-foreground/40" />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              {editingCover && (
+                <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    autoFocus
+                    type="url"
+                    value={coverUrlInput}
+                    onChange={(e) => setCoverUrlInput(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
+                        const url = coverUrlInput.trim() || null;
+                        await supabase.from("titles").update({ cover_url: url }).eq("id", titleId);
+                        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                        qc.invalidateQueries({ queryKey: ["titles"] });
+                        setEditingCover(false);
+                      }
+                      if (e.key === "Escape") setEditingCover(false);
+                    }}
+                    placeholder="https://..."
+                    className="w-20 rounded border border-input bg-input/50 px-1.5 py-1 text-[10px] outline-none focus:border-accent"
+                  />
+                  <div className="flex gap-1">
+                    <button
+                      onClick={async () => {
+                        const url = coverUrlInput.trim() || null;
+                        await supabase.from("titles").update({ cover_url: url }).eq("id", titleId);
+                        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                        qc.invalidateQueries({ queryKey: ["titles"] });
+                        setEditingCover(false);
+                      }}
+                      className="flex-1 rounded bg-accent/20 px-1 py-0.5 text-[10px] text-accent hover:bg-accent/30 transition">
+                      <Check className="mx-auto h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => setEditingCover(false)}
+                      className="flex-1 rounded bg-secondary/60 px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary transition">
+                      <X className="mx-auto h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="min-w-0">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">{data.title.type ? typeLabel(tr, data.title.type) : tr("drawer.titleFallback")}</div>
               <div className="mt-1 flex items-center gap-2">

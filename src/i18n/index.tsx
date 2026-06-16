@@ -131,6 +131,7 @@ const fr: Dict = {
   "merge.willKeep": "Seront conservés comme variantes : {list}",
 
   // Drawer
+  "drawer.editCover": "Modifier l'image de couverture",
   "drawer.renameTitle": "Renommer le titre",
   "drawer.renameFail": "Erreur lors du renommage",
   "drawer.scrapeNow": "Vérifier les chapitres de ce titre\n\nSi aucune source n'est configurée, une auto-découverte est lancée automatiquement.\nAvec 'Auto-découverte' activée, cherche aussi sur tous les sites connus.",
@@ -403,6 +404,7 @@ const en: Dict = {
   "merge.variants": "variants: {list}",
   "merge.willKeep": "Will be kept as variants: {list}",
 
+  "drawer.editCover": "Edit cover image",
   "drawer.renameTitle": "Rename title",
   "drawer.renameFail": "Error renaming title",
   "drawer.scrapeNow": "Check chapters for this title\n\nIf no source is configured, auto-discovery runs automatically.\nWith 'Auto-discover' enabled, also searches all known sites.",
