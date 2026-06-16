@@ -46,6 +46,7 @@ function updateStatus(status) {
   }
   $("interval-select").value = String(status.check_interval ?? 60);
   $("notif-toggle").checked = status.browser_notifications !== false;
+  $("auto-discover-toggle").checked = status.auto_discover === true;
 }
 
 // ── Gestion état "vérification en cours" ───────────────────────────────────────
@@ -140,6 +141,12 @@ $("interval-select").addEventListener("change", async (e) => {
 
 $("notif-toggle").addEventListener("change", async (e) => {
   await send("SET_NOTIFICATIONS", { enabled: e.target.checked });
+});
+
+// ── Auto-découverte ────────────────────────────────────────────────────────────
+
+$("auto-discover-toggle").addEventListener("change", async (e) => {
+  await send("SET_AUTO_DISCOVER", { enabled: e.target.checked });
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────────

@@ -480,6 +480,23 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   const [editLastSeen, setEditLastSeen] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState("");
+  const [autoDiscover, setAutoDiscover] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const requestId = Math.random().toString(36).slice(2);
+    const timeout = setTimeout(() => window.removeEventListener("message", handler), 3000);
+    function handler(event: MessageEvent) {
+      if (event.data?.source !== "readingtk-extension") return;
+      if (event.data?.requestId !== requestId) return;
+      clearTimeout(timeout);
+      window.removeEventListener("message", handler);
+      if (!cancelled && event.data.response) setAutoDiscover(event.data.response.auto_discover === true);
+    }
+    window.addEventListener("message", handler);
+    window.postMessage({ source: "readingtk-web", requestId, payload: { type: "GET_STATUS" } }, "*");
+    return () => { cancelled = true; clearTimeout(timeout); window.removeEventListener("message", handler); };
+  }, []);
 
   function startEdit(s: { id: string; url: string | null; last_seen_chapter: string | null }) {
     setEditSrcId(s.id);
@@ -655,30 +672,43 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                     </button>
                   </div>
                 )}
-                <button
-                  title={tr("drawer.scrapeNow")}
-                  disabled={scraping}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    setScraping(true);
-                    try {
-                      const res = await sendToExtension({ type: "CHECK_TITLE_NOW", titleId });
-                      if (res?.error) {
-                        toast.error(res.error === "Extension non disponible"
-                          ? tr("drawer.extUnavailable")
-                          : String(res.error));
-                      } else {
-                        toast.success(tr("drawer.scrapeDone"));
-                        qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
-                        qc.invalidateQueries({ queryKey: ["titles"] });
+                <div className="flex items-center gap-1.5">
+                  <button
+                    title={tr("drawer.scrapeNow")}
+                    disabled={scraping}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setScraping(true);
+                      try {
+                        const res = await sendToExtension({ type: "CHECK_TITLE_NOW", titleId, autoDiscover });
+                        if (res?.error) {
+                          toast.error(res.error === "Extension non disponible"
+                            ? tr("drawer.extUnavailable")
+                            : String(res.error));
+                        } else {
+                          toast.success(tr("drawer.scrapeDone"));
+                          qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                          qc.invalidateQueries({ queryKey: ["titles"] });
+                        }
+                      } finally {
+                        setScraping(false);
                       }
-                    } finally {
-                      setScraping(false);
-                    }
-                  }}
-                  className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent/10 hover:text-accent transition disabled:opacity-40">
-                  <RefreshCw className={`h-4 w-4 ${scraping ? "animate-spin" : ""}`} />
-                </button>
+                    }}
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent/10 hover:text-accent transition disabled:opacity-40">
+                    <RefreshCw className={`h-4 w-4 ${scraping ? "animate-spin" : ""}`} />
+                  </button>
+                  <button
+                    type="button"
+                    title={tr("drawer.autoDiscover")}
+                    onClick={async () => {
+                      const next = !autoDiscover;
+                      setAutoDiscover(next);
+                      await sendToExtension({ type: "SET_AUTO_DISCOVER", enabled: next });
+                    }}
+                    className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition border ${autoDiscover ? "border-accent bg-accent/20 text-accent" : "border-border text-muted-foreground hover:border-accent/60 hover:text-foreground"}`}>
+                    {tr("drawer.autoDiscover")}
+                  </button>
+                </div>
               </div>
               {aliases.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1">

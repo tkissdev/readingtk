@@ -133,7 +133,8 @@ const fr: Dict = {
   // Drawer
   "drawer.renameTitle": "Renommer le titre",
   "drawer.renameFail": "Erreur lors du renommage",
-  "drawer.scrapeNow": "Scraper ce titre maintenant",
+  "drawer.scrapeNow": "Vérifier les chapitres de ce titre\n\nSi aucune source n'est configurée, une auto-découverte est lancée automatiquement.\nAvec 'Auto-découverte' activée, cherche aussi sur tous les sites connus.",
+  "drawer.autoDiscover": "Auto-découverte",
   "drawer.extUnavailable": "Extension non disponible — installez l'extension ReadingTK",
   "drawer.scrapeDone": "Scraping terminé",
   "drawer.lastRead": "Dernier chapitre lu",
@@ -404,7 +405,8 @@ const en: Dict = {
 
   "drawer.renameTitle": "Rename title",
   "drawer.renameFail": "Error renaming title",
-  "drawer.scrapeNow": "Scrape this title now",
+  "drawer.scrapeNow": "Check chapters for this title\n\nIf no source is configured, auto-discovery runs automatically.\nWith 'Auto-discover' enabled, also searches all known sites.",
+  "drawer.autoDiscover": "Auto-discover",
   "drawer.extUnavailable": "Extension unavailable — install the ReadingTK extension",
   "drawer.scrapeDone": "Scraping done",
   "drawer.lastRead": "Last chapter read",

@@ -748,11 +748,12 @@ async function runCheck() {
   const token = await getToken();
   if (!token) return { error: "Non connecté" };
 
-  const storage = await storageGet(["user_id", "browser_notifications"]);
+  const storage = await storageGet(["user_id", "browser_notifications", "auto_discover"]);
   const user_id = storage.user_id;
   if (!user_id) return { error: "Pas de user_id" };
 
   const notifyBrowser = storage.browser_notifications !== false;
+  const autoDiscover = storage.auto_discover === true;
 
   await storageSet({ check_running: true, check_abort: false });
 
@@ -768,10 +769,10 @@ async function runCheck() {
       `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,type,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
     );
 
-    // Sites globaux avec un template URL (pour l'auto-découverte)
-    const globalSites = await sbGet(
+    // Sites globaux avec un template URL (pour l'auto-découverte, si activée)
+    const globalSites = autoDiscover ? await sbGet(
       `/sites?user_id=eq.${user_id}&url_template=not.is.null&enabled=eq.true&select=id,name,url_template,needs_tab`
-    );
+    ) : [];
 
     for (const title of titles) {
       if (await isAborted()) break;
@@ -932,7 +933,7 @@ async function runCheck() {
 
 // ── Check d'un seul titre (déclenché depuis la page web via le content script) ─
 
-async function checkSingleTitle(titleId) {
+async function checkSingleTitle(titleId, autoDiscover = false) {
   const token = await getToken();
   if (!token) return { error: "Non connecté" };
 
@@ -1002,6 +1003,47 @@ async function checkSingleTitle(titleId) {
       if (chapter.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chapter.publishedAt });
       found++;
     } catch (e) { console.error("[RTK] checkSingleTitle source error:", e?.message); errors++; }
+  }
+
+  // ── Auto-découverte : si aucune source configurée ou toggle activé ──────────
+  if (sources.length === 0 || autoDiscover) {
+    const globalSites = await sbGet(
+      `/sites?user_id=eq.${user_id}&url_template=not.is.null&enabled=eq.true&select=id,name,url_template,needs_tab`
+    );
+    for (const site of (globalSites || [])) {
+      const alreadyLinked = sources.some(s => s.site_id === site.id);
+      if (alreadyLinked) continue;
+
+      const slug = titleToSlug(title.name);
+      const templateUrl = site.url_template.replace("{slug}", slug);
+
+      try {
+        const { result } = await fetchForSite(templateUrl, site.id, site.needs_tab === true);
+        const chap = result?.found ?? parseLastChapter(result?.html ?? "", templateUrl);
+        if (!chap) continue;
+
+        console.log(`[RTK] Auto-découverte: "${title.name}" sur ${site.name} (${templateUrl})`);
+
+        const newSrcArr = await sbPost("/title_sources", {
+          title_id: title.id,
+          site_id: site.id,
+          url: templateUrl,
+          is_primary: false,
+        });
+        const newSrc = newSrcArr[0];
+
+        const chapLabel = format === "numeric" ? String(chap.num) : `Chapter ${chap.num}`;
+
+        if (newSrc?.id) {
+          await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
+          sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
+        }
+
+        await saveChapter({ titleId, siteId: site.id, chapLabel, chapUrl: chap.url, lastRead, sourceUrl: templateUrl, publishedAt: chap.publishedAt });
+        if (chap.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chap.publishedAt });
+        found++;
+      } catch (e) { console.error("[RTK] Auto-discover error:", e?.message); errors++; }
+    }
   }
 
   return { found, errors };
@@ -1080,14 +1122,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     })();
     return true;
   }
+  if (msg.type === "SET_AUTO_DISCOVER") {
+    storageSet({ auto_discover: msg.enabled }).then(() => sendResponse({ ok: true }));
+    return true;
+  }
   if (msg.type === "CHECK_TITLE_NOW") {
-    checkSingleTitle(msg.titleId).then(sendResponse).catch(e => sendResponse({ error: e.message }));
+    checkSingleTitle(msg.titleId, msg.autoDiscover === true).then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;
   }
   if (msg.type === "GET_STATUS") {
     storageGet([
       "access_token", "user_id", "last_check", "last_detected",
-      "last_errors", "check_interval", "browser_notifications", "check_running",
+      "last_errors", "check_interval", "browser_notifications", "check_running", "auto_discover",
     ]).then(sendResponse);
     return true;
   }
