@@ -483,6 +483,44 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   const [autoDiscover, setAutoDiscover] = useState(false);
   const [editingCover, setEditingCover] = useState(false);
   const [coverUrlInput, setCoverUrlInput] = useState("");
+  const [addingSource, setAddingSource] = useState(false);
+  const [newSourceUrl, setNewSourceUrl] = useState("");
+
+  const { data: allSites } = useQuery({
+    queryKey: ["sites"],
+    queryFn: async () => (await supabase.from("sites").select("id,base_url,name")).data ?? [],
+  });
+
+  async function submitNewSource() {
+    const url = newSourceUrl.trim();
+    if (!url) return;
+    const { data: userRes } = await supabase.auth.getUser();
+    const userId = userRes.user!.id;
+    let siteId: string | null = null;
+    try {
+      const u = new URL(url);
+      const host = u.hostname;
+      const matched = (allSites ?? []).find((s: { base_url: string }) => {
+        try { return new URL(s.base_url).hostname === host; } catch { return false; }
+      }) as { id: string } | undefined;
+      if (matched) {
+        siteId = matched.id;
+      } else {
+        const raw = host.replace(/^www\./, "").split(".")[0];
+        const siteName = raw.charAt(0).toUpperCase() + raw.slice(1);
+        const { data: newSite } = await supabase
+          .from("sites")
+          .insert({ user_id: userId, name: siteName, base_url: `${u.protocol}//${host}`, priority: 0, enabled: true })
+          .select("id").single();
+        siteId = newSite?.id ?? null;
+      }
+    } catch { /* siteId reste null */ }
+    await supabase.from("title_sources").insert({ title_id: titleId, site_id: siteId, url, is_primary: false });
+    qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+    qc.invalidateQueries({ queryKey: ["titles"] });
+    setAddingSource(false);
+    setNewSourceUrl("");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -915,6 +953,14 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold">{tr("drawer.sources", { n: data.sources.length })}</h3>
 
+            <button
+              onClick={() => { setAddingSource(v => !v); setNewSourceUrl(""); }}
+              title={tr("drawer.addSource")}
+              className="rounded p-1 text-muted-foreground hover:bg-accent/10 hover:text-accent transition"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+
             <a
               href={`https://www.google.com/search?q=${encodeURIComponent(data.title.name + " scan")}`}
               target="_blank"
@@ -927,6 +973,29 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
               </svg>
             </a>
           </div>
+
+          {addingSource && (
+            <div className="mt-2 flex gap-2">
+              <input
+                autoFocus
+                type="url"
+                value={newSourceUrl}
+                onChange={(e) => setNewSourceUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitNewSource();
+                  if (e.key === "Escape") setAddingSource(false);
+                }}
+                placeholder="https://..."
+                className="min-w-0 flex-1 rounded-md border border-input bg-input/50 px-3 py-1.5 font-mono text-xs outline-none focus:border-accent"
+              />
+              <button onClick={submitNewSource} className="rounded-md bg-accent/20 px-2 py-1.5 text-accent hover:bg-accent/30 transition">
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => setAddingSource(false)} className="rounded-md bg-secondary/60 px-2 py-1.5 text-muted-foreground hover:bg-secondary transition">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
           <ul className="mt-2 space-y-2">
             {[...data.sources].sort((a, b) => {
               const pa = (a as any).sites?.priority ?? 0;
