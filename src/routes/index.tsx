@@ -46,6 +46,9 @@ function Landing() {
         </Link>
         <nav className="flex items-center gap-3">
           <LanguageSwitcher className="mr-1" />
+          <Link to="/extensions" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
+            {t("landing.extensions")}
+          </Link>
           <Link to="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
             {t("landing.signin")}
           </Link>
@@ -115,7 +118,7 @@ function Landing() {
 
       {/* Footer */}
       <footer className="flex items-center justify-center gap-2 border-t border-border py-4 text-xs text-muted-foreground">
-        <span>ReadingTK v1.05</span>
+        <span>ReadingTK v1.06</span>
         <span>·</span>
         <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
       </footer>

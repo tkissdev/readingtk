@@ -66,6 +66,7 @@ const fr: Dict = {
   "landing.footerSelfHosted": "Prêt pour l'auto-hébergement",
   "landing.footerBackend": "Backend Supabase",
   "landing.footerPrivacy": "Politique de confidentialité",
+  "landing.extensions": "Extension",
 
   // Auth
   "auth.metaTitle": "Connexion · ReadingTK",
@@ -342,6 +343,7 @@ const en: Dict = {
   "landing.footerSelfHosted": "Self-hosted ready",
   "landing.footerBackend": "Supabase backend",
   "landing.footerPrivacy": "Privacy Policy",
+  "landing.extensions": "Extension",
 
   "auth.metaTitle": "Sign in · ReadingTK",
   "auth.createTitle": "Create an account",
