@@ -288,6 +288,9 @@ const fr: Dict = {
   "add.urlsHelp": "Une URL par ligne. Le domaine sera associé automatiquement à un site existant, et le template d'URL sera déduit.",
   "add.created": "{n} titre(s) créé(s)",
   "add.urlsImported": "{n} URL(s) importée(s) ✓",
+  "add.sameTitleToggle": "Toutes les URLs sont pour le même titre",
+  "add.sameTitleName": "Nom du titre…",
+  "add.sameTitleNameRequired": "Indique le nom du titre avant de continuer.",
 };
 
 const en: Dict = {
@@ -554,6 +557,9 @@ const en: Dict = {
   "add.urlsHelp": "One URL per line. The domain will be matched automatically to an existing site, and the URL template will be inferred.",
   "add.created": "{n} title(s) created",
   "add.urlsImported": "{n} URL(s) imported ✓",
+  "add.sameTitleToggle": "All URLs are for the same title",
+  "add.sameTitleName": "Title name…",
+  "add.sameTitleNameRequired": "Enter the title name before continuing.",
 };
 
 const DICTS: Record<Lang, Dict> = { fr, en };
