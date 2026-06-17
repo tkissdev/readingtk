@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -27,6 +28,11 @@ import { Route as AuthenticatedTitlesAddRouteImport } from './routes/_authentica
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExtensionsRoute = ExtensionsRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/extensions': typeof ExtensionsRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/extensions': typeof ExtensionsRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/extensions': typeof ExtensionsRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/extensions'
+    | '/how-it-works'
     | '/privacy'
     | '/calendar'
     | '/dashboard'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/extensions'
+    | '/how-it-works'
     | '/privacy'
     | '/calendar'
     | '/dashboard'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/extensions'
+    | '/how-it-works'
     | '/privacy'
     | '/_authenticated/calendar'
     | '/_authenticated/dashboard'
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CallbackRoute: typeof CallbackRoute
   ExtensionsRoute: typeof ExtensionsRoute
+  HowItWorksRoute: typeof HowItWorksRoute
   PrivacyRoute: typeof PrivacyRoute
 }
 
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/extensions': {
@@ -334,6 +354,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CallbackRoute: CallbackRoute,
   ExtensionsRoute: ExtensionsRoute,
+  HowItWorksRoute: HowItWorksRoute,
   PrivacyRoute: PrivacyRoute,
 }
 export const routeTree = rootRouteImport
