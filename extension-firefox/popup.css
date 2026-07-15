@@ -241,3 +241,24 @@ select:focus { border-color: #6366f1; }
 .open-link:hover {
   background: #6366f120;
 }
+
+/* Form group */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Link button */
+.btn-link {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+  padding: 2px;
+  text-decoration: underline;
+  transition: color 0.15s;
+}
+.btn-link:hover { color: #888; }

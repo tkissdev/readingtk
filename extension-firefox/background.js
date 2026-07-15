@@ -1101,6 +1101,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
     return true;
   }
+  if (msg.type === "SIGN_IN") {
+    (async () => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: "POST",
+          headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ email: msg.email, password: msg.password }),
+        });
+        const data = await res.json();
+        if (!res.ok) return sendResponse({ error: data.error_description || data.msg || "Identifiants incorrects" });
+        await storeSession(data);
+        sendResponse({ ok: true });
+      } catch (e) { sendResponse({ error: e.message }); }
+    })();
+    return true;
+  }
   if (msg.type === "LOGIN") {
     loginViaWebApp().then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;

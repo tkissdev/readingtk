@@ -10,14 +10,16 @@
   <!-- Écran de connexion -->
   <div id="screen-login" class="screen hidden">
     <div class="logo">ReadingTK</div>
-    <p class="subtitle">
-      Connectez-vous sur <strong>readingtk.net</strong> dans votre navigateur,
-      puis cliquez sur le bouton ci-dessous.
-    </p>
-    <button id="login-btn" class="btn-primary">
-      Se connecter via ReadingTK
-    </button>
+    <p class="subtitle">Connectez-vous à votre compte</p>
+    <div class="form-group">
+      <input type="email" id="login-email" class="input" placeholder="Email" autocomplete="email" />
+    </div>
+    <div class="form-group">
+      <input type="password" id="login-password" class="input" placeholder="Mot de passe" autocomplete="current-password" />
+    </div>
+    <button id="sign-in-btn" class="btn-primary">Se connecter</button>
     <div id="login-error" class="error hidden"></div>
+    <button id="login-btn" class="btn-link">Connexion via readingtk.net</button>
   </div>
 
   <!-- Écran principal -->

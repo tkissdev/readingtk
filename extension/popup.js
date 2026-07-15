@@ -75,7 +75,38 @@ function stopPolling() {
   if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
 }
 
-// ── Login ──────────────────────────────────────────────────────────────────────
+// ── Login (formulaire email/mot de passe) ──────────────────────────────────────
+
+$("sign-in-btn").addEventListener("click", async () => {
+  const email = $("login-email").value.trim();
+  const password = $("login-password").value;
+  const errEl = $("login-error");
+  errEl.classList.add("hidden");
+
+  if (!email || !password) {
+    errEl.textContent = "Veuillez renseigner email et mot de passe.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  $("sign-in-btn").disabled = true;
+  $("sign-in-btn").textContent = "Connexion...";
+
+  const res = await send("SIGN_IN", { email, password });
+
+  if (res?.ok) {
+    showScreen("main");
+    const status = await send("GET_STATUS");
+    updateStatus(status);
+  } else {
+    errEl.textContent = res?.error || "Identifiants incorrects.";
+    errEl.classList.remove("hidden");
+    $("sign-in-btn").disabled = false;
+    $("sign-in-btn").textContent = "Se connecter";
+  }
+});
+
+// ── Login fallback (via readingtk.net) ────────────────────────────────────────
 
 $("login-btn").addEventListener("click", async () => {
   const errEl = $("login-error");
@@ -93,7 +124,7 @@ $("login-btn").addEventListener("click", async () => {
     errEl.textContent = res?.error || "Erreur — assurez-vous d'être connecté sur readingtk.net";
     errEl.classList.remove("hidden");
     $("login-btn").disabled = false;
-    $("login-btn").textContent = "Se connecter via ReadingTK";
+    $("login-btn").textContent = "Connexion via readingtk.net";
   }
 });
 
