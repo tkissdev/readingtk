@@ -39,10 +39,30 @@ _root: tk.Tk | None = None  # tkinter tourne sur le thread principal
 # ── Icône systray ──────────────────────────────────────────────────────────────
 
 def _make_icon(color: str = "#6366f1") -> Image.Image:
-    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    draw.ellipse([4, 4, 60, 60], fill=color)
-    return img
+    """Charge le favicon RTK et colorise le fond avec la couleur d'état."""
+    r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+
+    icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+    try:
+        base = Image.open(icon_path).convert("RGBA").resize((64, 64), Image.LANCZOS)
+
+        # Luminance : pixels clairs = fond, pixels sombres = texte RTK
+        gray = base.convert("L")
+        mask = gray.point(lambda lum: 255 if lum > 150 else 0)
+
+        # Fond → couleur d'état, texte → blanc
+        bg = Image.new("RGBA", base.size, (r, g, b, 255))
+        fg = Image.new("RGBA", base.size, (255, 255, 255, 255))
+        colorized = Image.composite(bg, fg, mask)
+
+        # Remettre l'alpha original (forme arrondie de l'icône)
+        colorized.putalpha(base.split()[3])
+        return colorized
+    except Exception:
+        # Fallback : cercle coloré
+        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        ImageDraw.Draw(img).ellipse([4, 4, 60, 60], fill=color)
+        return img
 
 
 # ── Check logique ──────────────────────────────────────────────────────────────
@@ -141,6 +161,8 @@ def _do_show_login():
         _schedule_next()
         _run_check_thread()
         if _tray_icon:
+            _tray_icon.icon = _make_icon()
+            _tray_icon.title = "ReadingTK"
             _tray_icon.update_menu()
 
 
@@ -169,6 +191,8 @@ def _menu_logout(icon, item):
     if _check_timer:
         _check_timer.cancel()
     if _tray_icon:
+        _tray_icon.icon = _make_icon("#ef4444")
+        _tray_icon.title = "ReadingTK — Déconnecté"
         _tray_icon.update_menu()
 
 
@@ -273,10 +297,12 @@ def main():
     _load_settings()
 
     # Lancer pystray dans un thread séparé
+    _initial_icon = _make_icon() if supabase.is_logged_in else _make_icon("#ef4444")
+    _initial_title = "ReadingTK" if supabase.is_logged_in else "ReadingTK — Déconnecté"
     _tray_icon = pystray.Icon(
         name="ReadingTK",
-        icon=_make_icon(),
-        title="ReadingTK",
+        icon=_initial_icon,
+        title=_initial_title,
         menu=_build_menu(),
     )
 
