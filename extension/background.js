@@ -760,6 +760,47 @@ async function uploadCoverToStorage(imageUrl, titleId, userId) {
   } catch (e) { console.error("[RTK] Cover upload error:", e?.message); return null; }
 }
 
+// ── Validation contenu chapitre (anti early-access / paywall) ─────────────────
+
+async function validateChapterContent(url) {
+  const MIN_IMAGES = 3;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return true; // inaccessible → ne pas bloquer
+    const html = await res.text();
+
+    // Compter les images (src + attributs lazy-load courants)
+    const imgRe = /(?:src|data-src|data-lazy|data-lazy-src|data-original|data-cfsrc)=["']([^"']{10,})["']/gi;
+    const images = new Set();
+    let m;
+    while ((m = imgRe.exec(html)) !== null) {
+      const val = m[1].split(/[\s,]/)[0];
+      if (/\.(jpg|jpeg|png|webp|gif)/i.test(val)) images.add(val);
+    }
+    if (images.size >= MIN_IMAGES) return true;
+
+    // Peu d'images → vérifier la présence d'un paywall explicite
+    const bodyLower = html.toLowerCase();
+    const paywallKeywords = [
+      "early access", "subscribe to read", "unlock chapter", "premium chapter",
+      "members only", "vip chapter", "patreon", "ko-fi", "supporter only",
+      "accès anticipé", "chapitre réservé", "abonnés", "débloquer",
+    ];
+    if (paywallKeywords.some(kw => bodyLower.includes(kw))) return false;
+
+    // Peu d'images mais pas de paywall explicite → peut-être rendu JS, ne pas bloquer
+    return true;
+  } catch {
+    return true; // erreur réseau → ne pas bloquer
+  }
+}
+
 // ── Check principal ────────────────────────────────────────────────────────────
 
 async function runCheck() {
@@ -858,6 +899,13 @@ async function runCheck() {
               bestTypePriority = srcPriority;
             }
 
+            // Vérifier que le chapitre est accessible (pas early access / paywall)
+            const wouldBeNew = isNaN(found.num) || isNaN(lastRead) ? lastRead < 0 : found.num > lastRead;
+            if (wouldBeNew && !(await validateChapterContent(found.url))) {
+              console.log(`[RTK] Early access ignoré: ${found.url}`);
+              continue;
+            }
+
             const { isNew, chapterId } = await saveChapter({
               titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: src.url, publishedAt: found.publishedAt,
             });
@@ -894,6 +942,13 @@ async function runCheck() {
             if (newSrc?.id) {
               await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
               sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
+            }
+
+            // Vérifier que le chapitre est accessible (pas early access / paywall)
+            const wouldBeNew = isNaN(found.num) || isNaN(lastRead) ? lastRead < 0 : found.num > lastRead;
+            if (wouldBeNew && !(await validateChapterContent(found.url))) {
+              console.log(`[RTK] Early access ignoré (auto-découverte): ${found.url}`);
+              continue;
             }
 
             const { isNew, chapterId } = await saveChapter({
@@ -1015,6 +1070,10 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
         bestTypePriority = srcPriority;
       }
 
+      // Vérifier que le chapitre est accessible (pas early access / paywall)
+      const wouldBeNew = isNaN(chapter.num) || isNaN(lastRead) ? lastRead < 0 : chapter.num > lastRead;
+      if (wouldBeNew && !(await validateChapterContent(chapter.url))) continue;
+
       await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead, sourceUrl: src.url, publishedAt: chapter.publishedAt });
       if (chapter.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chapter.publishedAt });
       found++;
@@ -1054,6 +1113,10 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
           await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
           sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
         }
+
+        // Vérifier que le chapitre est accessible (pas early access / paywall)
+        const wouldBeNew = isNaN(chap.num) || isNaN(lastRead) ? lastRead < 0 : chap.num > lastRead;
+        if (wouldBeNew && !(await validateChapterContent(chap.url))) continue;
 
         await saveChapter({ titleId, siteId: site.id, chapLabel, chapUrl: chap.url, lastRead, sourceUrl: templateUrl, publishedAt: chap.publishedAt });
         if (chap.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chap.publishedAt });
