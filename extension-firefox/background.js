@@ -597,30 +597,53 @@ function injectedExtract() {
 
 function fetchViaTab(url) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timeout fetchViaTab")), 35000);
-    chrome.tabs.create({ url, active: false }, (tab) => {
-      if (chrome.runtime.lastError) { clearTimeout(timeout); return reject(new Error(chrome.runtime.lastError.message)); }
-      function onUpdated(tabId, changeInfo, updatedTab) {
-        if (tabId !== tab.id || changeInfo.status !== "complete") return;
-        chrome.tabs.onUpdated.removeListener(onUpdated);
-        clearTimeout(timeout);
-        const removeTab = () => { chrome.tabs.remove(tab.id, () => {}); };
-        const done = (result) => { removeTab(); resolve(result); };
-        const fail = (e) => { removeTab(); reject(e); };
-        // Vérifier la redirection via l'URL finale de l'onglet
-        if (isRedirectedAway(url, updatedTab?.url)) {
-          return done({ found: null, isRedirect: true, coverUrl: null, html: null, debug: { redirect: updatedTab?.url } });
-        }
-        // MV2 Firefox — injecter la fonction comme string
-        const code = `(${injectedExtract.toString()})()`;
-        chrome.tabs.executeScript(tab.id, { code }, (results) => {
-          if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
-          Promise.resolve(results?.[0])
-            .then(r => done(r ?? { found: null, html: null }))
-            .catch(fail);
-        });
+    let tabId = null;
+    let settled = false;
+
+    function cleanup() {
+      if (tabId !== null) { chrome.tabs.remove(tabId, () => {}); tabId = null; }
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+    }
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("Timeout fetchViaTab"));
+    }, 35000);
+
+    function onUpdated(id, changeInfo, updatedTab) {
+      if (id !== tabId || changeInfo.status !== "complete") return;
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+
+      const done = (result) => { chrome.tabs.remove(tabId, () => {}); tabId = null; resolve(result); };
+      const fail = (e) => { chrome.tabs.remove(tabId, () => {}); tabId = null; reject(e); };
+
+      if (isRedirectedAway(url, updatedTab?.url)) {
+        return done({ found: null, isRedirect: true, coverUrl: null, html: null, debug: { redirect: updatedTab?.url } });
       }
-      chrome.tabs.onUpdated.addListener(onUpdated);
+      // MV2 Firefox — injecter la fonction comme string
+      const code = `(${injectedExtract.toString()})()`;
+      chrome.tabs.executeScript(id, { code }, (results) => {
+        if (chrome.runtime.lastError) return fail(new Error(chrome.runtime.lastError.message));
+        Promise.resolve(results?.[0])
+          .then(r => done(r ?? { found: null, html: null }))
+          .catch(fail);
+      });
+    }
+
+    chrome.tabs.onUpdated.addListener(onUpdated);
+
+    chrome.tabs.create({ url, active: false }, (tab) => {
+      if (chrome.runtime.lastError) {
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        return reject(new Error(chrome.runtime.lastError.message));
+      }
+      tabId = tab.id;
     });
   });
 }
