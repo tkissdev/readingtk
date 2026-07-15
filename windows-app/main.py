@@ -32,6 +32,7 @@ _check_interval_minutes: int = 30
 _check_timer: threading.Timer | None = None
 _check_lock = threading.Lock()
 _is_checking = False
+_stop_event = threading.Event()
 _tray_icon: pystray.Icon | None = None
 _root: tk.Tk | None = None  # tkinter tourne sur le thread principal
 
@@ -83,10 +84,12 @@ def _do_check():
         if _is_checking:
             return
         _is_checking = True
+        _stop_event.clear()
 
     if _tray_icon:
         _tray_icon.icon = _make_icon("#f59e0b")
         _tray_icon.title = "ReadingTK — Vérification en cours…"
+        _tray_icon.update_menu()
 
     def _on_progress(current: int, total: int, title_name: str):
         if _tray_icon:
@@ -95,20 +98,26 @@ def _do_check():
 
     try:
         from checker import run_check
-        result = run_check(on_new_chapter=_on_new_chapter, on_progress=_on_progress)
-        log.info("Check OK : %d détecté(s), %d erreur(s)", result["detected"], result["errors"])
+        result = run_check(on_new_chapter=_on_new_chapter, on_progress=_on_progress,
+                           stop_event=_stop_event)
+        stopped = _stop_event.is_set()
+        log.info("Check %s : %d détecté(s), %d erreur(s)",
+                 "arrêté" if stopped else "OK", result["detected"], result["errors"])
         if _tray_icon:
             _tray_icon.icon = _make_icon()
-            parts = [f"Dernier check : {time.strftime('%H:%M')}"]
-            if result["detected"]:
-                parts.append(f"{result['detected']} nouveau(x)")
-            if result["errors"]:
-                parts.append(f"{result['errors']} erreur(s)")
-            if _check_interval_minutes > 0:
-                h, m = divmod(_check_interval_minutes, 60)
-                interval_str = f"{h}h" if h and not m else f"{m}min" if not h else f"{h}h{m:02d}"
-                parts.append(f"prochain dans {interval_str}")
-            _tray_icon.title = "ReadingTK — " + " · ".join(parts)
+            if stopped:
+                _tray_icon.title = "ReadingTK — Vérification arrêtée"
+            else:
+                parts = [f"Dernier check : {time.strftime('%H:%M')}"]
+                if result["detected"]:
+                    parts.append(f"{result['detected']} nouveau(x)")
+                if result["errors"]:
+                    parts.append(f"{result['errors']} erreur(s)")
+                if _check_interval_minutes > 0:
+                    h, m = divmod(_check_interval_minutes, 60)
+                    interval_str = f"{h}h" if h and not m else f"{m}min" if not h else f"{h}h{m:02d}"
+                    parts.append(f"prochain dans {interval_str}")
+                _tray_icon.title = "ReadingTK — " + " · ".join(parts)
     except Exception as e:
         log.error("Erreur check : %s", e)
         if _tray_icon:
@@ -117,6 +126,8 @@ def _do_check():
     finally:
         with _check_lock:
             _is_checking = False
+        if _tray_icon:
+            _tray_icon.update_menu()
         _schedule_next()
 
 
@@ -171,6 +182,10 @@ def _do_show_login():
 # Pour tout ce qui touche tkinter, on délègue au thread principal via root.after.
 
 def _menu_check_now(icon, item):
+    if _is_checking:
+        _stop_event.set()
+        log.info("Arrêt de la vérification demandé")
+        return
     if not supabase.is_logged_in:
         _root.after(0, _do_show_login)
         return
@@ -259,7 +274,11 @@ def _menu_exit(icon, item):
 
 def _build_menu() -> pystray.Menu:
     return pystray.Menu(
-        pystray.MenuItem("Vérifier maintenant", _menu_check_now, default=True),
+        pystray.MenuItem(
+            lambda item: "Stopper la vérification" if _is_checking else "Vérifier maintenant",
+            _menu_check_now,
+            default=True,
+        ),
         pystray.MenuItem("Ouvrir le dashboard", _menu_open_dashboard),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(

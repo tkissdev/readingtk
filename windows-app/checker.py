@@ -46,10 +46,11 @@ def _save_chapter(title_id: str, site_id: str, chap_label: str, chap_url: str,
     return {"is_new": is_new, "chapter_id": chapter_id}
 
 
-def run_check(on_new_chapter=None, on_progress=None) -> dict:
+def run_check(on_new_chapter=None, on_progress=None, stop_event=None) -> dict:
     """
     Vérifie tous les titres de l'utilisateur.
     on_new_chapter(title_name, chap_label, chap_url) — callback appelé pour chaque nouveau chapitre.
+    stop_event — threading.Event optionnel ; si set(), arrête la boucle proprement.
     Retourne {'detected': int, 'errors': int}.
     """
     uid = supabase.user_id
@@ -82,6 +83,9 @@ def run_check(on_new_chapter=None, on_progress=None) -> dict:
     total = len(titles or [])
 
     for i, title in enumerate(titles or []):
+        if stop_event and stop_event.is_set():
+            log.info("Vérification arrêtée après %d/%d titres", i, total)
+            break
         if on_progress:
             on_progress(i + 1, total, title.get("name", "…"))
         sources = sorted(
