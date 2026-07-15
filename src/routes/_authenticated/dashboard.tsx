@@ -927,10 +927,11 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
               if (!chap?.chapter_url) return null;
               return {
                 chapId: chap.id as string,
+                sourceId: (s as { id: string }).id,
                 siteName: (s as { sites?: { name?: string } }).sites?.name ?? "Source",
                 url: chap.chapter_url as string,
               };
-            }).filter((l): l is { chapId: string; siteName: string; url: string } => l !== null);
+            }).filter((l): l is { chapId: string; sourceId: string; siteName: string; url: string } => l !== null);
 
             return (
               <div>
@@ -961,6 +962,10 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                         onClick={async (e) => {
                           e.preventDefault();
                           await supabase.from("chapters").delete().eq("id", link.chapId);
+                          await supabase.from("title_sources")
+                            .update({ last_seen_chapter: null })
+                            .eq("id", link.sourceId)
+                            .eq("last_seen_chapter", selectedLabel);
                           qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
                           qc.invalidateQueries({ queryKey: ["titles"] });
                         }}
