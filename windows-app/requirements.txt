@@ -1,0 +1,6 @@
+scrapling[stealth]
+pystray
+Pillow
+keyring
+winotify
+requests
