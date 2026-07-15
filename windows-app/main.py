@@ -7,6 +7,7 @@ import os
 import sys
 import threading
 import time
+import tkinter as tk
 import webbrowser
 
 import pystray
@@ -27,11 +28,12 @@ logging.basicConfig(
 
 # ── État global ────────────────────────────────────────────────────────────────
 
-_check_interval_minutes: int = 30  # valeur par défaut
+_check_interval_minutes: int = 30
 _check_timer: threading.Timer | None = None
 _check_lock = threading.Lock()
 _is_checking = False
 _tray_icon: pystray.Icon | None = None
+_root: tk.Tk | None = None  # tkinter tourne sur le thread principal
 
 
 # ── Icône systray ──────────────────────────────────────────────────────────────
@@ -40,24 +42,19 @@ def _make_icon(color: str = "#6366f1") -> Image.Image:
     img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw.ellipse([4, 4, 60, 60], fill=color)
-    # Lettre "R" au centre
-    draw.text((18, 14), "R", fill="white")
     return img
-
-
-def _make_icon_checking() -> Image.Image:
-    return _make_icon("#f59e0b")  # orange pendant le check
-
-
-def _make_icon_error() -> Image.Image:
-    return _make_icon("#ef4444")  # rouge en cas d'erreur
 
 
 # ── Check logique ──────────────────────────────────────────────────────────────
 
 def _on_new_chapter(title_name: str, chap_label: str, chap_url: str):
     log.info("Nouveau chapitre : %s — %s", title_name, chap_label)
-    notify(title_name, chap_label, chap_url)
+    try:
+        s = supabase.sync_settings()
+        if s.get("browser_notifications", True):
+            notify(title_name, chap_label, chap_url)
+    except Exception:
+        notify(title_name, chap_label, chap_url)
 
 
 def _do_check():
@@ -68,7 +65,7 @@ def _do_check():
         _is_checking = True
 
     if _tray_icon:
-        _tray_icon.icon = _make_icon_checking()
+        _tray_icon.icon = _make_icon("#f59e0b")
         _tray_icon.title = "ReadingTK — Vérification en cours…"
 
     try:
@@ -84,7 +81,7 @@ def _do_check():
     except Exception as e:
         log.error("Erreur check : %s", e)
         if _tray_icon:
-            _tray_icon.icon = _make_icon_error()
+            _tray_icon.icon = _make_icon("#ef4444")
             _tray_icon.title = "ReadingTK — Erreur lors du dernier check"
     finally:
         with _check_lock:
@@ -96,16 +93,13 @@ def _schedule_next():
     global _check_timer
     if _check_timer:
         _check_timer.cancel()
-    interval_s = _check_interval_minutes * 60
-    _check_timer = threading.Timer(interval_s, _run_check_thread)
+    _check_timer = threading.Timer(_check_interval_minutes * 60, _run_check_thread)
     _check_timer.daemon = True
     _check_timer.start()
-    log.info("Prochain check dans %d minutes", _check_interval_minutes)
 
 
 def _run_check_thread():
-    t = threading.Thread(target=_do_check, daemon=True)
-    t.start()
+    threading.Thread(target=_do_check, daemon=True).start()
 
 
 def _load_settings():
@@ -113,34 +107,19 @@ def _load_settings():
     if not supabase.is_logged_in:
         return
     try:
-        settings = supabase.sync_settings()
-        if settings.get("check_interval"):
-            _check_interval_minutes = int(settings["check_interval"])
-            log.info("Intervalle de check : %d min", _check_interval_minutes)
+        s = supabase.sync_settings()
+        if s.get("check_interval"):
+            _check_interval_minutes = int(s["check_interval"])
     except Exception as e:
         log.warning("Impossible de charger les réglages: %s", e)
 
 
-# ── Menu systray ───────────────────────────────────────────────────────────────
+# ── Dialogs (appelés depuis le thread principal tkinter via root.after) ────────
 
-def _menu_check_now(icon, item):
-    if not supabase.is_logged_in:
-        _show_login()
-        return
-    _run_check_thread()
-
-
-def _menu_open_dashboard(icon, item):
-    webbrowser.open(DASHBOARD_URL)
-
-
-def _show_login():
-    import tkinter as tk
+def _do_show_login():
+    """Exécuté sur le thread principal (tkinter)."""
     from auth_dialog import show_login_dialog
-    root = tk.Tk()
-    root.withdraw()
-    ok = show_login_dialog(root)
-    root.destroy()
+    ok = show_login_dialog(_root)
     if ok:
         log.info("Connexion réussie : %s", supabase.user_id)
         _load_settings()
@@ -150,48 +129,76 @@ def _show_login():
             _tray_icon.update_menu()
 
 
+# ── Callbacks menu systray ─────────────────────────────────────────────────────
+# Les callbacks pystray tournent dans le thread Win32 du systray.
+# Pour tout ce qui touche tkinter, on délègue au thread principal via root.after.
+
+def _menu_check_now(icon, item):
+    if not supabase.is_logged_in:
+        _root.after(0, _do_show_login)
+        return
+    _run_check_thread()
+
+
+def _menu_open_dashboard(icon, item):
+    webbrowser.open(DASHBOARD_URL)
+
+
 def _menu_login(icon, item):
-    _show_login()
+    _root.after(0, _do_show_login)
 
 
 def _menu_logout(icon, item):
     supabase.logout()
     log.info("Déconnecté")
-    if _tray_icon:
-        _tray_icon.update_menu()
     if _check_timer:
         _check_timer.cancel()
+    if _tray_icon:
+        _tray_icon.update_menu()
+
+
+def _do_show_settings():
+    """Exécuté sur le thread principal (tkinter)."""
+    from settings_dialog import show_settings_dialog
+
+    def on_save(settings):
+        global _check_interval_minutes
+        new_interval = settings.get("check_interval", _check_interval_minutes)
+        if new_interval != _check_interval_minutes:
+            _check_interval_minutes = new_interval
+            log.info("Intervalle mis à jour : %d min", _check_interval_minutes)
+            _schedule_next()
+
+    show_settings_dialog(_root, on_save=on_save)
+
+
+def _menu_settings(icon, item):
+    _root.after(0, _do_show_settings)
 
 
 def _menu_startup(icon, item):
-    """Ajoute/retire l'app du démarrage automatique Windows."""
     import winreg
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     app_name = "ReadingTK"
-    exe_path = sys.executable if getattr(sys, "frozen", False) else f'"{sys.executable}" "{os.path.abspath(__file__)}"'
+    exe = sys.executable if getattr(sys, "frozen", False) else f'"{sys.executable}" "{os.path.abspath(__file__)}"'
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_ALL_ACCESS)
         try:
             winreg.QueryValueEx(key, app_name)
-            # Existe → supprimer
             winreg.DeleteValue(key, app_name)
-            log.info("Démarrage automatique désactivé")
         except FileNotFoundError:
-            # N'existe pas → ajouter
-            winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, exe_path)
-            log.info("Démarrage automatique activé")
+            winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, exe)
         winreg.CloseKey(key)
         if _tray_icon:
             _tray_icon.update_menu()
     except Exception as e:
-        log.error("Erreur registre Windows: %s", e)
+        log.error("Erreur registre: %s", e)
 
 
 def _is_startup_enabled() -> bool:
     try:
         import winreg
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                             r"Software\Microsoft\Windows\CurrentVersion\Run")
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run")
         try:
             winreg.QueryValueEx(key, "ReadingTK")
             return True
@@ -207,24 +214,20 @@ def _menu_exit(icon, item):
     if _check_timer:
         _check_timer.cancel()
     icon.stop()
+    # Arrêter la boucle tkinter depuis le thread principal
+    _root.after(0, _root.quit)
 
 
 def _build_menu() -> pystray.Menu:
     return pystray.Menu(
-        pystray.MenuItem(
-            "Vérifier maintenant",
-            _menu_check_now,
-            default=True,
-        ),
-        pystray.MenuItem(
-            "Ouvrir le dashboard",
-            _menu_open_dashboard,
-        ),
+        pystray.MenuItem("Vérifier maintenant", _menu_check_now, default=True),
+        pystray.MenuItem("Ouvrir le dashboard", _menu_open_dashboard),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(
             "Connecté" if supabase.is_logged_in else "Se connecter…",
             _menu_logout if supabase.is_logged_in else _menu_login,
         ),
+        pystray.MenuItem("Paramètres", _menu_settings),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(
             "Démarrer avec Windows",
@@ -239,25 +242,22 @@ def _build_menu() -> pystray.Menu:
 # ── Entrée principale ──────────────────────────────────────────────────────────
 
 def main():
-    global _tray_icon
+    global _tray_icon, _root
 
     log.info("ReadingTK Windows démarré")
 
-    # Connexion au démarrage si pas encore connecté
+    # tkinter sur le thread principal (obligatoire sur Windows / Python 3.14)
+    _root = tk.Tk()
+    _root.withdraw()
+
+    # Connexion au démarrage si nécessaire
     if not supabase.is_logged_in:
-        import tkinter as tk
         from auth_dialog import show_login_dialog
-        root = tk.Tk()
-        root.withdraw()
-        ok = show_login_dialog(root)
-        root.destroy()
-        if not ok:
-            log.warning("Connexion annulée — l'app tourne sans compte")
-    else:
-        log.info("Session existante : %s", supabase.user_id)
+        show_login_dialog(_root)
 
     _load_settings()
 
+    # Lancer pystray dans un thread séparé
     _tray_icon = pystray.Icon(
         name="ReadingTK",
         icon=_make_icon(),
@@ -265,14 +265,19 @@ def main():
         menu=_build_menu(),
     )
 
-    # Lancer un premier check après 5 secondes puis tous les N minutes
+    def run_tray():
+        _tray_icon.run()
+
+    tray_thread = threading.Thread(target=run_tray, daemon=True)
+    tray_thread.start()
+
+    # Premier check après 5 secondes
     if supabase.is_logged_in:
-        startup_timer = threading.Timer(5, _run_check_thread)
-        startup_timer.daemon = True
-        startup_timer.start()
+        threading.Timer(5, _run_check_thread).start()
         _schedule_next()
 
-    _tray_icon.run()
+    # Boucle principale tkinter (bloque jusqu'au quit)
+    _root.mainloop()
 
 
 if __name__ == "__main__":

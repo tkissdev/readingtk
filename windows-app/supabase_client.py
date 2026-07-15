@@ -62,7 +62,14 @@ class SupabaseClient:
     def login(self, email: str, password: str):
         res = requests.post(
             f"{SUPABASE_URL}/auth/v1/token?grant_type=password",
-            headers={"apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json"},
+            headers={
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+                "Content-Type": "application/json",
+                "X-Client-Info": "supabase-js/2.47.10",
+                "Origin": "https://readingtk.net",
+                "Referer": "https://readingtk.net/",
+            },
             json={"email": email, "password": password},
             timeout=15,
         )
@@ -173,6 +180,22 @@ class SupabaseClient:
             return rows[0] if rows else {}
         except Exception:
             return {}
+
+    def save_settings(self, settings: dict):
+        """Sauvegarde les réglages (upsert)."""
+        headers = {
+            **self._headers(),
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates",
+        }
+        body = {"user_id": self.user_id, **settings}
+        res = requests.post(
+            f"{SUPABASE_URL}/rest/v1/user_settings",
+            headers=headers,
+            json=body,
+            timeout=15,
+        )
+        res.raise_for_status()
 
 
 # Singleton utilisé par tous les modules
