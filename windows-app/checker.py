@@ -46,7 +46,7 @@ async def _save_chapter(title_id: str, site_id: str, chap_label: str, chap_url: 
     return {"is_new": is_new, "chapter_id": chapter_id}
 
 
-def run_check(on_new_chapter=None) -> dict:
+def run_check(on_new_chapter=None, on_progress=None) -> dict:
     """
     Vérifie tous les titres de l'utilisateur.
     on_new_chapter(title_name, chap_label, chap_url) — callback appelé pour chaque nouveau chapitre.
@@ -79,8 +79,11 @@ def run_check(on_new_chapter=None) -> dict:
 
     detected = 0
     errors = 0
+    total = len(titles or [])
 
-    for title in (titles or []):
+    for i, title in enumerate(titles or []):
+        if on_progress:
+            on_progress(i + 1, total, title.get("name", "…"))
         sources = sorted(
             [s for s in (title.get("title_sources") or []) if s.get("url")],
             key=lambda s: (s.get("sites") or {}).get("priority") or 0,

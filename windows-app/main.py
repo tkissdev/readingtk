@@ -68,16 +68,27 @@ def _do_check():
         _tray_icon.icon = _make_icon("#f59e0b")
         _tray_icon.title = "ReadingTK — Vérification en cours…"
 
+    def _on_progress(current: int, total: int, title_name: str):
+        if _tray_icon:
+            short = title_name[:30] + "…" if len(title_name) > 30 else title_name
+            _tray_icon.title = f"ReadingTK — {current}/{total} · {short}"
+
     try:
         from checker import run_check
-        result = run_check(on_new_chapter=_on_new_chapter)
+        result = run_check(on_new_chapter=_on_new_chapter, on_progress=_on_progress)
         log.info("Check OK : %d détecté(s), %d erreur(s)", result["detected"], result["errors"])
         if _tray_icon:
             _tray_icon.icon = _make_icon()
-            _tray_icon.title = (
-                f"ReadingTK — Dernier check : {time.strftime('%H:%M')}"
-                + (f" | {result['detected']} nouveau(x)" if result["detected"] else "")
-            )
+            parts = [f"Dernier check : {time.strftime('%H:%M')}"]
+            if result["detected"]:
+                parts.append(f"{result['detected']} nouveau(x)")
+            if result["errors"]:
+                parts.append(f"{result['errors']} erreur(s)")
+            if _check_interval_minutes > 0:
+                h, m = divmod(_check_interval_minutes, 60)
+                interval_str = f"{h}h" if h and not m else f"{m}min" if not h else f"{h}h{m:02d}"
+                parts.append(f"prochain dans {interval_str}")
+            _tray_icon.title = "ReadingTK — " + " · ".join(parts)
     except Exception as e:
         log.error("Erreur check : %s", e)
         if _tray_icon:
