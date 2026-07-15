@@ -1128,6 +1128,34 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
   return { found, errors };
 }
 
+// ── Sync des réglages extension ↔ BDD ─────────────────────────────────────────
+
+async function syncSettingsFromDB(user_id) {
+  try {
+    const rows = await sbGet(
+      `/user_settings?user_id=eq.${user_id}&select=check_interval,browser_notifications,auto_discover`
+    );
+    const s = rows[0];
+    if (!s) return;
+    const toSet = {};
+    if (s.check_interval !== null) toSet.check_interval = s.check_interval;
+    if (s.browser_notifications !== null) toSet.browser_notifications = s.browser_notifications;
+    if (s.auto_discover !== null) toSet.auto_discover = s.auto_discover;
+    if (Object.keys(toSet).length) {
+      await chrome.storage.local.set(toSet);
+      if (toSet.check_interval !== undefined) await setupAlarm();
+    }
+  } catch (e) { console.warn("[RTK] syncSettingsFromDB échoué", e?.message); }
+}
+
+async function saveSettingToDB(key, value) {
+  try {
+    const { user_id } = await chrome.storage.local.get("user_id");
+    if (!user_id) return;
+    await sbPatch(`/user_settings?user_id=eq.${user_id}`, { [key]: value });
+  } catch (e) { console.warn("[RTK] saveSettingToDB échoué", e?.message); }
+}
+
 // ── Alarm ──────────────────────────────────────────────────────────────────────
 
 async function setupAlarm() {
@@ -1157,13 +1185,21 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const data = await res.json();
         if (!res.ok) return sendResponse({ error: data.error_description || data.msg || "Identifiants incorrects" });
         await storeSession(data);
+        const { user_id } = await chrome.storage.local.get("user_id");
+        if (user_id) await syncSettingsFromDB(user_id);
         sendResponse({ ok: true });
       } catch (e) { sendResponse({ error: e.message }); }
     })();
     return true;
   }
   if (msg.type === "LOGIN") {
-    loginViaWebApp().then(sendResponse).catch(e => sendResponse({ error: e.message }));
+    loginViaWebApp().then(async (res) => {
+      if (res?.ok) {
+        const { user_id } = await chrome.storage.local.get("user_id");
+        if (user_id) await syncSettingsFromDB(user_id);
+      }
+      sendResponse(res);
+    }).catch(e => sendResponse({ error: e.message }));
     return true;
   }
   if (msg.type === "LOGOUT") {
@@ -1179,15 +1215,25 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg.type === "SET_INTERVAL") {
-    chrome.storage.local.set({ check_interval: msg.minutes }).then(() => { setupAlarm(); sendResponse({ ok: true }); });
+    chrome.storage.local.set({ check_interval: msg.minutes }).then(() => {
+      setupAlarm();
+      saveSettingToDB("check_interval", msg.minutes);
+      sendResponse({ ok: true });
+    });
     return true;
   }
   if (msg.type === "SET_NOTIFICATIONS") {
-    chrome.storage.local.set({ browser_notifications: msg.enabled }).then(() => sendResponse({ ok: true }));
+    chrome.storage.local.set({ browser_notifications: msg.enabled }).then(() => {
+      saveSettingToDB("browser_notifications", msg.enabled);
+      sendResponse({ ok: true });
+    });
     return true;
   }
   if (msg.type === "SET_AUTO_DISCOVER") {
-    chrome.storage.local.set({ auto_discover: msg.enabled }).then(() => sendResponse({ ok: true }));
+    chrome.storage.local.set({ auto_discover: msg.enabled }).then(() => {
+      saveSettingToDB("auto_discover", msg.enabled);
+      sendResponse({ ok: true });
+    });
     return true;
   }
   if (msg.type === "CHECK_TITLE_NOW") {
@@ -1203,5 +1249,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(setupAlarm);
-chrome.runtime.onStartup.addListener(setupAlarm);
+async function onStartup() {
+  await setupAlarm();
+  const { user_id } = await chrome.storage.local.get("user_id");
+  if (user_id) await syncSettingsFromDB(user_id);
+}
+
+chrome.runtime.onInstalled.addListener(onStartup);
+chrome.runtime.onStartup.addListener(onStartup);
