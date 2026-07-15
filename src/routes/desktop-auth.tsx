@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const searchSchema = z.object({ port: z.coerce.number().optional().default(17832) });
 
-export const Route = createFileRoute("/auth/desktop")({
+export const Route = createFileRoute("/desktop-auth")({
   validateSearch: (s) => searchSchema.parse(s),
   head: () => ({ meta: [{ title: "Connexion app Windows · ReadingTK" }] }),
   component: DesktopAuthPage,

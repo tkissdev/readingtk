@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from supabase_client import supabase
 
 _PORT = 17832
-_DESKTOP_AUTH_URL = f"https://readingtk.net/auth/desktop?port={_PORT}"
+_DESKTOP_AUTH_URL = f"https://readingtk.net/desktop-auth?port={_PORT}"
 
 
 def login_via_browser(on_success=None, on_error=None):
