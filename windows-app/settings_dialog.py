@@ -4,6 +4,7 @@ from tkinter import ttk
 
 
 _INTERVALS = [
+    (0,   "Jamais"),
     (15,  "15 minutes"),
     (30,  "30 minutes"),
     (60,  "1 heure"),

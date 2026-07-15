@@ -93,6 +93,10 @@ def _schedule_next():
     global _check_timer
     if _check_timer:
         _check_timer.cancel()
+        _check_timer = None
+    if _check_interval_minutes <= 0:
+        log.info("Vérification automatique désactivée")
+        return
     _check_timer = threading.Timer(_check_interval_minutes * 60, _run_check_thread)
     _check_timer.daemon = True
     _check_timer.start()
@@ -271,8 +275,8 @@ def main():
     tray_thread = threading.Thread(target=run_tray, daemon=True)
     tray_thread.start()
 
-    # Premier check après 5 secondes
-    if supabase.is_logged_in:
+    # Premier check après 5 secondes (sauf si désactivé)
+    if supabase.is_logged_in and _check_interval_minutes > 0:
         threading.Timer(5, _run_check_thread).start()
         _schedule_next()
 
