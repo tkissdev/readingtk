@@ -1,5 +1,9 @@
-// Lit la session Supabase et la transmet au background de l'extension
-(function () {
+// Garde anti-double injection (Firefox peut injecter le script deux fois sur certaines navigations)
+if (!window.__rtk_content_loaded) {
+  window.__rtk_content_loaded = true;
+
+  // ── Sync session Supabase → background ────────────────────────────────────────
+
   const KEY = "sb-jjjfphkvwtruckxygwal-auth-token";
 
   function syncSession() {
@@ -16,7 +20,6 @@
       }
       console.log("[RTK] Session trouvée, envoi au background...");
 
-      // 1. Écrire directement dans le storage (fonctionne si background déjà actif)
       chrome.storage.local.set({
         access_token: session.access_token,
         refresh_token: session.refresh_token,
@@ -30,7 +33,6 @@
         }
       });
 
-      // 2. Envoyer un message au background (le réveille si inactif et lui transmet la session)
       chrome.runtime.sendMessage({ type: "SESSION_FROM_PAGE", session: session }, () => {
         if (chrome.runtime.lastError) {
           // Normal si le background n'est pas encore prêt
@@ -45,26 +47,25 @@
 
   console.log("[RTK] Content script démarré sur", location.href);
   syncSession();
-  setTimeout(syncSession, 1500);
-})();
 
-// ── Relais de messages entre la page ReadingTK et le background ────────────────
+  // ── Relais de messages entre la page ReadingTK et le background ───────────────
 
-window.addEventListener("message", (event) => {
-  if (event.source !== window) return;
-  if (!event.data || event.data.source !== "readingtk-web") return;
+  window.addEventListener("message", (event) => {
+    if (event.source !== window) return;
+    if (!event.data || event.data.source !== "readingtk-web") return;
 
-  const { requestId, payload } = event.data;
-  chrome.runtime.sendMessage(payload, (response) => {
-    window.postMessage({
-      source: "readingtk-extension",
-      requestId,
-      response: chrome.runtime.lastError
-        ? { error: chrome.runtime.lastError.message }
-        : (response ?? null),
-    }, "*");
+    const { requestId, payload } = event.data;
+    chrome.runtime.sendMessage(payload, (response) => {
+      window.postMessage({
+        source: "readingtk-extension",
+        requestId,
+        response: chrome.runtime.lastError
+          ? { error: chrome.runtime.lastError.message }
+          : (response ?? null),
+      }, "*");
+    });
   });
-});
 
-// Signaler la présence de l'extension à la page web
-window.postMessage({ source: "readingtk-extension", type: "READY" }, "*");
+  // Signaler la présence de l'extension à la page web
+  window.postMessage({ source: "readingtk-extension", type: "READY" }, "*");
+}
