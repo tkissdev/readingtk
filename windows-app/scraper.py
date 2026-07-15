@@ -250,7 +250,7 @@ def _fetch_simple(url: str) -> dict:
     """Fetch HTTP classique (équivalent fetchSilent)."""
     from scrapling.fetchers import Fetcher
     try:
-        resp = Fetcher(auto_match=False).get(url, headers=BASE_HEADERS, timeout=20)
+        resp = Fetcher().get(url, headers=BASE_HEADERS, timeout=20)
     except Exception as e:
         raise ConnectionError(f"Fetch échoué: {e}") from e
 
@@ -389,7 +389,7 @@ def _fetch_stealth(url: str) -> dict:
     """Fetch via Playwright (équivalent fetchViaTab + injectedExtract)."""
     from scrapling.fetchers import StealthyFetcher
     try:
-        page = StealthyFetcher(auto_match=False).get(url, timeout=35000, wait=3000)
+        page = StealthyFetcher().get(url, timeout=35000, wait=3000)
     except Exception as e:
         log.warning("StealthyFetcher échoué pour %s : %s — fallback HTTP", url, e)
         result = _fetch_simple(url)

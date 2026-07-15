@@ -1,4 +1,8 @@
 scrapling[stealth]
+curl_cffi
+patchright
+browserforge
+msgspec
 pystray
 Pillow
 keyring
