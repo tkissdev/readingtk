@@ -636,7 +636,11 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
 
   const updateType = useMutation({
     mutationFn: async (type: string) => {
-      const { error } = await supabase.from("titles").update({ type, type_locked: true }).eq("id", titleId);
+      const currentType = data?.title?.type;
+      const isLocked = (data?.title as { type_locked?: boolean } | null)?.type_locked;
+      // Cliquer sur le type déjà actif déverrouille la détection automatique
+      const willLock = !(currentType === type && isLocked);
+      const { error } = await supabase.from("titles").update({ type, type_locked: willLock }).eq("id", titleId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -879,10 +883,16 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
 
         <div className="mt-6 flex gap-6">
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground">{tr("filter.type")}</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              {tr("filter.type")}
+              {(data.title as { type_locked?: boolean } | null)?.type_locked && (
+                <span className="ml-1.5 text-[10px] text-muted-foreground/60">{tr("drawer.typeLocked")}</span>
+              )}
+            </label>
             <div className="mt-2 flex flex-wrap gap-2">
               {["manga", "manhua", "manhwa", "novel", "autre"].map((ty) => (
                 <button key={ty} onClick={() => updateType.mutate(ty)}
+                  title={data.title?.type === ty && (data.title as { type_locked?: boolean } | null)?.type_locked ? tr("drawer.typeUnlock") : undefined}
                   className={`rounded-full px-3 py-1 text-xs ${data.title?.type === ty ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground hover:bg-secondary"}`}>
                   {typeLabel(tr, ty)}
                 </button>

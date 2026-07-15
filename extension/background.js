@@ -878,7 +878,16 @@ async function runCheck() {
             const found = result?.found ?? parseLastChapter(result?.html ?? "", src.url);
             if (!found) continue;
 
+            const srcPriority = src.sites?.priority ?? 0;
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
+
+            // Vérifier que le chapitre est accessible avant d'écrire en BDD
+            const wouldBeNew = isNaN(found.num) || isNaN(lastRead) ? lastRead < 0 : found.num > lastRead;
+            if (wouldBeNew && !(await validateChapterContent(found.url))) {
+              console.log(`[RTK] Early access ignoré: ${found.url}`);
+              continue;
+            }
+
             // Succès : mettre à jour le chapitre et effacer toute erreur précédente
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
 
@@ -897,13 +906,6 @@ async function runCheck() {
               await sbPatch(`/titles?id=eq.${title.id}`, { type: titleType });
               title.type = titleType;
               bestTypePriority = srcPriority;
-            }
-
-            // Vérifier que le chapitre est accessible (pas early access / paywall)
-            const wouldBeNew = isNaN(found.num) || isNaN(lastRead) ? lastRead < 0 : found.num > lastRead;
-            if (wouldBeNew && !(await validateChapterContent(found.url))) {
-              console.log(`[RTK] Early access ignoré: ${found.url}`);
-              continue;
             }
 
             const { isNew, chapterId } = await saveChapter({
@@ -939,16 +941,16 @@ async function runCheck() {
 
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
 
-            if (newSrc?.id) {
-              await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
-              sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
-            }
-
-            // Vérifier que le chapitre est accessible (pas early access / paywall)
+            // Vérifier que le chapitre est accessible avant d'enregistrer la source
             const wouldBeNew = isNaN(found.num) || isNaN(lastRead) ? lastRead < 0 : found.num > lastRead;
             if (wouldBeNew && !(await validateChapterContent(found.url))) {
               console.log(`[RTK] Early access ignoré (auto-découverte): ${found.url}`);
               continue;
+            }
+
+            if (newSrc?.id) {
+              await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
+              sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
             }
 
             const { isNew, chapterId } = await saveChapter({
@@ -1052,7 +1054,16 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
       const chapter = result?.found ?? parseLastChapter(result?.html ?? "", src.url);
       if (!chapter) continue;
 
+      const srcPriority = src.sites?.priority ?? 0;
       const chapLabel = format === "numeric" ? String(chapter.num) : `Chapter ${chapter.num}`;
+
+      // Vérifier que le chapitre est accessible (pas early access / paywall) avant d'écrire en BDD
+      const wouldBeNewEarly = isNaN(chapter.num) || isNaN(lastRead) ? lastRead < 0 : chapter.num > lastRead;
+      if (wouldBeNewEarly && !(await validateChapterContent(chapter.url))) {
+        console.log(`[RTK] Early access ignoré (checkSingle): ${chapter.url}`);
+        continue;
+      }
+
       await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
 
       const coverUrl = result?.coverUrl ?? parseCoverUrl(result?.html ?? "");
@@ -1064,15 +1075,11 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
       }
 
       const titleType = result?.type ?? parseType(result?.html ?? "");
-      if (titleType && (!title.type || srcPriority > bestTypePriority)) {
+      if (titleType && !title.type_locked && (!title.type || srcPriority > bestTypePriority)) {
         await sbPatch(`/titles?id=eq.${title.id}`, { type: titleType });
         title.type = titleType;
         bestTypePriority = srcPriority;
       }
-
-      // Vérifier que le chapitre est accessible (pas early access / paywall)
-      const wouldBeNew = isNaN(chapter.num) || isNaN(lastRead) ? lastRead < 0 : chapter.num > lastRead;
-      if (wouldBeNew && !(await validateChapterContent(chapter.url))) continue;
 
       await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead, sourceUrl: src.url, publishedAt: chapter.publishedAt });
       if (chapter.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chapter.publishedAt });
@@ -1109,14 +1116,17 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
 
         const chapLabel = format === "numeric" ? String(chap.num) : `Chapter ${chap.num}`;
 
+        // Vérifier que le chapitre est accessible avant d'enregistrer la source
+        const wouldBeNew = isNaN(chap.num) || isNaN(lastRead) ? lastRead < 0 : chap.num > lastRead;
+        if (wouldBeNew && !(await validateChapterContent(chap.url))) {
+          console.log(`[RTK] Early access ignoré (auto-découverte checkSingle): ${chap.url}`);
+          continue;
+        }
+
         if (newSrc?.id) {
           await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
           sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
         }
-
-        // Vérifier que le chapitre est accessible (pas early access / paywall)
-        const wouldBeNew = isNaN(chap.num) || isNaN(lastRead) ? lastRead < 0 : chap.num > lastRead;
-        if (wouldBeNew && !(await validateChapterContent(chap.url))) continue;
 
         await saveChapter({ titleId, siteId: site.id, chapLabel, chapUrl: chap.url, lastRead, sourceUrl: templateUrl, publishedAt: chap.publishedAt });
         if (chap.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chap.publishedAt });
