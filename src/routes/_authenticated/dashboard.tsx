@@ -172,7 +172,7 @@ function Dashboard() {
       }
       if (external.length > 0) qc.invalidateQueries({ queryKey: ["titles"] });
     })();
-  }, [titles?.map((t) => t.id).join(",")]);
+  }, [titles?.map((t) => `${t.id}:${t.cover_url?.includes("supabase.co/storage") ? "" : (t.cover_url ?? "")}`).join("|")]);
 
   // Valeur max : le chapitre le plus élevé détecté parmi toutes les sources
   const lastSeenOf = (t: Title) => {
