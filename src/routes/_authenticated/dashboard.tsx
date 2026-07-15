@@ -634,7 +634,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
 
   const updateType = useMutation({
     mutationFn: async (type: string) => {
-      const { error } = await supabase.from("titles").update({ type }).eq("id", titleId);
+      const { error } = await supabase.from("titles").update({ type, type_locked: true }).eq("id", titleId);
       if (error) throw error;
     },
     onSuccess: () => {

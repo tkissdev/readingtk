@@ -825,7 +825,7 @@ async function runCheck() {
     const notifyInApp = settings[0]?.in_app_notifications_enabled !== false;
 
     const titles = await sbGet(
-      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,type,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
+      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,type,type_locked,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
     );
 
     // Sites globaux avec un template URL (pour l'auto-découverte, si activée)
@@ -893,7 +893,7 @@ async function runCheck() {
 
             // Type : même logique de priorité
             const titleType = result?.type ?? parseType(result?.html ?? "");
-            if (titleType && (!title.type || srcPriority > bestTypePriority)) {
+            if (titleType && !title.type_locked && (!title.type || srcPriority > bestTypePriority)) {
               await sbPatch(`/titles?id=eq.${title.id}`, { type: titleType });
               title.type = titleType;
               bestTypePriority = srcPriority;
@@ -1016,7 +1016,7 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
   const format = settings[0]?.chapter_format === "text" ? "text" : "numeric";
 
   const titles = await sbGet(
-    `/titles?id=eq.${titleId}&select=id,name,type,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
+    `/titles?id=eq.${titleId}&select=id,name,type,type_locked,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
   );
   const title = titles[0];
   if (!title) return { error: "Titre introuvable" };
