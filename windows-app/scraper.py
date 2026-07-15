@@ -389,7 +389,7 @@ def _fetch_stealth(url: str) -> dict:
     """Fetch via Playwright (équivalent fetchViaTab + injectedExtract)."""
     from scrapling.fetchers import StealthyFetcher
     try:
-        page = StealthyFetcher().get(url, timeout=35000, wait=3000)
+        page = StealthyFetcher.fetch(url, timeout=35000, wait=3000)
     except Exception as e:
         log.warning("StealthyFetcher échoué pour %s : %s — fallback HTTP", url, e)
         result = _fetch_simple(url)

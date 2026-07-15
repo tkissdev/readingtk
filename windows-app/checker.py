@@ -22,8 +22,8 @@ def _chapter_label(num: float, fmt: str) -> str:
     return str(num) if fmt == "numeric" else f"Chapter {num}"
 
 
-async def _save_chapter(title_id: str, site_id: str, chap_label: str, chap_url: str,
-                        last_read: float, source_url: str) -> dict:
+def _save_chapter(title_id: str, site_id: str, chap_label: str, chap_url: str,
+                  last_read: float, source_url: str) -> dict:
     """Upsert d'un chapitre. Retourne {'is_new': bool, 'chapter_id': str|None}."""
     existing = supabase.get(
         f"/chapters?title_id=eq.{title_id}&chapter_url=eq.{chap_url}&select=id,chapter_label"
