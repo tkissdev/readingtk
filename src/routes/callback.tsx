@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n";
+
+const DESKTOP_PORT_KEY = "desktopAuthPort";
 
 export const Route = createFileRoute("/callback")({
   ssr: false,
@@ -11,30 +13,74 @@ export const Route = createFileRoute("/callback")({
 function AuthCallback() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const [desktopStatus, setDesktopStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
 
   useEffect(() => {
-    // Supabase automatically consumes the token from the URL hash on init.
-    // We just need to wait for the session to be ready.
+    const desktopPort = sessionStorage.getItem(DESKTOP_PORT_KEY);
+
+    const handleSession = async (session: object) => {
+      if (desktopPort) {
+        sessionStorage.removeItem(DESKTOP_PORT_KEY);
+        setDesktopStatus("sending");
+        try {
+          await fetch(`http://localhost:${desktopPort}/session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(session),
+          });
+          setDesktopStatus("done");
+        } catch {
+          setDesktopStatus("error");
+        }
+      } else {
+        navigate({ to: "/dashboard", replace: true });
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         subscription.unsubscribe();
-        navigate({ to: "/dashboard", replace: true });
+        handleSession(session);
       } else if (event === "SIGNED_OUT") {
         subscription.unsubscribe();
         navigate({ to: "/auth", replace: true });
       }
     });
 
-    // Also check immediately in case already signed in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         subscription.unsubscribe();
-        navigate({ to: "/dashboard", replace: true });
+        handleSession(session);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  if (desktopStatus === "done") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background" style={{ backgroundImage: "var(--gradient-hero)" }}>
+        <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card/80 p-8 backdrop-blur text-center" style={{ boxShadow: "var(--shadow-card)" }}>
+          <div className="mb-4 flex justify-center">
+            <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 140, height: "auto", mixBlendMode: "lighten" }} />
+          </div>
+          <div className="text-4xl mb-3">✓</div>
+          <h1 className="text-xl font-semibold mb-2">Connecté !</h1>
+          <p className="text-sm text-muted-foreground">Vous pouvez fermer cet onglet et revenir à l'application Windows.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (desktopStatus === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background" style={{ backgroundImage: "var(--gradient-hero)" }}>
+        <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card/80 p-8 backdrop-blur text-center" style={{ boxShadow: "var(--shadow-card)" }}>
+          <p className="text-sm text-destructive">Impossible de contacter l'application Windows. Assurez-vous qu'elle est lancée et réessayez.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
