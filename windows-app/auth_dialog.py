@@ -1,72 +1,92 @@
-"""Fenêtre de connexion Supabase (tkinter)."""
+"""Fenêtre de connexion — ouvre readingtk.net/desktop-auth dans le vrai navigateur."""
+import queue
 import tkinter as tk
-from tkinter import messagebox
-from supabase_client import supabase
 
 
 def show_login_dialog(parent=None) -> bool:
     """
-    Affiche la fenêtre de connexion.
-    Retourne True si l'utilisateur s'est connecté avec succès.
+    Affiche une fenêtre d'attente pendant que l'utilisateur se connecte
+    dans le navigateur. Retourne True si la connexion a réussi.
     """
+    from browser_auth import login_via_browser
+
     result = {"ok": False}
+    msg_queue: queue.Queue = queue.Queue()
 
     win = tk.Toplevel(parent) if parent else tk.Tk()
     win.title("ReadingTK — Connexion")
     win.resizable(False, False)
     win.attributes("-topmost", True)
 
-    # Centrer la fenêtre
+    w, h = 380, 220
     win.update_idletasks()
-    w, h = 340, 240
     x = (win.winfo_screenwidth() - w) // 2
     y = (win.winfo_screenheight() - h) // 2
     win.geometry(f"{w}x{h}+{x}+{y}")
 
-    frame = tk.Frame(win, padx=24, pady=20)
+    frame = tk.Frame(win, padx=28, pady=22)
     frame.pack(fill="both", expand=True)
 
-    tk.Label(frame, text="ReadingTK", font=("Segoe UI", 14, "bold")).pack(pady=(0, 4))
-    tk.Label(frame, text="Connectez-vous à votre compte", font=("Segoe UI", 9), fg="#666").pack(pady=(0, 16))
+    tk.Label(frame, text="ReadingTK", font=("Segoe UI", 15, "bold"), fg="#6366f1").pack()
+    tk.Label(frame, text="Connexion via votre navigateur", font=("Segoe UI", 9), fg="#666").pack(pady=(2, 18))
 
-    tk.Label(frame, text="Email", font=("Segoe UI", 9), anchor="w").pack(fill="x")
-    email_var = tk.StringVar()
-    email_entry = tk.Entry(frame, textvariable=email_var, font=("Segoe UI", 10))
-    email_entry.pack(fill="x", pady=(2, 8))
+    status_var = tk.StringVar(value="")
+    status_label = tk.Label(frame, textvariable=status_var, font=("Segoe UI", 9), fg="#666", wraplength=320)
+    status_label.pack(pady=(0, 12))
 
-    tk.Label(frame, text="Mot de passe", font=("Segoe UI", 9), anchor="w").pack(fill="x")
-    pwd_var = tk.StringVar()
-    pwd_entry = tk.Entry(frame, textvariable=pwd_var, show="•", font=("Segoe UI", 10))
-    pwd_entry.pack(fill="x", pady=(2, 16))
+    btn_frame = tk.Frame(frame)
+    btn_frame.pack()
 
-    err_label = tk.Label(frame, text="", font=("Segoe UI", 8), fg="red")
-    err_label.pack()
-
-    def do_login(event=None):
-        email = email_var.get().strip()
-        pwd = pwd_var.get()
-        if not email or not pwd:
-            err_label.config(text="Email et mot de passe requis.")
-            return
-        btn.config(state="disabled", text="Connexion…")
-        win.update()
+    def _poll():
+        """Vérifie la queue toutes les 200ms depuis le thread principal."""
         try:
-            supabase.login(email, pwd)
-            result["ok"] = True
-            win.destroy()
-        except Exception as e:
-            err_label.config(text=str(e))
-            btn.config(state="normal", text="Se connecter")
+            msg = msg_queue.get_nowait()
+            if msg["type"] == "success":
+                result["ok"] = True
+                win.destroy()
+            else:
+                status_var.set(f"Erreur : {msg['error']}")
+                status_label.config(fg="red")
+                open_btn.config(state="normal", text="Réessayer")
+        except queue.Empty:
+            if win.winfo_exists():
+                win.after(200, _poll)
 
-    btn = tk.Button(frame, text="Se connecter", command=do_login,
-                    font=("Segoe UI", 10), bg="#6366f1", fg="white",
-                    activebackground="#4f46e5", activeforeground="white",
-                    relief="flat", cursor="hand2")
-    btn.pack(fill="x")
+    def on_success():
+        msg_queue.put({"type": "success"})
 
-    email_entry.focus()
-    pwd_entry.bind("<Return>", do_login)
-    email_entry.bind("<Return>", lambda e: pwd_entry.focus())
+    def on_error(msg):
+        msg_queue.put({"type": "error", "error": msg})
+
+    def open_browser():
+        open_btn.config(state="disabled", text="En attente…")
+        status_var.set("Un formulaire s'est ouvert dans votre navigateur.\nConnectez-vous, puis revenez ici.")
+        status_label.config(fg="#555")
+        login_via_browser(on_success=on_success, on_error=on_error)
+        win.after(200, _poll)
+
+    open_btn = tk.Button(
+        btn_frame, text="Se connecter",
+        command=open_browser,
+        font=("Segoe UI", 11),
+        bg="#6366f1", fg="white",
+        activebackground="#4f46e5", activeforeground="white",
+        relief="flat", cursor="hand2",
+        padx=20, pady=6,
+    )
+    open_btn.pack(side="left", padx=4)
+
+    cancel_btn = tk.Button(
+        btn_frame, text="Annuler",
+        command=win.destroy,
+        font=("Segoe UI", 11),
+        relief="flat", cursor="hand2",
+        padx=16, pady=6,
+    )
+    cancel_btn.pack(side="left", padx=4)
+
+    # Démarrer automatiquement
+    win.after(200, open_browser)
 
     if parent:
         parent.wait_window(win)
