@@ -497,6 +497,8 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   const [editSrcId, setEditSrcId] = useState<string | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [editLastSeen, setEditLastSeen] = useState("");
+  const [editingDetected, setEditingDetected] = useState(false);
+  const [editDetectedValue, setEditDetectedValue] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState("");
   const [autoDiscover, setAutoDiscover] = useState(false);
@@ -936,18 +938,66 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
             return (
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold">{tr("drawer.detectedPrefix")}<span className="text-accent">{selectedLabel}</span></h3>
-                  <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(data.title!.name + " " + selectedLabel)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={tr("drawer.googleSearchChap")}
-                    className="rounded p-1 text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
-                      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/>
-                    </svg>
-                  </a>
+                  {editingDetected ? (
+                    <>
+                      <h3 className="text-sm font-semibold shrink-0">{tr("drawer.detectedPrefix")}</h3>
+                      <input
+                        type="number"
+                        className="w-24 rounded border border-border bg-background px-2 py-0.5 text-sm text-accent"
+                        value={editDetectedValue}
+                        onChange={(e) => setEditDetectedValue(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") {
+                            const newVal = editDetectedValue.trim() || null;
+                            await supabase.from("title_sources")
+                              .update({ last_seen_chapter: newVal })
+                              .in("id", sourceValues.map(x => (x.source as { id: string }).id).filter(id => {
+                                const src = sourceValues.find(x => (x.source as { id: string }).id === id);
+                                return src && src.num === selectedNum;
+                              }));
+                            setEditingDetected(false);
+                            qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                            qc.invalidateQueries({ queryKey: ["titles"] });
+                          }
+                          if (e.key === "Escape") setEditingDetected(false);
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={async () => {
+                          const newVal = editDetectedValue.trim() || null;
+                          await supabase.from("title_sources")
+                            .update({ last_seen_chapter: newVal })
+                            .in("id", sourceValues.filter(x => x.num === selectedNum).map(x => (x.source as { id: string }).id));
+                          setEditingDetected(false);
+                          qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                          qc.invalidateQueries({ queryKey: ["titles"] });
+                        }}
+                        className="rounded p-1 text-xs text-accent hover:bg-secondary/60 transition font-semibold">✓</button>
+                      <button onClick={() => setEditingDetected(false)} className="rounded p-1 text-xs text-muted-foreground hover:bg-secondary/60 transition">✕</button>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-sm font-semibold">{tr("drawer.detectedPrefix")}<span className="text-accent">{selectedLabel}</span></h3>
+                      <button
+                        onClick={() => { setEditDetectedValue(selectedLabel); setEditingDetected(true); }}
+                        title={tr("drawer.editDetected")}
+                        className="rounded p-1 text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition">
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(data.title!.name + " " + selectedLabel)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={tr("drawer.googleSearchChap")}
+                        className="rounded p-1 text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                          <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/>
+                        </svg>
+                      </a>
+                    </>
+                  )}
                 </div>
                 <div className="mt-2 space-y-1">
                   {links.map((link) => (
