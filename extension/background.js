@@ -817,15 +817,13 @@ async function runCheck() {
             // Succès : mettre à jour le chapitre et effacer toute erreur précédente
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
 
-            // Couverture : la source avec la priorité la plus haute a autorité
-            const srcPriority = src.sites?.priority ?? 0;
+            // Couverture : seulement si le titre n'en a pas encore
             const coverUrl = result?.coverUrl ?? parseCoverUrl(result?.html ?? "");
-            if (coverUrl && (!title.cover_url || srcPriority > bestCoverPriority)) {
+            if (coverUrl && !title.cover_url) {
               const storedUrl = await uploadCoverToStorage(coverUrl, title.id, user_id);
               const finalCoverUrl = storedUrl || coverUrl;
               await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: finalCoverUrl });
               title.cover_url = finalCoverUrl;
-              bestCoverPriority = srcPriority;
             }
 
             // Type : même logique de priorité
@@ -978,14 +976,12 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
       const chapLabel = format === "numeric" ? String(chapter.num) : `Chapter ${chapter.num}`;
       await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
 
-      const srcPriority = src.sites?.priority ?? 0;
       const coverUrl = result?.coverUrl ?? parseCoverUrl(result?.html ?? "");
-      if (coverUrl && (!title.cover_url || srcPriority > bestCoverPriority)) {
+      if (coverUrl && !title.cover_url) {
         const storedUrl = await uploadCoverToStorage(coverUrl, title.id, user_id);
         const finalCoverUrl = storedUrl || coverUrl;
         await sbPatch(`/titles?id=eq.${title.id}`, { cover_url: finalCoverUrl });
         title.cover_url = finalCoverUrl;
-        bestCoverPriority = srcPriority;
       }
 
       const titleType = result?.type ?? parseType(result?.html ?? "");

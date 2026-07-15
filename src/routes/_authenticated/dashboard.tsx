@@ -155,6 +155,25 @@ function Dashboard() {
     },
   });
 
+  // Migration silencieuse : cache les couvertures encore sur des sites externes
+  useEffect(() => {
+    if (!titles) return;
+    const external = titles.filter(
+      (t) => t.cover_url && !t.cover_url.includes("supabase.co/storage")
+    );
+    if (!external.length) return;
+    (async () => {
+      for (const t of external) {
+        try {
+          await supabase.functions.invoke("cache-cover", {
+            body: { imageUrl: t.cover_url, titleId: t.id },
+          });
+        } catch { /* silencieux */ }
+      }
+      if (external.length > 0) qc.invalidateQueries({ queryKey: ["titles"] });
+    })();
+  }, [titles?.map((t) => t.id).join(",")]);
+
   // Valeur max : le chapitre le plus élevé détecté parmi toutes les sources
   const lastSeenOf = (t: Title) => {
     const nums = (t.title_sources || []).map((s) => parseFloat(s.last_seen_chapter ?? "")).filter((n) => !isNaN(n));
