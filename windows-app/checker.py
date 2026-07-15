@@ -125,6 +125,11 @@ def run_check(on_new_chapter=None, on_progress=None) -> dict:
                     if result.get("html"):
                         found = parse_last_chapter(result["html"], src["url"])
                 if not found:
+                    log.warning("[%s] Aucun chapitre trouvé sur %s (needs_tab=%s)",
+                                title.get("name"), src["url"], needs_tab)
+                    supabase.patch(f"/title_sources?id=eq.{src['id']}",
+                                   {"last_error": "no_chapter_found"})
+                    errors += 1
                     continue
 
                 chap_label = _chapter_label(found["num"], fmt)

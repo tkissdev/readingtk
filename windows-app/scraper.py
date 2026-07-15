@@ -391,9 +391,11 @@ def _fetch_stealth(url: str) -> dict:
     try:
         page = StealthyFetcher(auto_match=False).get(url, timeout=35000, wait=3000)
     except Exception as e:
-        log.warning("StealthyFetcher échoué pour %s : %s", url, e)
-        # Fallback sur fetch simple
-        return _fetch_simple(url)
+        log.warning("StealthyFetcher échoué pour %s : %s — fallback HTTP", url, e)
+        result = _fetch_simple(url)
+        if not result.get("found"):
+            log.warning("Fallback HTTP aussi sans résultat pour %s (site probablement JS-only)", url)
+        return result
 
     final_url = getattr(page, "url", url)
     if is_redirected_away(url, str(final_url)):
