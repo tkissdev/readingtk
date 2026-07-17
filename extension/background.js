@@ -775,6 +775,20 @@ async function validateChapterContent(url) {
     if (!res.ok) return true; // inaccessible → ne pas bloquer
     const html = await res.text();
 
+    // Vérifier d'abord les mots-clés paywall/login (priorité absolue)
+    const bodyLower = html.toLowerCase();
+    const paywallKeywords = [
+      "early access", "subscribe to read", "unlock chapter", "premium chapter",
+      "members only", "vip chapter", "patreon", "ko-fi", "supporter only",
+      "accès anticipé", "chapitre réservé", "abonnés", "débloquer",
+      "log in to continue", "sign in to read", "login to read",
+      "sign in to continue", "register to read", "sign in to access",
+      "you're trying to read",
+      // vortexscans et sites avec pièces / timer
+      "please login to unlock", "waiting to be unlocked", "free after",
+    ];
+    if (paywallKeywords.some(kw => bodyLower.includes(kw))) return false;
+
     // Compter les images (src + attributs lazy-load courants)
     const imgRe = /(?:src|data-src|data-lazy|data-lazy-src|data-original|data-cfsrc)=["']([^"']{10,})["']/gi;
     const images = new Set();
@@ -784,15 +798,6 @@ async function validateChapterContent(url) {
       if (/\.(jpg|jpeg|png|webp|gif)/i.test(val)) images.add(val);
     }
     if (images.size >= MIN_IMAGES) return true;
-
-    // Peu d'images → vérifier la présence d'un paywall explicite
-    const bodyLower = html.toLowerCase();
-    const paywallKeywords = [
-      "early access", "subscribe to read", "unlock chapter", "premium chapter",
-      "members only", "vip chapter", "patreon", "ko-fi", "supporter only",
-      "accès anticipé", "chapitre réservé", "abonnés", "débloquer",
-    ];
-    if (paywallKeywords.some(kw => bodyLower.includes(kw))) return false;
 
     // Peu d'images mais pas de paywall explicite → peut-être rendu JS, ne pas bloquer
     return true;

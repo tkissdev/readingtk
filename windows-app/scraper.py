@@ -201,9 +201,15 @@ def is_redirected_away(original_url: str, final_url: str) -> bool:
         norm = lambda h: re.sub(r"^www\.", "", h)
         if norm(orig.hostname or "") != norm(final.hostname or ""):
             return True
-        orig_depth = len([p for p in orig.path.rstrip("/").split("/") if p])
-        final_depth = len([p for p in final.path.rstrip("/").split("/") if p])
+        orig_parts = [p for p in orig.path.rstrip("/").split("/") if p]
+        final_parts = [p for p in final.path.rstrip("/").split("/") if p]
+        orig_depth = len(orig_parts)
+        final_depth = len(final_parts)
         if orig_depth >= 2 and final_depth <= 1:
+            return True
+        # Redirection vers une page de niveau supérieur sur le même site :
+        # ex. /chapter/slug/ch-2227 → /manga/slug (le premier segment du chemin change)
+        if orig_depth >= 3 and final_depth <= 2 and orig_parts and final_parts and orig_parts[0] != final_parts[0]:
             return True
     except Exception:
         pass
@@ -221,6 +227,21 @@ def is_soft_404(html: str, page_title: str = "") -> bool:
 
 def validate_chapter_content(html: str) -> bool:
     """Détecte early access / paywall. Port de validateChapterContent() JS."""
+    body_l = html.lower()
+    paywall_kw = [
+        "early access", "subscribe to read", "unlock chapter", "premium chapter",
+        "members only", "vip chapter", "patreon", "ko-fi", "supporter only",
+        "accès anticipé", "chapitre réservé", "abonnés", "débloquer",
+        # pages de login / abonnement
+        "log in to continue", "sign in to read", "login to read",
+        "sign in to continue", "register to read", "sign in to access",
+        "you're trying to read",
+        # vortexscans et sites avec pièces / timer
+        "please login to unlock", "waiting to be unlocked", "free after",
+    ]
+    if any(kw in body_l for kw in paywall_kw):
+        return False
+
     img_re = re.compile(
         r'(?:src|data-src|data-lazy|data-lazy-src|data-original|data-cfsrc)=["\']([^"\']{10,})["\']',
         re.IGNORECASE,
@@ -233,14 +254,6 @@ def validate_chapter_content(html: str) -> bool:
     if len(images) >= 3:
         return True
 
-    body_l = html.lower()
-    paywall_kw = [
-        "early access", "subscribe to read", "unlock chapter", "premium chapter",
-        "members only", "vip chapter", "patreon", "ko-fi", "supporter only",
-        "accès anticipé", "chapitre réservé", "abonnés", "débloquer",
-    ]
-    if any(kw in body_l for kw in paywall_kw):
-        return False
     return True
 
 

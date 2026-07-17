@@ -23,7 +23,7 @@ def _chapter_label(num: float, fmt: str) -> str:
 
 
 def _save_chapter(title_id: str, site_id: str, chap_label: str, chap_url: str,
-                  last_read: float, source_url: str) -> dict:
+                  last_read: float) -> dict:
     """Upsert d'un chapitre. Retourne {'is_new': bool, 'chapter_id': str|None}."""
     existing = supabase.get(
         f"/chapters?title_id=eq.{title_id}&chapter_url=eq.{chap_url}&select=id,chapter_label"
@@ -39,7 +39,6 @@ def _save_chapter(title_id: str, site_id: str, chap_label: str, chap_url: str,
         "site_id": site_id,
         "chapter_label": chap_label,
         "chapter_url": chap_url,
-        "source_url": source_url,
         "detected_at": datetime.utcnow().isoformat(),
     })
     chapter_id = rows[0]["id"] if rows else None
@@ -172,7 +171,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None) -> dict:
                 save_result = _save_chapter(
                     title_id=title["id"], site_id=src["site_id"],
                     chap_label=chap_label, chap_url=found["url"],
-                    last_read=last_read, source_url=src["url"],
+                    last_read=last_read,
                 )
                 if save_result["is_new"] and found["num"] > last_read:
                     new_chapters.append({"num": found["num"], "label": chap_label, "url": found["url"]})
@@ -228,7 +227,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None) -> dict:
                     save_result = _save_chapter(
                         title_id=title["id"], site_id=site["id"],
                         chap_label=chap_label, chap_url=found["url"],
-                        last_read=last_read, source_url=template_url,
+                        last_read=last_read,
                     )
                     if save_result["is_new"] and found["num"] > last_read:
                         new_chapters.append({"num": found["num"], "label": chap_label, "url": found["url"]})
