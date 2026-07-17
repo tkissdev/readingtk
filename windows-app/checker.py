@@ -45,9 +45,11 @@ def _save_chapter(title_id: str, site_id: str, chap_label: str, chap_url: str,
     return {"is_new": is_new, "chapter_id": chapter_id}
 
 
-def run_check(on_new_chapter=None, on_progress=None, stop_event=None) -> dict:
+def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
+              title_id: str | None = None, auto_discover_override: bool | None = None) -> dict:
     """
-    Vérifie tous les titres de l'utilisateur.
+    Vérifie les titres de l'utilisateur.
+    title_id — si fourni, ne vérifie que ce titre (utilisé par le serveur local).
     on_new_chapter(title_name, chap_label, chap_url) — callback appelé pour chaque nouveau chapitre.
     stop_event — threading.Event optionnel ; si set(), arrête la boucle proprement.
     Retourne {'detected': int, 'errors': int}.
@@ -62,10 +64,15 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None) -> dict:
     )
     settings = settings_rows[0] if settings_rows else {}
     fmt = "numeric" if settings.get("chapter_format") != "text" else "text"
-    auto_discover = bool(settings.get("auto_discover", False))
+    auto_discover = (
+        auto_discover_override
+        if auto_discover_override is not None
+        else bool(settings.get("auto_discover", False))
+    )
 
+    title_filter = f"&id=eq.{title_id}" if title_id else ""
     titles = supabase.get(
-        f"/titles?user_id=eq.{uid}&status=neq.dropped"
+        f"/titles?user_id=eq.{uid}&status=neq.dropped{title_filter}"
         f"&select=id,name,type,type_locked,cover_url,"
         f"title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))"
     )

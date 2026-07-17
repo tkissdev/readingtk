@@ -470,6 +470,23 @@ function FilterGroup({ label, value, options, onChange, labelFn }: { label: stri
 
 // ── Title Drawer ───────────────────────────────────────────────────────────────
 
+// Tente de déclencher un check via l'app Windows locale (port 7842)
+async function tryWindowsApp(titleId: string, autoDiscover: boolean): Promise<boolean> {
+  try {
+    const res = await fetch("http://127.0.0.1:7842/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title_id: titleId, auto_discover: autoDiscover }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.status === "started";
+  } catch {
+    return false;
+  }
+}
+
 // Envoie un message au background de l'extension via le content script relay
 function sendToExtension(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   return new Promise((resolve) => {
@@ -805,15 +822,20 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                       e.stopPropagation();
                       setScraping(true);
                       try {
-                        const res = await sendToExtension({ type: "CHECK_TITLE_NOW", titleId, autoDiscover });
-                        if (res?.error) {
-                          toast.error(res.error === "Extension non disponible"
-                            ? tr("drawer.extUnavailable")
-                            : String(res.error));
-                        } else {
+                        const usedWindowsApp = await tryWindowsApp(titleId, autoDiscover);
+                        if (usedWindowsApp) {
                           toast.success(tr("drawer.scrapeDone"));
-                          qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
-                          qc.invalidateQueries({ queryKey: ["titles"] });
+                        } else {
+                          const res = await sendToExtension({ type: "CHECK_TITLE_NOW", titleId, autoDiscover });
+                          if (res?.error) {
+                            toast.error(res.error === "Extension non disponible"
+                              ? tr("drawer.extUnavailable")
+                              : String(res.error));
+                          } else {
+                            toast.success(tr("drawer.scrapeDone"));
+                            qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                            qc.invalidateQueries({ queryKey: ["titles"] });
+                          }
                         }
                       } finally {
                         setScraping(false);

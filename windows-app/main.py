@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 
 from supabase_client import supabase, DASHBOARD_URL
 from notifier import notify
+import server as local_server
 
 log = logging.getLogger("rtk")
 logging.basicConfig(
@@ -314,6 +315,16 @@ def main():
         show_login_dialog(_root)
 
     _load_settings()
+
+    # Serveur HTTP local (dashboard → app Windows)
+    def _local_check(title_id: str | None, auto_discover: bool):
+        from checker import run_check
+        run_check(
+            on_new_chapter=_on_new_chapter,
+            title_id=title_id,
+            auto_discover_override=auto_discover if title_id else None,
+        )
+    local_server.start(check_callback=_local_check)
 
     # Lancer pystray dans un thread séparé
     _initial_icon = _make_icon() if supabase.is_logged_in else _make_icon("#ef4444")

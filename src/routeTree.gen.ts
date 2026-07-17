@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
+import { Route as DesktopAuthRouteImport } from './routes/desktop-auth'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -38,6 +39,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
 const ExtensionsRoute = ExtensionsRouteImport.update({
   id: '/extensions',
   path: '/extensions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesktopAuthRoute = DesktopAuthRouteImport.update({
+  id: '/desktop-auth',
+  path: '/desktop-auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CallbackRoute = CallbackRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
+  '/desktop-auth': typeof DesktopAuthRoute
   '/extensions': typeof ExtensionsRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
+  '/desktop-auth': typeof DesktopAuthRoute
   '/extensions': typeof ExtensionsRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
+  '/desktop-auth': typeof DesktopAuthRoute
   '/extensions': typeof ExtensionsRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/callback'
+    | '/desktop-auth'
     | '/extensions'
     | '/how-it-works'
     | '/privacy'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/callback'
+    | '/desktop-auth'
     | '/extensions'
     | '/how-it-works'
     | '/privacy'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/callback'
+    | '/desktop-auth'
     | '/extensions'
     | '/how-it-works'
     | '/privacy'
@@ -208,6 +220,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   CallbackRoute: typeof CallbackRoute
+  DesktopAuthRoute: typeof DesktopAuthRoute
   ExtensionsRoute: typeof ExtensionsRoute
   HowItWorksRoute: typeof HowItWorksRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/extensions'
       fullPath: '/extensions'
       preLoaderRoute: typeof ExtensionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/desktop-auth': {
+      id: '/desktop-auth'
+      path: '/desktop-auth'
+      fullPath: '/desktop-auth'
+      preLoaderRoute: typeof DesktopAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/callback': {
@@ -353,6 +373,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   CallbackRoute: CallbackRoute,
+  DesktopAuthRoute: DesktopAuthRoute,
   ExtensionsRoute: ExtensionsRoute,
   HowItWorksRoute: HowItWorksRoute,
   PrivacyRoute: PrivacyRoute,
