@@ -10,16 +10,22 @@
   <!-- Écran de connexion -->
   <div id="screen-login" class="screen hidden">
     <div class="logo">ReadingTK</div>
-    <p class="subtitle">Connectez-vous à votre compte</p>
-    <div class="form-group">
-      <input type="email" id="login-email" class="input" placeholder="Email" autocomplete="email" />
+    <p class="subtitle">Connectez-vous pour suivre vos mangas et recevoir des notifications de nouveaux chapitres.</p>
+
+    <div id="login-initial">
+      <button id="login-btn" class="btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Se connecter avec ReadingTK
+      </button>
     </div>
-    <div class="form-group">
-      <input type="password" id="login-password" class="input" placeholder="Mot de passe" autocomplete="current-password" />
+
+    <div id="login-waiting" class="hidden">
+      <p class="waiting-msg">Connectez-vous sur readingtk.net, puis cliquez sur le bouton ci-dessous.</p>
+      <button id="login-done-btn" class="btn-primary">J'ai terminé →</button>
+      <button id="login-cancel-btn" class="btn-link">Annuler</button>
     </div>
-    <button id="sign-in-btn" class="btn-primary">Se connecter</button>
+
     <div id="login-error" class="error hidden"></div>
-    <button id="login-btn" class="btn-link">Connexion via readingtk.net</button>
   </div>
 
   <!-- Écran principal -->

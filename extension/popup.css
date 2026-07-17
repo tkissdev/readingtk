@@ -223,11 +223,20 @@ select:focus { border-color: #6366f1; }
   background: #fff;
 }
 
-/* Form group */
-.form-group {
+/* Waiting message */
+.waiting-msg {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.5;
+  text-align: center;
+  padding: 4px 0;
+}
+
+/* Login waiting section */
+#login-waiting {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 10px;
 }
 
 /* Link button */

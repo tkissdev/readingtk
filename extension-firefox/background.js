@@ -64,38 +64,39 @@ function findReadingTKTab() {
   });
 }
 
-async function loginViaWebApp() {
-  // 1. Chercher un onglet readingtk.net déjà ouvert
+async function loginOpen() {
+  // Chercher un onglet readingtk.net déjà ouvert avec une session active
   const existing = await findReadingTKTab();
-
   if (existing) {
     const session = await extractSessionFromTab(existing.id);
     if (session?.access_token) {
       await storeSession(session);
+      const stored = await storageGet("user_id");
+      if (stored.user_id) await syncSettingsFromDB(stored.user_id);
       return { ok: true };
     }
-    // Onglet trouvé mais pas de session — le mettre en avant sans ouvrir de nouvel onglet
-    chrome.tabs.update(existing.id, { active: true });
-    return { error: "Connectez-vous sur readingtk.net, puis réessayez." };
   }
+  // Ouvrir readingtk.net pour que l'utilisateur se connecte
+  chrome.tabs.create({ url: `${SITE_URL}/dashboard` });
+  return { opened: true };
+}
 
-  // 2. Aucun onglet readingtk.net — en ouvrir un et attendre le chargement
+async function loginCheck() {
+  // Chercher tous les onglets readingtk.net (il peut y en avoir plusieurs)
   return new Promise((resolve) => {
-    chrome.tabs.create({ url: `${SITE_URL}/dashboard` }, (tab) => {
-      const listener = (tabId, changeInfo) => {
-        if (tabId !== tab.id || changeInfo.status !== "complete") return;
-        chrome.tabs.onUpdated.removeListener(listener);
-
-        extractSessionFromTab(tabId).then(async (session) => {
-          if (session?.access_token) {
-            await storeSession(session);
-            resolve({ ok: true });
-          } else {
-            resolve({ error: "Pas de session trouvée. Connectez-vous sur readingtk.net d'abord." });
-          }
-        });
-      };
-      chrome.tabs.onUpdated.addListener(listener);
+    chrome.tabs.query({}, async (allTabs) => {
+      const rtkTabs = (allTabs || []).filter(t => t.url && t.url.includes("readingtk.net"));
+      for (const tab of rtkTabs) {
+        const session = await extractSessionFromTab(tab.id);
+        if (session?.access_token) {
+          await storeSession(session);
+          const stored = await storageGet("user_id");
+          if (stored.user_id) await syncSettingsFromDB(stored.user_id);
+          resolve({ ok: true });
+          return;
+        }
+      }
+      resolve({ error: "Pas de session trouvée. Connectez-vous sur readingtk.net puis réessayez." });
     });
   });
 }
@@ -1228,32 +1229,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
     return true;
   }
-  if (msg.type === "SIGN_IN") {
-    (async () => {
-      try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-          method: "POST",
-          headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
-          body: JSON.stringify({ email: msg.email, password: msg.password }),
-        });
-        const data = await res.json();
-        if (!res.ok) return sendResponse({ error: data.error_description || data.msg || "Identifiants incorrects" });
-        await storeSession(data);
-        const { user_id } = await storageGet("user_id");
-        if (user_id) await syncSettingsFromDB(user_id);
-        sendResponse({ ok: true });
-      } catch (e) { sendResponse({ error: e.message }); }
-    })();
+  if (msg.type === "LOGIN_OPEN") {
+    loginOpen().then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;
   }
-  if (msg.type === "LOGIN") {
-    loginViaWebApp().then(async (res) => {
-      if (res?.ok) {
-        const { user_id } = await storageGet("user_id");
-        if (user_id) await syncSettingsFromDB(user_id);
-      }
-      sendResponse(res);
-    }).catch(e => sendResponse({ error: e.message }));
+  if (msg.type === "LOGIN_CHECK") {
+    loginCheck().then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;
   }
   if (msg.type === "LOGOUT") {
