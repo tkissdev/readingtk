@@ -77,6 +77,16 @@ function stopPolling() {
 
 // ── Login (via readingtk.net) ──────────────────────────────────────────────────
 
+function resetLoginScreen() {
+  $("login-btn").disabled = false;
+  $("login-btn").textContent = "Se connecter avec ReadingTK";
+  $("login-done-btn").disabled = false;
+  $("login-done-btn").textContent = "J'ai terminé →";
+  $("login-initial").classList.remove("hidden");
+  $("login-waiting").classList.add("hidden");
+  $("login-error").classList.add("hidden");
+}
+
 $("login-btn").addEventListener("click", async () => {
   const errEl = $("login-error");
   errEl.classList.add("hidden");
@@ -86,6 +96,7 @@ $("login-btn").addEventListener("click", async () => {
   const res = await send("LOGIN_OPEN");
 
   if (res?.ok) {
+    resetLoginScreen();
     showScreen("main");
     const status = await send("GET_STATUS");
     updateStatus(status);
@@ -114,6 +125,7 @@ $("login-done-btn").addEventListener("click", async () => {
   const res = await send("LOGIN_CHECK");
 
   if (res?.ok) {
+    resetLoginScreen();
     showScreen("main");
     const status = await send("GET_STATUS");
     updateStatus(status);
@@ -136,6 +148,7 @@ $("login-cancel-btn").addEventListener("click", () => {
 
 $("logout-btn").addEventListener("click", async () => {
   await send("LOGOUT");
+  resetLoginScreen();
   showScreen("login");
 });
 

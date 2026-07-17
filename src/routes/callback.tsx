@@ -13,7 +13,7 @@ export const Route = createFileRoute("/callback")({
 function AuthCallback() {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const [desktopStatus, setDesktopStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [desktopStatus, setDesktopStatus] = useState<"idle" | "sending" | "done">("idle");
 
   useEffect(() => {
     const desktopPort = sessionStorage.getItem(DESKTOP_PORT_KEY);
@@ -27,10 +27,12 @@ function AuthCallback() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(session),
+            signal: AbortSignal.timeout(3000),
           });
           setDesktopStatus("done");
         } catch {
-          setDesktopStatus("error");
+          // L'app Windows n'est pas lancée — on redirige vers le dashboard quand même
+          navigate({ to: "/dashboard", replace: true });
         }
       } else {
         navigate({ to: "/dashboard", replace: true });
@@ -67,16 +69,6 @@ function AuthCallback() {
           <div className="text-4xl mb-3">✓</div>
           <h1 className="text-xl font-semibold mb-2">Connecté !</h1>
           <p className="text-sm text-muted-foreground">Vous pouvez fermer cet onglet et revenir à l'application Windows.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (desktopStatus === "error") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background" style={{ backgroundImage: "var(--gradient-hero)" }}>
-        <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card/80 p-8 backdrop-blur text-center" style={{ boxShadow: "var(--shadow-card)" }}>
-          <p className="text-sm text-destructive">Impossible de contacter l'application Windows. Assurez-vous qu'elle est lancée et réessayez.</p>
         </div>
       </div>
     );
