@@ -140,6 +140,7 @@ def parse_last_chapter(html: str, base_url: str) -> dict | None:
     all_candidates = []
     specific_candidates = []
 
+    base_host = urlparse(base_url).hostname or ""
     for am in re.finditer(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</a>', html, re.IGNORECASE):
         href = am.group(1)
         text = re.sub(r"<[^>]+>", " ", am.group(2)).strip()
@@ -152,6 +153,10 @@ def parse_last_chapter(html: str, base_url: str) -> dict | None:
                 url = urljoin(base_url, href)
             except Exception:
                 url = href
+            # Ignorer les liens vers des domaines externes (partage social, etc.)
+            link_host = urlparse(url).hostname or ""
+            if link_host and base_host and link_host != base_host:
+                continue
             c = {"num": num, "url": url}
             all_candidates.append(c)
             if title_slug and title_slug in href:

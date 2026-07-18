@@ -267,6 +267,9 @@ function parseLastChapter(html, baseUrl) {
   const allCandidates = [];
   const specificCandidates = [];
 
+  let baseHost = "";
+  try { baseHost = new URL(baseUrl).hostname; } catch {}
+
   const anchorRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = anchorRe.exec(html)) !== null) {
@@ -278,6 +281,8 @@ function parseLastChapter(html, baseUrl) {
       if (!isNaN(num) && num <= MAX_CHAPTER) {
         let url = href;
         try { url = new URL(href, baseUrl).toString(); } catch {}
+        // Ignorer les liens vers des domaines externes (partage social, etc.)
+        try { if (baseHost && new URL(url).hostname !== baseHost) continue; } catch {}
         const candidate = { num, url, idx: anchorRe.lastIndex };
         allCandidates.push(candidate);
         // Spécifique = le lien contient le slug du titre (ex: killer-pietro-89829cb7)
