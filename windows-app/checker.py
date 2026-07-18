@@ -2,6 +2,7 @@
 import logging
 import re
 import unicodedata
+from collections import Counter
 from datetime import datetime
 
 from supabase_client import supabase
@@ -110,6 +111,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
             last_read = -1
 
         new_chapters = []
+        all_detected_nums = []  # Tous les numéros détectés (pour détecter les outliers)
         best_type_priority = -1
 
         # ── 1. Sources existantes ──────────────────────────────────────────────
@@ -160,6 +162,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                     except Exception:
                         pass  # En cas d'erreur, ne pas bloquer
 
+                all_detected_nums.append(found["num"])
                 supabase.patch(f"/title_sources?id=eq.{src['id']}", {"last_seen_chapter": chap_label, "last_error": None})
 
                 # Couverture (seulement si le titre n'en a pas)
@@ -247,10 +250,29 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                 except Exception as e:
                     log.error("Auto-découverte erreur %s / %s : %s", title["name"], site.get("name"), e)
 
-        # ── 3. Notification pour ce titre ─────────────────────────────────────
+        # ── 3. Filtre anti-faux-positifs par consensus inter-sources ──────────
+        # Si plusieurs sources ont détecté des chapitres, un numéro très éloigné
+        # de la médiane (> 1.3x) est probablement un faux positif (lien sidebar, etc.)
+        if len(all_detected_nums) >= 2 and new_chapters:
+            sorted_nums = sorted(all_detected_nums)
+            median = sorted_nums[len(sorted_nums) // 2]
+            threshold = median * 1.3
+            filtered = [c for c in new_chapters if c["num"] <= threshold]
+            if len(filtered) < len(new_chapters):
+                outliers = [c for c in new_chapters if c["num"] > threshold]
+                for o in outliers:
+                    log.warning("[%s] Chapitre %s ignoré (faux positif probable, médiane=%.0f, seuil=%.0f)",
+                                title.get("name"), o["num"], median, threshold)
+                new_chapters = filtered  # On garde uniquement les chapitres cohérents
+
+        # ── 4. Notification pour ce titre ─────────────────────────────────────
         if new_chapters:
             detected += 1
-            best = max(new_chapters, key=lambda c: c["num"])
+            # Consensus : chapitre le plus fréquent, minimum en cas d'égalité
+            counts = Counter(c["num"] for c in new_chapters)
+            max_count = max(counts.values())
+            best_num = min(n for n, cnt in counts.items() if cnt == max_count)
+            best = next(c for c in new_chapters if c["num"] == best_num)
             if on_new_chapter:
                 try:
                     on_new_chapter(title["name"], best["label"], best["url"])
