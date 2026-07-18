@@ -13,12 +13,16 @@ def _ensure_icon():
     if os.path.exists(_ICON_PATH):
         return _ICON_PATH
     try:
-        from PIL import Image, ImageDraw, ImageFont
-        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.ellipse([2, 2, 62, 62], fill=(99, 102, 241))  # indigo
-        draw.text((16, 16), "R", fill=(255, 255, 255))
-        img.save(_ICON_PATH, format="ICO")
+        from PIL import Image
+        png_path = os.path.join(os.path.dirname(__file__), "icon.png")
+        if os.path.exists(png_path):
+            img = Image.open(png_path).convert("RGBA")
+            img.save(_ICON_PATH, format="ICO", sizes=[(64, 64), (48, 48), (32, 32), (16, 16)])
+        else:
+            from PIL import ImageDraw
+            img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+            ImageDraw.Draw(img).ellipse([2, 2, 62, 62], fill=(99, 102, 241))
+            img.save(_ICON_PATH, format="ICO")
     except Exception as e:
         log.warning("Impossible de créer l'icône: %s", e)
     return _ICON_PATH if os.path.exists(_ICON_PATH) else None
