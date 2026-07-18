@@ -86,7 +86,7 @@ const JSON_LD = JSON.stringify({
   "applicationCategory": "EntertainmentApplication",
   "operatingSystem": "Web",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
-  "author": { "@type": "Organization", "name": "TKISSDev", "email": "tkissdev@gmail.com" },
+  "author": { "@type": "Organization", "name": "TKISSDev", "email": "contact@tkissdev.com" },
   "inLanguage": ["fr", "en"],
 });
 

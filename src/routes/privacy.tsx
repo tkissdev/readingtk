@@ -34,7 +34,7 @@ function PrivacyFR() {
             <p>
               ReadingTK est un service de suivi de lectures (mangas, manhuas, novels) accessible à l'adresse{" "}
               <a href="https://readingtk.net" className="text-accent hover:underline">readingtk.net</a>.
-              Le service est opéré par <strong className="text-foreground">TKISSDev</strong> (contact : tkissdev@gmail.com).
+              Le service est opéré par <strong className="text-foreground">TKISSDev</strong> (contact : contact@tkissdev.com).
             </p>
           </section>
 
@@ -104,7 +104,7 @@ function PrivacyFR() {
             </ul>
             <p className="mt-3">
               Pour exercer ces droits, contactez-nous à :{" "}
-              <a href="mailto:tkissdev@gmail.com" className="text-accent hover:underline">tkissdev@gmail.com</a>.
+              <a href="mailto:contact@tkissdev.com" className="text-accent hover:underline">contact@tkissdev.com</a>.
               Délai de réponse : 30 jours maximum.
             </p>
             <p className="mt-3">
@@ -141,7 +141,7 @@ function PrivacyFR() {
             <h2 className="mb-3 text-base font-semibold text-foreground">12. Contact</h2>
             <p>
               Pour toute question relative à cette politique :{" "}
-              <a href="mailto:tkissdev@gmail.com" className="text-accent hover:underline">tkissdev@gmail.com</a>
+              <a href="mailto:contact@tkissdev.com" className="text-accent hover:underline">contact@tkissdev.com</a>
             </p>
           </section>
 
@@ -169,7 +169,7 @@ function PrivacyEN() {
             <p>
               ReadingTK is a reading tracker for manga, manhwa, and novels, available at{" "}
               <a href="https://readingtk.net" className="text-accent hover:underline">readingtk.net</a>.
-              The service is operated by <strong className="text-foreground">TKISSDev</strong> (contact: tkissdev@gmail.com).
+              The service is operated by <strong className="text-foreground">TKISSDev</strong> (contact: contact@tkissdev.com).
             </p>
           </section>
 
@@ -239,7 +239,7 @@ function PrivacyEN() {
             </ul>
             <p className="mt-3">
               To exercise these rights, contact us at:{" "}
-              <a href="mailto:tkissdev@gmail.com" className="text-accent hover:underline">tkissdev@gmail.com</a>.
+              <a href="mailto:contact@tkissdev.com" className="text-accent hover:underline">contact@tkissdev.com</a>.
               Response time: maximum 30 days.
             </p>
           </section>
@@ -272,7 +272,7 @@ function PrivacyEN() {
             <h2 className="mb-3 text-base font-semibold text-foreground">12. Contact</h2>
             <p>
               For any questions about this policy:{" "}
-              <a href="mailto:tkissdev@gmail.com" className="text-accent hover:underline">tkissdev@gmail.com</a>
+              <a href="mailto:contact@tkissdev.com" className="text-accent hover:underline">contact@tkissdev.com</a>
             </p>
           </section>
 
