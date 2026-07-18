@@ -24,6 +24,9 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+__pycache__/
+.playwright-mcp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
