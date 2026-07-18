@@ -238,6 +238,71 @@ Bouton toujours visible (pas de `opacity-0 group-hover:opacity-100`).
 Le scraping par titre nécessite l'extension ReadingTK installée dans le navigateur.  
 Si l'extension n'est pas disponible → toast `t("drawer.extUnavailable")`.
 
+**Versions publiées :** Chrome v1.1.0 (en attente d'approbation), Firefox v1.1.0 (approuvé et live)
+
+**ZIPs :** `readingtk-chrome-1.1.0.zip` et `readingtk-firefox-1.1.0.zip` à la racine du projet.  
+**Recréer les ZIPs (Windows) :** utiliser Python pour forcer les forward slashes :
+```python
+import zipfile, pathlib
+src = pathlib.Path('extension-firefox')
+with zipfile.ZipFile('readingtk-firefox-1.1.0.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+    for file in src.rglob('*'):
+        if file.is_file():
+            zf.write(file, file.relative_to(src).as_posix())
+```
+(Firefox AMO rejette les ZIPs avec des backslashes Windows)
+
+### Filtre anti-faux-positifs (v1.1.0)
+Dans `background.js` (Chrome et Firefox) et `checker.py` (Windows) :
+- Toutes les détections inter-sources sont collectées dans `allDetectedNums`
+- Si ≥2 sources ont détecté, les numéros > 1.3× la médiane sont ignorés (faux positifs)
+- Notification basée sur le chapitre le plus fréquent (`pickBestChapter`)
+
+### Filtre domaines externes
+`parseLastChapter()` / `parse_last_chapter()` ignorent les liens vers des domaines différents de la page source (boutons Twitter, Facebook, etc.)
+
+---
+
+## Application Windows (`windows-app/`)
+
+| Fichier | Rôle |
+|---|---|
+| `main.py` | Systray pystray, menu, dialogs tkinter, scheduling |
+| `checker.py` | Port Python de `runCheck()` du background.js |
+| `scraper.py` | Fetch HTTP / Playwright, parsing HTML |
+| `notifier.py` | Notifications toast Windows (winotify) |
+| `server.py` | Serveur HTTP local (callback depuis la web app) |
+| `auth_dialog.py` | Dialog de connexion |
+| `settings_dialog.py` | Dialog des paramètres |
+| `build.py` | Script de build PyInstaller |
+
+### Rapport d'erreurs (systray)
+- Après chaque check, `_last_check_report` stocke `{time, detected, errors, error_details}`
+- Menu systray → "Rapport du dernier check" → dialog tkinter avec liste des erreurs
+- **Erreurs comptabilisées :** redirect, 404, exceptions
+- **Non comptabilisé :** "aucun chapitre trouvé" (limitation du parseur, pas actionnable)
+
+### Notification icône
+`notifier.py` génère `icon.ico` depuis `icon.png` au premier lancement.  
+Si `icon.ico` existe déjà (ancien cercle bleu), le supprimer pour forcer la régénération.
+
+---
+
+## Comptes et accès
+
+| Service | Compte |
+|---|---|
+| GitHub | timothekiss |
+| Vercel | timothekiss-1303 |
+| Supabase | tkissdev@gmail.com / TkissDev's Org |
+| Google Cloud (OAuth) | tkissdev@gmail.com |
+| Chrome Web Store | tkissdev@gmail.com |
+| Firefox AMO | TKissDev |
+| Email contact | contact@tkissdev.com |
+
+**MCP Supabase :** connecté à tkissdev@gmail.com / TkissDev's Org.  
+Projet Supabase ID : `jjjfphkvwtruckxygwal`
+
 ---
 
 ## Points d'attention
@@ -246,3 +311,5 @@ Si l'extension n'est pas disponible → toast `t("drawer.extUnavailable")`.
 - Le calendrier utilise `1500` (25×60) comme diviseur pour le positionnement, pas `1440`.
 - La langue par défaut est `"fr"` même au premier rendu SSR, puis ajustée côté client via `useEffect`.
 - Le tri "Détecté" est basé sur la présence du badge NEW (chapitre détecté > chapitre lu), puis alphabétique — pas sur le numéro de chapitre.
+- Après modification de `checker.py`, `scraper.py`, `notifier.py` ou `main.py`, reconstruire l'app Windows avec `python build.py` dans `windows-app/`.
+- `callback.tsx` : si l'app Windows n'est pas lancée, le catch redirige vers `/dashboard` (comportement voulu — l'app Windows est optionnelle).
