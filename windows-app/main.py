@@ -36,6 +36,7 @@ _is_checking = False
 _stop_event = threading.Event()
 _tray_icon: pystray.Icon | None = None
 _root: tk.Tk | None = None  # tkinter tourne sur le thread principal
+_last_check_report: dict | None = None  # {"time": str, "detected": int, "errors": int, "error_details": list}
 
 
 # ── Icône systray ──────────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ def _on_new_chapter(title_name: str, chap_label: str, chap_url: str):
 
 
 def _do_check():
-    global _is_checking
+    global _is_checking, _last_check_report
     with _check_lock:
         if _is_checking:
             return
@@ -104,6 +105,12 @@ def _do_check():
         stopped = _stop_event.is_set()
         log.info("Check %s : %d détecté(s), %d erreur(s)",
                  "arrêté" if stopped else "OK", result["detected"], result["errors"])
+        _last_check_report = {
+            "time": time.strftime("%H:%M"),
+            "detected": result["detected"],
+            "errors": result["errors"],
+            "error_details": result.get("error_details", []),
+        }
         if _tray_icon:
             _tray_icon.icon = _make_icon()
             if stopped:
@@ -181,6 +188,79 @@ def _do_show_login():
 # ── Callbacks menu systray ─────────────────────────────────────────────────────
 # Les callbacks pystray tournent dans le thread Win32 du systray.
 # Pour tout ce qui touche tkinter, on délègue au thread principal via root.after.
+
+def _do_show_report():
+    """Affiche le rapport du dernier check (erreurs détaillées)."""
+    report = _last_check_report
+    if not report:
+        return
+
+    win = tk.Toplevel(_root)
+    win.title("ReadingTK — Rapport du dernier check")
+    win.resizable(False, False)
+    win.attributes("-topmost", True)
+
+    w, h = 480, 340
+    win.update_idletasks()
+    x = (win.winfo_screenwidth() - w) // 2
+    y = (win.winfo_screenheight() - h) // 2
+    win.geometry(f"{w}x{h}+{x}+{y}")
+
+    frame = tk.Frame(win, padx=24, pady=18)
+    frame.pack(fill="both", expand=True)
+
+    tk.Label(frame, text="Rapport du dernier check", font=("Segoe UI", 13, "bold"), fg="#6366f1").pack(anchor="w")
+    tk.Frame(frame, height=1, bg="#e5e7eb").pack(fill="x", pady=(6, 12))
+
+    summary = f"Check à {report['time']}  ·  {report['detected']} nouveau(x)  ·  {report['errors']} erreur(s)"
+    tk.Label(frame, text=summary, font=("Segoe UI", 10), fg="#555").pack(anchor="w", pady=(0, 10))
+
+    details = report.get("error_details", [])
+    if not details:
+        tk.Label(frame, text="Aucune erreur détaillée disponible.", font=("Segoe UI", 10), fg="#888").pack(anchor="w")
+    else:
+        tk.Label(frame, text="Erreurs :", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        box_frame = tk.Frame(frame, relief="sunken", bd=1, bg="white")
+        box_frame.pack(fill="both", expand=True)
+
+        scrollbar = tk.Scrollbar(box_frame)
+        scrollbar.pack(side="right", fill="y")
+
+        listbox = tk.Listbox(
+            box_frame,
+            font=("Segoe UI", 9),
+            yscrollcommand=scrollbar.set,
+            selectbackground="#e0e7ff",
+            activestyle="none",
+            bd=0,
+            highlightthickness=0,
+        )
+        listbox.pack(fill="both", expand=True, padx=4, pady=4)
+        scrollbar.config(command=listbox.yview)
+
+        for d in details:
+            title_str = d.get("title", "?")[:35]
+            reason = d.get("reason", "?")
+            url = d.get("url", "")
+            domain = url.split("/")[2] if url.count("/") >= 2 else url
+            listbox.insert("end", f"  {title_str}  —  {domain}")
+            listbox.insert("end", f"      ↳ {reason}")
+            listbox.insert("end", "")
+
+    tk.Button(
+        frame, text="Fermer",
+        command=win.destroy,
+        font=("Segoe UI", 10),
+        relief="flat", cursor="hand2",
+        bg="#e5e7eb", padx=16, pady=5,
+    ).pack(pady=(10, 0))
+
+    _root.wait_window(win)
+
+
+def _menu_show_report(icon, item):
+    _root.after(0, _do_show_report)
+
 
 def _menu_check_now(icon, item):
     if _is_checking:
@@ -281,6 +361,12 @@ def _build_menu() -> pystray.Menu:
             default=True,
         ),
         pystray.MenuItem("Ouvrir le dashboard", _menu_open_dashboard),
+        pystray.MenuItem(
+            lambda item: f"Rapport du dernier check ({_last_check_report['errors']} erreur(s))"
+                         if _last_check_report and _last_check_report.get("errors") else "Rapport du dernier check",
+            _menu_show_report,
+            visible=lambda item: _last_check_report is not None,
+        ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(
             "Connecté" if supabase.is_logged_in else "Se connecter…",

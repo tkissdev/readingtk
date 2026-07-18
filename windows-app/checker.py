@@ -86,6 +86,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
 
     detected = 0
     errors = 0
+    error_details = []  # [{"title": str, "url": str, "reason": str}]
     total = len(titles or [])
 
     for i, title in enumerate(titles or []):
@@ -121,6 +122,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                 if result.get("isRedirect"):
                     supabase.patch(f"/title_sources?id=eq.{src['id']}", {"last_error": "redirect", "last_seen_chapter": None})
                     errors += 1
+                    error_details.append({"title": title.get("name", "?"), "url": src["url"], "reason": "Redirection (URL déplacée)"})
                     continue
 
                 if result.get("is404"):
@@ -128,6 +130,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                     if src.get("site_id"):
                         supabase.patch(f"/sites?id=eq.{src['site_id']}", {"is_down": True, "enabled": False})
                     errors += 1
+                    error_details.append({"title": title.get("name", "?"), "url": src["url"], "reason": "Page introuvable (404)"})
                     continue
 
                 found = result.get("found")
@@ -140,6 +143,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                     supabase.patch(f"/title_sources?id=eq.{src['id']}",
                                    {"last_error": "no_chapter_found"})
                     errors += 1
+                    error_details.append({"title": title.get("name", "?"), "url": src["url"], "reason": "Aucun chapitre trouvé"})
                     continue
 
                 chap_label = _chapter_label(found["num"], fmt)
@@ -186,6 +190,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
             except Exception as e:
                 log.error("Erreur source %s : %s", src.get("url"), e)
                 errors += 1
+                error_details.append({"title": title.get("name", "?"), "url": src.get("url", "?"), "reason": str(e)})
 
         # ── 2. Auto-découverte ─────────────────────────────────────────────────
         if auto_discover and global_sites:
@@ -253,4 +258,4 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                     log.warning("Callback notification erreur: %s", e)
 
     log.info("Check terminé : %d nouveau(x), %d erreur(s)", detected, errors)
-    return {"detected": detected, "errors": errors}
+    return {"detected": detected, "errors": errors, "error_details": error_details}
