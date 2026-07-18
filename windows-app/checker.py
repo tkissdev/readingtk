@@ -144,8 +144,6 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                                 title.get("name"), src["url"], needs_tab)
                     supabase.patch(f"/title_sources?id=eq.{src['id']}",
                                    {"last_error": "no_chapter_found"})
-                    errors += 1
-                    error_details.append({"title": title.get("name", "?"), "url": src["url"], "reason": "Aucun chapitre trouvé"})
                     continue
 
                 chap_label = _chapter_label(found["num"], fmt)
