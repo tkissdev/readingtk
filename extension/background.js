@@ -850,6 +850,7 @@ async function runCheck() {
 
         // Accumule tous les nouveaux chapitres trouvés pour ce titre (toutes sources confondues)
         const newChaptersList = [];
+        const allDetectedNums = []; // Tous les chapitres détectés (pour filtre outliers)
         let bestCoverPriority = -1;
         let bestTypePriority = -1;
 
@@ -892,6 +893,7 @@ async function runCheck() {
             }
 
             // Succès : mettre à jour le chapitre et effacer toute erreur précédente
+            allDetectedNums.push(found.num);
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
 
             // Couverture : seulement si le titre n'en a pas encore
@@ -963,13 +965,25 @@ async function runCheck() {
           } catch (e) { console.error("[RTK] Auto-discover error:", e?.message); errors++; }
         }
 
-        // ── 3. Une seule notification par titre avec le meilleur chapitre ───────
-        if (newChaptersList.length > 0) {
-          const best = pickBestChapter(newChaptersList);
+        // ── 3. Filtre anti-faux-positifs : exclure les outliers inter-sources ───
+        // Si ≥2 sources ont détecté un chapitre, un numéro > 1.3× la médiane est suspect
+        let filteredChapters = newChaptersList;
+        if (allDetectedNums.length >= 2 && newChaptersList.length > 0) {
+          const sorted = [...allDetectedNums].sort((a, b) => a - b);
+          const median = sorted[Math.floor(sorted.length / 2)];
+          const threshold = median * 1.3;
+          const safe = newChaptersList.filter(c => c.num <= threshold);
+          if (safe.length > 0) filteredChapters = safe;
+          else console.log(`[RTK] Tous les chapitres suspects pour ${title.name}, on garde quand même`);
+        }
+
+        // ── 4. Une seule notification par titre avec le meilleur chapitre ───────
+        if (filteredChapters.length > 0) {
+          const best = pickBestChapter(filteredChapters);
           detected++;
 
           // Mettre à jour l'horaire de parution du calendrier (si une date a été détectée)
-          const pub = best.publishedAt || newChaptersList.find((c) => c.publishedAt)?.publishedAt;
+          const pub = best.publishedAt || filteredChapters.find((c) => c.publishedAt)?.publishedAt;
           if (pub) await upsertSchedule({ userId: user_id, titleId: title.id, publishedAt: pub });
 
           if (notifyInApp && best.chapterId) {
