@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useI18n } from "@/i18n";
+import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/extensions")({
   head: () => ({
@@ -115,8 +116,8 @@ function ExtensionsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-4xl px-6 py-16">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">
         <Link to="/" className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           ← {isFr ? "Retour à l'accueil" : "Back to home"}
         </Link>
@@ -232,6 +233,7 @@ function ExtensionsPage() {
         </div>
 
       </div>
+      <Footer />
     </div>
   );
 }

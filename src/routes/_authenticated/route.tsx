@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useI18n, LanguageSwitcher } from "@/i18n";
+import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -231,8 +232,11 @@ function AuthedLayout() {
 
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
-        <Outlet />
+      <main className="flex flex-1 flex-col overflow-x-hidden">
+        <div className="flex-1">
+          <Outlet />
+        </div>
+        <Footer />
       </main>
     </div>
   );

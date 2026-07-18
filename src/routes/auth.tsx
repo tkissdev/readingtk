@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/i18n";
+import { Footer } from "@/components/Footer";
 
 const searchSchema = z.object({ mode: z.enum(["login", "signup"]).optional() });
 
@@ -174,10 +175,11 @@ function AuthPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background px-4" style={{ backgroundImage: "var(--gradient-hero)" }}>
+    <div className="relative flex min-h-screen flex-col bg-background" style={{ backgroundImage: "var(--gradient-hero)" }}>
       <div className="absolute right-4 top-4">
         <LanguageSwitcher />
       </div>
+      <div className="flex flex-1 items-center justify-center px-4">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex justify-center">
           <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 180, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
@@ -249,6 +251,8 @@ function AuthPage() {
           </div>
         </div>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

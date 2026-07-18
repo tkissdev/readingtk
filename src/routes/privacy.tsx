@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useI18n } from "@/i18n";
+import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
@@ -18,8 +19,8 @@ function PrivacyPage() {
 
 function PrivacyFR() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
         <Link to="/" className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           ← Retour à l'accueil
         </Link>
@@ -147,14 +148,15 @@ function PrivacyFR() {
 
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
 
 function PrivacyEN() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
         <Link to="/" className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           ← Back to home
         </Link>
@@ -278,6 +280,7 @@ function PrivacyEN() {
 
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

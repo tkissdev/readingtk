@@ -9,12 +9,12 @@ Application web de suivi de lecture (manga, manhwa, manhua, novel).
 
 ## Versioning
 
-La version affichée dans le footer (`src/routes/index.tsx`) suit ce format : **v1.00, v1.01, v1.02…**
+Le footer (`src/components/Footer.tsx`) est un composant partagé, affiché sur **toutes les pages** (landing, comment ça marche, confidentialité, extensions, connexion, et toutes les pages authentifiées via `_authenticated/route.tsx`). La version affichée suit ce format : **v1.00, v1.01, v1.02…**
 
 **Règle :** à chaque commit, incrémenter la version de **+0.01**.  
 Exemple : v1.00 → v1.01 → v1.02 → … → v1.09 → v1.10 → etc.
 
-La version est écrite en dur dans le footer : `<span>ReadingTK vX.XX</span>`
+La version est écrite en dur dans `src/components/Footer.tsx` : `const VERSION = "X.XX"`
 
 ---
 

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, BookOpen, CalendarDays, Chrome, Globe, Search, Zap } from "lucide-react";
 import { useI18n, LanguageSwitcher } from "@/i18n";
+import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/how-it-works")({
   head: () => ({
@@ -52,11 +53,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
       <main className="flex-1">{children}</main>
-      <footer className="flex items-center justify-center gap-2 border-t border-border py-4 text-xs text-muted-foreground">
-        <span>ReadingTK v1.12</span>
-        <span>·</span>
-        <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
-      </footer>
+      <Footer />
     </div>
   );
 }
