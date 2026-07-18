@@ -36,7 +36,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav className="flex items-center gap-3">
           <LanguageSwitcher className="mr-1" />
-          <Link to="/extensions" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
+          <Link to="/download" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
             {t("landing.extensions")}
           </Link>
           <Link to="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
@@ -173,7 +173,7 @@ function HowItWorksFR() {
                 connecté sur readingtk.net et l'extension synchronise tout en temps réel.
               </p>
               <Link
-                to="/extensions"
+                to="/download"
                 className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
                 style={{ background: "var(--gradient-primary)" }}
               >
@@ -342,7 +342,7 @@ function HowItWorksEN() {
                 on readingtk.net and the extension syncs everything in real time.
               </p>
               <Link
-                to="/extensions"
+                to="/download"
                 className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
                 style={{ background: "var(--gradient-primary)" }}
               >

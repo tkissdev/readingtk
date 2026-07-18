@@ -9,7 +9,7 @@ Application web de suivi de lecture (manga, manhwa, manhua, novel).
 
 ## Versioning
 
-Le footer (`src/components/Footer.tsx`) est un composant partagé, affiché sur **toutes les pages** (landing, comment ça marche, confidentialité, extensions, connexion, et toutes les pages authentifiées via `_authenticated/route.tsx`). La version affichée suit ce format : **v1.00, v1.01, v1.02…**
+Le footer (`src/components/Footer.tsx`) est un composant partagé, affiché sur **toutes les pages** (landing, comment ça marche, confidentialité, téléchargements, connexion, et toutes les pages authentifiées via `_authenticated/route.tsx`). La version affichée suit ce format : **v1.00, v1.01, v1.02…**
 
 **Règle :** à chaque commit, incrémenter la version de **+0.01**.  
 Exemple : v1.00 → v1.01 → v1.02 → … → v1.09 → v1.10 → etc.
@@ -45,6 +45,7 @@ src/
 │   ├── __root.tsx
 │   ├── index.tsx          ← Landing page
 │   ├── auth.tsx           ← Page connexion/inscription
+│   ├── download.tsx       ← Téléchargements (extensions navigateur + app Windows)
 │   ├── callback.tsx       ← OAuth callback
 │   └── _authenticated/
 │       ├── route.tsx      ← Layout sidebar (AuthedLayout)
@@ -183,7 +184,7 @@ top: `${(e.min / 1500) * 100}%`
 ### Structure (de haut en bas)
 1. Logo + bouton collapse
 2. Compte (avatar + email) + sélecteur langue + bouton déconnexion ← entre logo et nav
-3. Navigation principale (Bibliothèque, Calendrier, Sites, Notifications, Paramètres)
+3. Navigation principale (Bibliothèque, Calendrier, Sites, Notifications, Paramètres, Download et Extension)
 4. Liens secondaires (Ajouter, Import, Export)
 
 ### Sidebar collapsed
@@ -285,6 +286,24 @@ Dans `background.js` (Chrome et Firefox) et `checker.py` (Windows) :
 ### Notification icône
 `notifier.py` génère `icon.ico` depuis `icon.png` au premier lancement.  
 Si `icon.ico` existe déjà (ancien cercle bleu), le supprimer pour forcer la régénération.
+
+### Génération des fichiers d'installation (.exe, .msi, .zip)
+Trois formats de distribution, générés dans `windows-app/dist/` (non versionné dans Git — fichiers trop volumineux, ~70-85 Mo chacun) :
+
+| Fichier | Commande | Description |
+|---|---|---|
+| `ReadingTK.exe` | `python build.py` (PyInstaller) | Exécutable autonome, portable, sans installation |
+| `ReadingTK-X.X.X-portable.zip` | zippe `dist/ReadingTK.exe` | Version zip du .exe portable |
+| `ReadingTK-X.X.X-win64.msi` | `python setup_msi.py bdist_msi` (cx_Freeze) | Installateur Windows classique (Programmes, menu Démarrer, désinstallation) |
+
+**Prérequis :** `pip install pyinstaller cx_Freeze` + générer `icon.ico` depuis `icon.png` si absent (voir section notification ci-dessus, ou lancer `notifier.py`).
+
+**Numéro de version du MSI :** `APP_VERSION` en haut de `windows-app/setup_msi.py`.  
+**Code de mise à niveau (upgrade_code) :** fixe, ne jamais changer — sinon les mises à jour du MSI n'écrasent pas l'ancienne version.
+
+Ces fichiers (.exe/.msi/.zip) sont trop lourds pour être commités sur GitHub — ils sont distribués via **GitHub Releases** (tag `windows-app-vX.X.X`) plutôt que le dépôt Git lui-même.
+
+**Page de téléchargement :** `src/routes/download.tsx` (route `/download`) liste à la fois les extensions navigateur et l'app Windows, avec liens directs vers les assets de la release GitHub. Après un nouveau build, mettre à jour `RELEASE_BASE` et `WINDOWS_VERSION` dans ce fichier pour pointer vers la nouvelle release.
 
 ---
 

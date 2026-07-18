@@ -50,7 +50,7 @@ function Landing() {
           <Link to="/how-it-works" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
             {t("landing.howItWorks")}
           </Link>
-          <Link to="/extensions" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
+          <Link to="/download" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
             {t("landing.extensions")}
           </Link>
           <Link to="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">

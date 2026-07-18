@@ -35,6 +35,7 @@ const fr: Dict = {
   "nav.sites": "Sites",
   "nav.notifications": "Notifications",
   "nav.settings": "Paramètres",
+  "nav.download": "Download et Extension",
   "nav.addTitle": "Ajouter un titre",
   "nav.import": "Importer bookmarks",
   "nav.export": "Exporter bookmarks",
@@ -66,7 +67,7 @@ const fr: Dict = {
   "landing.footerSelfHosted": "Prêt pour l'auto-hébergement",
   "landing.footerBackend": "Backend Supabase",
   "landing.footerPrivacy": "Politique de confidentialité",
-  "landing.extensions": "Extension",
+  "landing.extensions": "Download et Extension",
   "landing.howItWorks": "Comment ça marche",
 
   // Auth
@@ -323,6 +324,7 @@ const en: Dict = {
   "nav.sites": "Sites",
   "nav.notifications": "Notifications",
   "nav.settings": "Settings",
+  "nav.download": "Download et Extension",
   "nav.addTitle": "Add a title",
   "nav.import": "Import bookmarks",
   "nav.export": "Export bookmarks",
@@ -353,7 +355,7 @@ const en: Dict = {
   "landing.footerSelfHosted": "Self-hosted ready",
   "landing.footerBackend": "Supabase backend",
   "landing.footerPrivacy": "Privacy Policy",
-  "landing.extensions": "Extension",
+  "landing.extensions": "Download et Extension",
   "landing.howItWorks": "How it works",
 
   "auth.metaTitle": "Sign in · ReadingTK",

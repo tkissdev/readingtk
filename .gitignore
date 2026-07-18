@@ -26,6 +26,11 @@ dist-ssr
 
 __pycache__/
 .playwright-mcp/
+windows-app/build/
+windows-app/dist/
+windows-app/icon.ico
+windows-app/*.egg-info/
+windows-app/*.spec
 
 # Editor directories and files
 .vscode/*

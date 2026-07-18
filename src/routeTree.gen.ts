@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
-import { Route as ExtensionsRouteImport } from './routes/extensions'
+import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DesktopAuthRouteImport } from './routes/desktop-auth'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -36,9 +36,9 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
   path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ExtensionsRoute = ExtensionsRouteImport.update({
-  id: '/extensions',
-  path: '/extensions',
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DesktopAuthRoute = DesktopAuthRouteImport.update({
@@ -112,7 +112,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/desktop-auth': typeof DesktopAuthRoute
-  '/extensions': typeof ExtensionsRoute
+  '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
   '/calendar': typeof AuthenticatedCalendarRoute
@@ -129,7 +129,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/desktop-auth': typeof DesktopAuthRoute
-  '/extensions': typeof ExtensionsRoute
+  '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
   '/calendar': typeof AuthenticatedCalendarRoute
@@ -148,7 +148,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
   '/desktop-auth': typeof DesktopAuthRoute
-  '/extensions': typeof ExtensionsRoute
+  '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
@@ -167,7 +167,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/desktop-auth'
-    | '/extensions'
+    | '/download'
     | '/how-it-works'
     | '/privacy'
     | '/calendar'
@@ -184,7 +184,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/desktop-auth'
-    | '/extensions'
+    | '/download'
     | '/how-it-works'
     | '/privacy'
     | '/calendar'
@@ -202,7 +202,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/callback'
     | '/desktop-auth'
-    | '/extensions'
+    | '/download'
     | '/how-it-works'
     | '/privacy'
     | '/_authenticated/calendar'
@@ -221,7 +221,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CallbackRoute: typeof CallbackRoute
   DesktopAuthRoute: typeof DesktopAuthRoute
-  ExtensionsRoute: typeof ExtensionsRoute
+  DownloadRoute: typeof DownloadRoute
   HowItWorksRoute: typeof HowItWorksRoute
   PrivacyRoute: typeof PrivacyRoute
 }
@@ -242,11 +242,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HowItWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/extensions': {
-      id: '/extensions'
-      path: '/extensions'
-      fullPath: '/extensions'
-      preLoaderRoute: typeof ExtensionsRouteImport
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/desktop-auth': {
@@ -374,7 +374,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CallbackRoute: CallbackRoute,
   DesktopAuthRoute: DesktopAuthRoute,
-  ExtensionsRoute: ExtensionsRoute,
+  DownloadRoute: DownloadRoute,
   HowItWorksRoute: HowItWorksRoute,
   PrivacyRoute: PrivacyRoute,
 }
