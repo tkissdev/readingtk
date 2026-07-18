@@ -296,6 +296,17 @@ function DownloadPage() {
             </a>
           </div>
 
+          <div className="mb-10 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+            <p className="mb-1 font-medium text-foreground">
+              {isFr ? "⚠️ Windows peut afficher un avertissement SmartScreen" : "⚠️ Windows may show a SmartScreen warning"}
+            </p>
+            <p className="text-muted-foreground">
+              {isFr
+                ? "L'application n'a pas encore de certificat de signature numérique. Si Windows affiche « Windows a protégé votre ordinateur », cliquez sur « Informations complémentaires » puis sur « Exécuter quand même » pour installer l'application."
+                : "The app doesn't have a digital signing certificate yet. If Windows shows \"Windows protected your PC\", click \"More info\" then \"Run anyway\" to install the app."}
+            </p>
+          </div>
+
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-semibold">{isFr ? "Ce que fait l'application" : "What the app does"}</h3>
             {(isFr ? [
