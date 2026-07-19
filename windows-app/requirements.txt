@@ -5,6 +5,5 @@ browserforge
 msgspec
 pystray
 Pillow
-keyring
 winotify
 requests

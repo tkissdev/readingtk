@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useI18n } from "@/i18n";
 import { Footer } from "@/components/Footer";
 
@@ -12,8 +12,8 @@ export const Route = createFileRoute("/download")({
   component: DownloadPage,
 });
 
-const RELEASE_BASE = "https://github.com/tkissdev/readingtk-releases/releases/download/windows-app-v1.0.2";
-const WINDOWS_VERSION = "1.0.2";
+const RELEASE_BASE = "https://github.com/tkissdev/readingtk-releases/releases/download/windows-app-v1.0.3";
+const WINDOWS_VERSION = "1.0.3";
 
 const ChromeIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
@@ -109,6 +109,7 @@ function StepBadge({ n }: { n: number }) {
 function DownloadPage() {
   const { lang } = useI18n();
   const isFr = lang !== "en";
+  const router = useRouter();
 
   const CHROME_STORE_URL: string | null = null; // À remplacer quand publié : "https://chrome.google.com/webstore/detail/..."
   const FIREFOX_STORE_URL = "https://addons.mozilla.org/fr/firefox/addon/readingtk/";
@@ -130,9 +131,9 @@ function DownloadPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">
-        <Link to="/" className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          ← {isFr ? "Retour à l'accueil" : "Back to home"}
-        </Link>
+        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          ← {isFr ? "Retour" : "Back"}
+        </button>
 
         <h1 className="mb-3 text-3xl font-bold">{isFr ? "Téléchargements" : "Downloads"}</h1>
         <p className="mb-12 text-sm leading-relaxed text-muted-foreground">

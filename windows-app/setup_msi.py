@@ -2,11 +2,11 @@
 import sys
 from cx_Freeze import setup, Executable
 
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3"
 
 build_exe_options = {
     "packages": [
-        "tkinter", "pystray", "PIL", "keyring", "winotify", "requests",
+        "tkinter", "pystray", "PIL", "winotify", "requests",
         "scrapling", "curl_cffi", "patchright", "browserforge", "msgspec",
         "apify_fingerprint_datapoints",
     ],

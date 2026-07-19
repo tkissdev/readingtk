@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useI18n } from "@/i18n";
 import { Footer } from "@/components/Footer";
 
@@ -18,12 +18,13 @@ function PrivacyPage() {
 }
 
 function PrivacyFR() {
+  const router = useRouter();
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-        <Link to="/" className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          ← Retour à l'accueil
-        </Link>
+        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          ← Retour
+        </button>
 
         <h1 className="mb-2 text-3xl font-bold">Politique de confidentialité</h1>
         <p className="mb-10 text-sm text-muted-foreground">Dernière mise à jour : 15 juin 2025</p>
@@ -154,12 +155,13 @@ function PrivacyFR() {
 }
 
 function PrivacyEN() {
+  const router = useRouter();
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-        <Link to="/" className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          ← Back to home
-        </Link>
+        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          ← Back
+        </button>
 
         <h1 className="mb-2 text-3xl font-bold">Privacy Policy</h1>
         <p className="mb-10 text-sm text-muted-foreground">Last updated: June 15, 2025</p>

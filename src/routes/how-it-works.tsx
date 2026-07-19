@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Bell, BookOpen, CalendarDays, Chrome, Globe, Search, Zap } from "lucide-react";
 import { useI18n, LanguageSwitcher } from "@/i18n";
 import { Footer } from "@/components/Footer";
@@ -219,12 +219,13 @@ const FAQ_FR = [
 ];
 
 function HowItWorksFR() {
+  const router = useRouter();
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 py-16">
-        <Link to="/" className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          ← Retour à l'accueil
-        </Link>
+        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          ← Retour
+        </button>
 
         {/* Hero */}
         <div className="mb-16 text-center">
@@ -519,12 +520,13 @@ const FAQ_EN = [
 ];
 
 function HowItWorksEN() {
+  const router = useRouter();
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 py-16">
-        <Link to="/" className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          ← Back to home
-        </Link>
+        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          ← Back
+        </button>
 
         <div className="mb-16 text-center">
           <h1 className="mb-4 text-4xl font-extrabold leading-tight">

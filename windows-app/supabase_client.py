@@ -1,8 +1,11 @@
 """Supabase REST API wrapper — port du sbGet/sbPatch/sbPost du background.js"""
 import json
+import logging
+import os
 import time
-import keyring
 import requests
+
+log = logging.getLogger("rtk.supabase")
 
 SUPABASE_URL = "https://jjjfphkvwtruckxygwal.supabase.co"
 SUPABASE_ANON_KEY = (
@@ -10,8 +13,12 @@ SUPABASE_ANON_KEY = (
     ".eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqamZwaGt2d3RydWNreHlnd2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjY2MDksImV4cCI6MjA5NjUwMjYwOX0"
     ".VEGbnT2qOQ2nr82Lpki8ppQS5jQymPMj6rMZ7gFc9zA"
 )
-_KEYRING_SERVICE = "ReadingTK"
-_KEYRING_USER = "session"
+
+# Session persistée dans un fichier local plutôt que le gestionnaire d'identifiants Windows —
+# CredWriteW échoue de façon incompréhensible une fois l'app empaquetée (PyInstaller), même
+# pour des valeurs courtes ; un fichier simple évite complètement ce problème.
+_SESSION_DIR = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser("~")), "ReadingTK")
+_SESSION_FILE = os.path.join(_SESSION_DIR, "session.json")
 
 DASHBOARD_URL = "https://readingtk.net/dashboard"
 
@@ -28,26 +35,29 @@ class SupabaseClient:
 
     def _load(self):
         try:
-            raw = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USER)
-            if raw:
-                s = json.loads(raw)
-                self._access_token = s.get("access_token")
-                self._refresh_token = s.get("refresh_token")
-                self._user_id = s.get("user_id")
-                self._expires_at = s.get("expires_at", 0)
-        except Exception:
-            pass
+            if not os.path.exists(_SESSION_FILE):
+                return
+            with open(_SESSION_FILE, "r", encoding="utf-8") as f:
+                s = json.load(f)
+            self._access_token = s.get("access_token")
+            self._refresh_token = s.get("refresh_token")
+            self._user_id = s.get("user_id")
+            self._expires_at = s.get("expires_at", 0)
+        except Exception as e:
+            log.warning("Impossible de charger la session sauvegardée : %s", e)
 
     def _save(self):
         try:
-            keyring.set_password(_KEYRING_SERVICE, _KEYRING_USER, json.dumps({
-                "access_token": self._access_token,
-                "refresh_token": self._refresh_token,
-                "user_id": self._user_id,
-                "expires_at": self._expires_at,
-            }))
-        except Exception:
-            pass
+            os.makedirs(_SESSION_DIR, exist_ok=True)
+            with open(_SESSION_FILE, "w", encoding="utf-8") as f:
+                json.dump({
+                    "access_token": self._access_token,
+                    "refresh_token": self._refresh_token,
+                    "user_id": self._user_id,
+                    "expires_at": self._expires_at,
+                }, f)
+        except Exception as e:
+            log.warning("Impossible de sauvegarder la session : %s", e)
 
     # ── Auth ────────────────────────────────────────────────────────────────────
 
@@ -84,7 +94,8 @@ class SupabaseClient:
         self._user_id = None
         self._expires_at = 0
         try:
-            keyring.delete_password(_KEYRING_SERVICE, _KEYRING_USER)
+            if os.path.exists(_SESSION_FILE):
+                os.remove(_SESSION_FILE)
         except Exception:
             pass
 

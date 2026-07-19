@@ -61,7 +61,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
         return {"detected": 0, "errors": 0}
 
     settings_rows = supabase.get(
-        f"/user_settings?user_id=eq.{uid}&select=chapter_format,auto_discover"
+        f"/user_settings?user_id=eq.{uid}&select=chapter_format,auto_discover,in_app_notifications_enabled"
     )
     settings = settings_rows[0] if settings_rows else {}
     fmt = "numeric" if settings.get("chapter_format") != "text" else "text"
@@ -70,6 +70,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
         if auto_discover_override is not None
         else bool(settings.get("auto_discover", False))
     )
+    notify_in_app = settings.get("in_app_notifications_enabled") is not False
 
     title_filter = f"&id=eq.{title_id}" if title_id else ""
     titles = supabase.get(
@@ -186,7 +187,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                     last_read=last_read,
                 )
                 if save_result["is_new"] and found["num"] > last_read:
-                    new_chapters.append({"num": found["num"], "label": chap_label, "url": found["url"]})
+                    new_chapters.append({"num": found["num"], "label": chap_label, "url": found["url"], "chapter_id": save_result["chapter_id"]})
 
             except Exception as e:
                 log.error("Erreur source %s : %s", src.get("url"), e)
@@ -243,7 +244,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                         last_read=last_read,
                     )
                     if save_result["is_new"] and found["num"] > last_read:
-                        new_chapters.append({"num": found["num"], "label": chap_label, "url": found["url"]})
+                        new_chapters.append({"num": found["num"], "label": chap_label, "url": found["url"], "chapter_id": save_result["chapter_id"]})
 
                 except Exception as e:
                     log.error("Auto-découverte erreur %s / %s : %s", title["name"], site.get("name"), e)
@@ -271,6 +272,19 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
             max_count = max(counts.values())
             best_num = min(n for n, cnt in counts.items() if cnt == max_count)
             best = next(c for c in new_chapters if c["num"] == best_num)
+
+            if notify_in_app and best.get("chapter_id"):
+                try:
+                    supabase.post("/notifications", {
+                        "user_id": uid,
+                        "title_id": title["id"],
+                        "chapter_id": best["chapter_id"],
+                        "channel": "in_app",
+                        "sent_at": datetime.utcnow().isoformat(),
+                    })
+                except Exception as e:
+                    log.warning("Écriture notification en base échouée: %s", e)
+
             if on_new_chapter:
                 try:
                     on_new_chapter(title["name"], best["label"], best["url"])
