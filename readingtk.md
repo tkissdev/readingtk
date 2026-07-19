@@ -255,8 +255,6 @@ with zipfile.ZipFile('readingtk-firefox-X.X.X.zip', 'w', zipfile.ZIP_DEFLATED) a
 ```
 (Firefox AMO rejette les ZIPs avec des backslashes Windows)
 
-**⚠️ `extension/manifest.firefox.json`** est un fichier orphelin (v1.0.0, non référencé nulle part) laissé par une ancienne organisation du projet avant la création du dossier `extension-firefox/` séparé — à exclure du ZIP Chrome (déjà fait dans le script de packaging), et à supprimer un jour si confirmé inutile.
-
 **Soumission manuelle requise** (comptes développeur — ne peut pas être fait par Claude) :
 - Chrome Web Store Developer Dashboard → nouvelle version → uploader `readingtk-chrome-X.X.X.zip`
 - Firefox AMO Developer Hub → nouvelle version → uploader `readingtk-firefox-X.X.X.zip`
