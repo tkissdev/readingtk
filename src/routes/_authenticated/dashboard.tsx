@@ -522,6 +522,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
   const qc = useQueryClient();
   const { t: tr } = useI18n();
   const [scraping, setScraping] = useState(false);
+  const [scrapeMode, setScrapeMode] = useState<"windows" | "extension" | null>(null);
   const [editSrcId, setEditSrcId] = useState<string | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [editLastSeen, setEditLastSeen] = useState("");
@@ -827,11 +828,16 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                 )}
                 <div className="flex items-center gap-1.5">
                   <button
-                    title={tr("drawer.scrapeNow")}
+                    title={
+                      scraping
+                        ? scrapeMode === "windows" ? tr("drawer.scrapingWindows") : tr("drawer.scrapingExtension")
+                        : tr("drawer.scrapeNow")
+                    }
                     disabled={scraping}
                     onClick={async (e) => {
                       e.stopPropagation();
                       setScraping(true);
+                      setScrapeMode("windows");
                       try {
                         const winResult = await tryWindowsApp(titleId, autoDiscover);
                         if (winResult.status === "done") {
@@ -841,6 +847,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                         } else if (winResult.status === "error") {
                           toast.error(tr("drawer.scrapeError", { message: winResult.message }));
                         } else {
+                          setScrapeMode("extension");
                           const res = await sendToExtension({ type: "CHECK_TITLE_NOW", titleId, autoDiscover });
                           if (res?.error) {
                             toast.error(res.error === "Extension non disponible"
@@ -854,6 +861,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                         }
                       } finally {
                         setScraping(false);
+                        setScrapeMode(null);
                       }
                     }}
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent/10 hover:text-accent transition disabled:opacity-40">
