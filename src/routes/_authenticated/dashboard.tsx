@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, X, Sparkles, ExternalLink, ChevronUp, ChevronDown, ChevronsUpDown, GitMerge, RefreshCw, Trash2, Pencil, Check, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n, statusLabel, typeLabel } from "@/i18n";
+import { sendToExtension } from "@/lib/localAgent";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Bibliothèque · ReadingTK" }] }),
@@ -497,26 +498,6 @@ async function tryWindowsApp(titleId: string, autoDiscover: boolean): Promise<Wi
   } catch {
     return { status: "unavailable" };
   }
-}
-
-// Envoie un message au background de l'extension via le content script relay
-function sendToExtension(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
-  return new Promise((resolve) => {
-    const requestId = Math.random().toString(36).slice(2);
-    const timeout = setTimeout(() => {
-      window.removeEventListener("message", handler);
-      resolve({ error: "Extension non disponible" });
-    }, 120000);
-    function handler(event: MessageEvent) {
-      if (event.data?.source !== "readingtk-extension") return;
-      if (event.data?.requestId !== requestId) return;
-      clearTimeout(timeout);
-      window.removeEventListener("message", handler);
-      resolve(event.data.response ?? null);
-    }
-    window.addEventListener("message", handler);
-    window.postMessage({ source: "readingtk-web", requestId, payload }, "*");
-  });
 }
 
 function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => void }) {

@@ -2,11 +2,34 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Plus, AlertTriangle, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronUp, ChevronDown, ChevronsUpDown, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
+import { sendToExtension } from "@/lib/localAgent";
 
 type SortCol = "name" | "base_url" | "priority" | "enabled" | "is_down";
+
+type SiteCheckResult = { status: "done"; ok: boolean; reason?: string } | { status: "error"; message: string } | { status: "unavailable" };
+
+// Tente de tester le site via l'app Windows locale (port 7842) avant de se rabattre sur l'extension
+async function tryWindowsAppSite(siteId: string, url: string, needsTab: boolean): Promise<SiteCheckResult> {
+  try {
+    const res = await fetch("http://127.0.0.1:7842/check-site", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ site_id: siteId, url, needs_tab: needsTab }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (res.status === 401) return { status: "unavailable" };
+    const data = await res.json().catch(() => null);
+    if (!data) return { status: "unavailable" };
+    if (data.status === "done") return { status: "done", ok: !!data.ok, reason: data.reason };
+    if (data.status === "error") return { status: "error", message: data.error || "?" };
+    return { status: "unavailable" };
+  } catch {
+    return { status: "unavailable" };
+  }
+}
 
 function SortIcon({ col, sortBy, sortDir }: { col: SortCol; sortBy: SortCol | null; sortDir: "asc" | "desc" }) {
   if (sortBy !== col) return <ChevronsUpDown className="inline ml-1 h-3 w-3 opacity-40" />;
@@ -29,6 +52,30 @@ function SitesPage() {
   const [priority, setPriority] = useState(0);
   const [sortBy, setSortBy] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+
+  async function refreshSite(site: { id: string; base_url: string }) {
+    setRefreshingId(site.id);
+    try {
+      const needsTab = (site as any).needs_tab === true;
+      const winResult = await tryWindowsAppSite(site.id, site.base_url, needsTab);
+      if (winResult.status === "done") {
+        toast[winResult.ok ? "success" : "error"](winResult.ok ? t("sites.checkOk") : t("sites.checkDown"));
+      } else if (winResult.status === "error") {
+        toast.error(winResult.message);
+      } else {
+        const res = await sendToExtension({ type: "CHECK_SITE_NOW", siteId: site.id, url: site.base_url, needsTab });
+        if (res?.error) {
+          toast.error(res.error === "Extension non disponible" ? t("sites.checkUnavailable") : String(res.error));
+        } else if (res) {
+          toast[(res as any).ok ? "success" : "error"]((res as any).ok ? t("sites.checkOk") : t("sites.checkDown"));
+        }
+      }
+    } finally {
+      setRefreshingId(null);
+      qc.invalidateQueries({ queryKey: ["sites"] });
+    }
+  }
 
   function handleSort(col: SortCol) {
     if (sortBy === col) {
@@ -196,9 +243,19 @@ function SitesPage() {
                   </button>
                 </td>
                 <td className="px-3 py-3 text-right">
-                  <button onClick={() => del.mutate(s.id)} title={t("sites.deleteSite")} className={`rounded-md p-1.5 hover:bg-destructive/10 ${isDown ? "text-red-400" : "text-destructive"}`}>
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => refreshSite(s)}
+                      disabled={refreshingId === s.id}
+                      title={t("sites.refresh")}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/10 hover:text-accent transition disabled:opacity-40"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${refreshingId === s.id ? "animate-spin" : ""}`} />
+                    </button>
+                    <button onClick={() => del.mutate(s.id)} title={t("sites.deleteSite")} className={`rounded-md p-1.5 hover:bg-destructive/10 ${isDown ? "text-red-400" : "text-destructive"}`}>
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
               );

@@ -863,7 +863,7 @@ async function runCheck() {
     const notifyInApp = settings[0]?.in_app_notifications_enabled !== false;
 
     const titles = await sbGet(
-      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,type,type_locked,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
+      `/titles?user_id=eq.${user_id}&status=neq.dropped&select=id,name,type,type_locked,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority,is_down))`
     );
 
     // Sites globaux avec un template URL (pour l'auto-découverte, si activée)
@@ -929,6 +929,11 @@ async function runCheck() {
             // Succès : mettre à jour le chapitre et effacer toute erreur précédente
             allDetectedNums.push(found.num);
             await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
+
+            // Le site répond de nouveau normalement — annule un éventuel marquage "Down" précédent
+            if (src.sites?.is_down && src.site_id) {
+              await sbPatch(`/sites?id=eq.${src.site_id}`, { is_down: false, enabled: true });
+            }
 
             // Couverture : seulement si le titre n'en a pas encore
             const coverUrl = result.coverUrl ?? parseCoverUrl(result.html ?? "");
@@ -1058,6 +1063,25 @@ async function runCheck() {
   }
 }
 
+// ── Vérification de la disponibilité d'un site (page /sites, bouton rafraîchir) ─
+
+async function checkSiteStatus(siteId, url, needsTab = false) {
+  const token = await getToken();
+  if (!token) return { error: "Non connecté" };
+  try {
+    const { result } = await fetchForSite(url, siteId, needsTab);
+    if (result?.is404) {
+      await sbPatch(`/sites?id=eq.${siteId}`, { is_down: true });
+      return { ok: false, reason: "404" };
+    }
+    // Redirection ou page chargée normalement : le site répond, on lève le marquage "Down"
+    await sbPatch(`/sites?id=eq.${siteId}`, { is_down: false, enabled: true });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e.message };
+  }
+}
+
 // ── Check d'un seul titre (déclenché depuis la page web via le content script) ─
 
 async function checkSingleTitle(titleId, autoDiscover = false) {
@@ -1072,7 +1096,7 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
   const format = settings[0]?.chapter_format === "text" ? "text" : "numeric";
 
   const titles = await sbGet(
-    `/titles?id=eq.${titleId}&select=id,name,type,type_locked,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))`
+    `/titles?id=eq.${titleId}&select=id,name,type,type_locked,cover_url,title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority,is_down))`
   );
   const title = titles[0];
   if (!title) return { error: "Titre introuvable" };
@@ -1119,6 +1143,11 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
       }
 
       await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
+
+      // Le site répond de nouveau normalement — annule un éventuel marquage "Down" précédent
+      if (src.sites?.is_down && src.site_id) {
+        await sbPatch(`/sites?id=eq.${src.site_id}`, { is_down: false, enabled: true });
+      }
 
       const coverUrl = result?.coverUrl ?? parseCoverUrl(result?.html ?? "");
       if (coverUrl && !title.cover_url) {
@@ -1313,6 +1342,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === "CHECK_TITLE_NOW") {
     checkSingleTitle(msg.titleId, msg.autoDiscover === true).then(sendResponse).catch(e => sendResponse({ error: e.message }));
+    return true;
+  }
+  if (msg.type === "CHECK_SITE_NOW") {
+    checkSiteStatus(msg.siteId, msg.url, msg.needsTab === true).then(sendResponse).catch(e => sendResponse({ error: e.message }));
     return true;
   }
   if (msg.type === "GET_STATUS") {

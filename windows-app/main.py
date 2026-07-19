@@ -450,7 +450,19 @@ def main():
             title_id=title_id,
             auto_discover_override=auto_discover if title_id else None,
         )
-    local_server.start(check_callback=_local_check)
+
+    def _local_check_site(site_id: str | None, url: str | None, needs_tab: bool) -> dict:
+        from scraper import fetch_for_site
+        if not site_id or not url:
+            return {"ok": False, "reason": "Paramètres manquants"}
+        result = fetch_for_site(url, needs_tab=needs_tab)
+        if result.get("is404"):
+            supabase.patch(f"/sites?id=eq.{site_id}", {"is_down": True})
+            return {"ok": False, "reason": "404"}
+        supabase.patch(f"/sites?id=eq.{site_id}", {"is_down": False, "enabled": True})
+        return {"ok": True}
+
+    local_server.start(check_callback=_local_check, check_site_callback=_local_check_site)
 
     # Lancer pystray dans un thread séparé
     _initial_icon = _make_icon() if supabase.is_logged_in else _make_icon("#ef4444")

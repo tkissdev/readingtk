@@ -259,6 +259,10 @@ const fr: Dict = {
   "sites.enableSite": "Activer ce site",
   "sites.disableSite": "Désactiver ce site",
   "sites.deleteSite": "Supprimer ce site",
+  "sites.refresh": "Retester ce site",
+  "sites.checkOk": "Le site répond correctement",
+  "sites.checkDown": "Le site semble injoignable",
+  "sites.checkUnavailable": "Application Windows et extension indisponibles pour ce test",
 
   // Notifications
   "notif.metaTitle": "Notifications · ReadingTK",
@@ -553,6 +557,10 @@ const en: Dict = {
   "sites.enableSite": "Enable this site",
   "sites.disableSite": "Disable this site",
   "sites.deleteSite": "Delete this site",
+  "sites.refresh": "Retest this site",
+  "sites.checkOk": "The site is responding correctly",
+  "sites.checkDown": "The site appears unreachable",
+  "sites.checkUnavailable": "Windows app and extension both unavailable for this test",
 
   "notif.metaTitle": "Notifications · ReadingTK",
   "notif.title": "Notifications",

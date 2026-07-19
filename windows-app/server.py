@@ -15,6 +15,7 @@ ALLOWED_ORIGINS = [
 log = logging.getLogger("rtk.server")
 
 _check_callback = None  # injecté par main.py
+_check_site_callback = None  # injecté par main.py
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -88,15 +89,57 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(resp)))
             self.end_headers()
             self.wfile.write(resp)
+        elif self.path == "/check-site":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                body = {}
+
+            from supabase_client import supabase
+            if not supabase.is_logged_in:
+                resp = json.dumps({"error": "Non connecté"}).encode()
+                self.send_response(401)
+                self._send_cors()
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp)))
+                self.end_headers()
+                self.wfile.write(resp)
+                return
+
+            site_id = body.get("site_id")
+            url = body.get("url")
+            needs_tab = bool(body.get("needs_tab", False))
+
+            if _check_site_callback:
+                try:
+                    result = _check_site_callback(site_id, url, needs_tab)
+                    resp = json.dumps({"status": "done", **(result or {})}).encode()
+                    status_code = 200
+                except Exception as e:
+                    log.error("Erreur pendant /check-site : %s", e)
+                    resp = json.dumps({"status": "error", "error": str(e)}).encode()
+                    status_code = 500
+            else:
+                resp = json.dumps({"status": "error", "error": "Non initialisé"}).encode()
+                status_code = 500
+
+            self.send_response(status_code)
+            self._send_cors()
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(resp)))
+            self.end_headers()
+            self.wfile.write(resp)
         else:
             self.send_response(404)
             self.end_headers()
 
 
-def start(check_callback=None):
+def start(check_callback=None, check_site_callback=None):
     """Démarre le serveur HTTP local dans un thread daemon."""
-    global _check_callback
+    global _check_callback, _check_site_callback
     _check_callback = check_callback
+    _check_site_callback = check_site_callback
     try:
         httpd = HTTPServer(("127.0.0.1", PORT), _Handler)
         t = threading.Thread(target=httpd.serve_forever, daemon=True)

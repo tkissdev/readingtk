@@ -2,7 +2,7 @@
 import sys
 from cx_Freeze import setup, Executable
 
-APP_VERSION = "1.0.3"
+APP_VERSION = "1.0.4"
 
 build_exe_options = {
     "packages": [

@@ -76,7 +76,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
     titles = supabase.get(
         f"/titles?user_id=eq.{uid}&status=neq.dropped{title_filter}"
         f"&select=id,name,type,type_locked,cover_url,"
-        f"title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority))"
+        f"title_sources(id,url,site_id,last_seen_chapter,last_error,sites(needs_tab,priority,is_down))"
     )
 
     global_sites = []
@@ -163,6 +163,10 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
 
                 all_detected_nums.append(found["num"])
                 supabase.patch(f"/title_sources?id=eq.{src['id']}", {"last_seen_chapter": chap_label, "last_error": None})
+
+                # Le site répond de nouveau normalement — annule un éventuel marquage "Down" précédent
+                if (src.get("sites") or {}).get("is_down") and src.get("site_id"):
+                    supabase.patch(f"/sites?id=eq.{src['site_id']}", {"is_down": False, "enabled": True})
 
                 # Couverture (seulement si le titre n'en a pas)
                 cover_url = result.get("coverUrl")
