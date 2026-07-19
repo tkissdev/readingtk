@@ -137,6 +137,7 @@ function SitesPage() {
                 return (
                   <th key={col} className={`${i === 0 ? "px-4" : "px-3"} py-3 text-left`}>
                     <button onClick={() => handleSort(col)}
+                      title={t("common.sortColumn")}
                       className="flex items-center hover:text-foreground transition-colors whitespace-nowrap">
                       {labels[col]}
                       <SortIcon col={col} sortBy={sortBy} sortDir={sortDir} />
@@ -189,12 +190,13 @@ function SitesPage() {
                 </td>
                 <td className="px-3 py-3">
                   <button onClick={() => update.mutate({ id: s.id, enabled: !s.enabled })}
+                    title={s.enabled ? t("sites.disableSite") : t("sites.enableSite")}
                     className={`h-5 w-10 rounded-full transition ${s.enabled ? "bg-accent" : "bg-secondary"}`}>
                     <span className={`block h-4 w-4 rounded-full bg-background transition ${s.enabled ? "translate-x-5" : "translate-x-1"}`} />
                   </button>
                 </td>
                 <td className="px-3 py-3 text-right">
-                  <button onClick={() => del.mutate(s.id)} className={`rounded-md p-1.5 hover:bg-destructive/10 ${isDown ? "text-red-400" : "text-destructive"}`}>
+                  <button onClick={() => del.mutate(s.id)} title={t("sites.deleteSite")} className={`rounded-md p-1.5 hover:bg-destructive/10 ${isDown ? "text-red-400" : "text-destructive"}`}>
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </td>

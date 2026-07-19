@@ -304,6 +304,7 @@ function Dashboard() {
                 {(["type", "name", "status", "lu", "detected"] as SortBy[]).map((col, i) => (
                   <th key={col} className={`${i === 0 ? "px-3" : "px-2"} py-2 text-left`}>
                     <button onClick={(e) => { e.stopPropagation(); handleSort(col); }}
+                      title={tr("common.sortColumn")}
                       className="flex items-center hover:text-foreground transition-colors">
                       {col === "name" ? tr("dash.colTitle") : col === "type" ? tr("filter.type") : col === "status" ? tr("filter.status") : col === "lu" ? tr("dash.colRead") : tr("dash.colDetected")}
                       <SortIcon col={col} sortBy={sortBy} sortDir={sortDir} />
@@ -782,11 +783,13 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                   <div className="flex gap-1">
                     <button
                       onClick={() => saveCover(coverUrlInput)}
+                      title={tr("drawer.saveCover")}
                       className="flex-1 rounded bg-accent/20 px-1 py-0.5 text-[10px] text-accent hover:bg-accent/30 transition">
                       <Check className="mx-auto h-3 w-3" />
                     </button>
                     <button
                       onClick={() => setEditingCover(false)}
+                      title={tr("common.cancel")}
                       className="flex-1 rounded bg-secondary/60 px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary transition">
                       <X className="mx-auto h-3 w-3" />
                     </button>
@@ -810,7 +813,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                       onBlur={commitName}
                       className="rounded-md border border-accent bg-background px-2 py-1 text-xl font-bold outline-none"
                     />
-                    <button onClick={commitName} className="rounded p-1 text-accent hover:bg-accent/10">
+                    <button onClick={commitName} title={tr("drawer.confirmRename")} className="rounded p-1 text-accent hover:bg-accent/10">
                       <Check className="h-4 w-4" />
                     </button>
                   </div>
@@ -889,7 +892,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
               )}
             </div>
           </div>
-          <button onClick={onClose} className="shrink-0 rounded-md p-1 hover:bg-accent/10"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} title={tr("common.close")} className="shrink-0 rounded-md p-1 hover:bg-accent/10"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="mt-6">
@@ -1028,8 +1031,9 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                           qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
                           qc.invalidateQueries({ queryKey: ["titles"] });
                         }}
+                        title={tr("drawer.confirmDetected")}
                         className="rounded p-1 text-xs text-accent hover:bg-secondary/60 transition font-semibold">✓</button>
-                      <button onClick={() => setEditingDetected(false)} className="rounded p-1 text-xs text-muted-foreground hover:bg-secondary/60 transition">✕</button>
+                      <button onClick={() => setEditingDetected(false)} title={tr("common.cancel")} className="rounded p-1 text-xs text-muted-foreground hover:bg-secondary/60 transition">✕</button>
                     </>
                   ) : (
                     <>
@@ -1124,10 +1128,10 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                 placeholder="https://..."
                 className="min-w-0 flex-1 rounded-md border border-input bg-input/50 px-3 py-1.5 font-mono text-xs outline-none focus:border-accent"
               />
-              <button onClick={submitNewSource} className="rounded-md bg-accent/20 px-2 py-1.5 text-accent hover:bg-accent/30 transition">
+              <button onClick={submitNewSource} title={tr("drawer.confirmSource")} className="rounded-md bg-accent/20 px-2 py-1.5 text-accent hover:bg-accent/30 transition">
                 <Check className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => setAddingSource(false)} className="rounded-md bg-secondary/60 px-2 py-1.5 text-muted-foreground hover:bg-secondary transition">
+              <button onClick={() => setAddingSource(false)} title={tr("common.cancel")} className="rounded-md bg-secondary/60 px-2 py-1.5 text-muted-foreground hover:bg-secondary transition">
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>

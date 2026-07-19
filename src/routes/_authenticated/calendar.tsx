@@ -536,7 +536,7 @@ function ScheduleDialog({
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">{draft.id ? t("cal.editEntryTitle") : t("cal.addEntry")}</h2>
-          <button onClick={onClose} className="rounded p-1 text-muted-foreground hover:bg-secondary/40 hover:text-foreground">
+          <button onClick={onClose} title={t("common.close")} className="rounded p-1 text-muted-foreground hover:bg-secondary/40 hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>

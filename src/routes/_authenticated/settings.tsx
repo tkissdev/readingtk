@@ -208,10 +208,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm">{label}</span>
-      <button onClick={() => onChange(!value)} className={`h-5 w-10 rounded-full ${value ? "bg-accent" : "bg-secondary"}`}>
+      <button
+        onClick={() => onChange(!value)}
+        title={value ? t("common.disable", { label }) : t("common.enable", { label })}
+        className={`h-5 w-10 rounded-full ${value ? "bg-accent" : "bg-secondary"}`}
+      >
         <span className={`block h-4 w-4 rounded-full bg-background transition ${value ? "translate-x-5" : "translate-x-1"}`} />
       </button>
     </div>

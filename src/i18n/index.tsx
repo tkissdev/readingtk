@@ -16,6 +16,10 @@ const fr: Dict = {
   "common.loading": "Chargement…",
   "common.open": "Ouvrir",
   "common.create": "Créer",
+  "common.close": "Fermer",
+  "common.sortColumn": "Trier par cette colonne (cliquer à nouveau pour inverser l'ordre)",
+  "common.enable": "Activer {label}",
+  "common.disable": "Désactiver {label}",
   "opt.all": "Tous",
 
   // Types & statuts
@@ -135,7 +139,9 @@ const fr: Dict = {
 
   // Drawer
   "drawer.editCover": "Modifier l'image de couverture",
+  "drawer.saveCover": "Enregistrer la couverture",
   "drawer.renameTitle": "Renommer le titre",
+  "drawer.confirmRename": "Valider le nouveau nom",
   "drawer.renameFail": "Erreur lors du renommage",
   "drawer.scrapeNow": "Vérifier les chapitres de ce titre\n\nSi aucune source n'est configurée, une auto-découverte est lancée automatiquement.\nAvec 'Auto-découverte' activée, cherche aussi sur tous les sites connus.",
   "drawer.autoDiscover": "Auto-découverte",
@@ -153,6 +159,7 @@ const fr: Dict = {
   "drawer.detectedPrefix": "Dernier chapitre détecté : ",
   "drawer.deleteChapter": "Supprimer ce chapitre",
   "drawer.editDetected": "Modifier le numéro détecté",
+  "drawer.confirmDetected": "Enregistrer le numéro de chapitre",
   "drawer.typeLocked": "(manuel)",
   "drawer.typeUnlock": "Cliquer pour repasser en détection automatique",
   "drawer.sources": "Sources ({n})",
@@ -169,6 +176,7 @@ const fr: Dict = {
   "drawer.deleteSource": "Supprimer cette source",
   "drawer.confirmDeleteSource": "Supprimer cette source ?",
   "drawer.addSource": "Ajouter une source",
+  "drawer.confirmSource": "Ajouter la source",
   "drawer.noSources": "Aucune source.",
   "drawer.deleteTitleBtn": "Supprimer ce titre",
   "drawer.confirmDeleteTitle": "Supprimer ce titre ?",
@@ -248,6 +256,9 @@ const fr: Dict = {
   "sites.created": "Site créé",
   "sites.down": "Down",
   "sites.none": "Aucun site configuré.",
+  "sites.enableSite": "Activer ce site",
+  "sites.disableSite": "Désactiver ce site",
+  "sites.deleteSite": "Supprimer ce site",
 
   // Notifications
   "notif.metaTitle": "Notifications · ReadingTK",
@@ -312,6 +323,10 @@ const en: Dict = {
   "common.loading": "Loading…",
   "common.open": "Open",
   "common.create": "Create",
+  "common.close": "Close",
+  "common.sortColumn": "Sort by this column (click again to reverse order)",
+  "common.enable": "Enable {label}",
+  "common.disable": "Disable {label}",
   "opt.all": "All",
 
   "type.other": "other",
@@ -421,7 +436,9 @@ const en: Dict = {
   "merge.willKeep": "Will be kept as variants: {list}",
 
   "drawer.editCover": "Edit cover image",
+  "drawer.saveCover": "Save cover",
   "drawer.renameTitle": "Rename title",
+  "drawer.confirmRename": "Confirm new name",
   "drawer.renameFail": "Error renaming title",
   "drawer.scrapeNow": "Check chapters for this title\n\nIf no source is configured, auto-discovery runs automatically.\nWith 'Auto-discover' enabled, also searches all known sites.",
   "drawer.autoDiscover": "Auto-discover",
@@ -439,6 +456,7 @@ const en: Dict = {
   "drawer.detectedPrefix": "Last detected chapter: ",
   "drawer.deleteChapter": "Delete this chapter",
   "drawer.editDetected": "Edit detected chapter number",
+  "drawer.confirmDetected": "Save chapter number",
   "drawer.typeLocked": "(manual)",
   "drawer.typeUnlock": "Click to switch back to automatic detection",
   "drawer.sources": "Sources ({n})",
@@ -455,6 +473,7 @@ const en: Dict = {
   "drawer.deleteSource": "Delete this source",
   "drawer.confirmDeleteSource": "Delete this source?",
   "drawer.addSource": "Add a source",
+  "drawer.confirmSource": "Add the source",
   "drawer.noSources": "No source.",
   "drawer.deleteTitleBtn": "Delete this title",
   "drawer.confirmDeleteTitle": "Delete this title?",
@@ -531,6 +550,9 @@ const en: Dict = {
   "sites.created": "Site created",
   "sites.down": "Down",
   "sites.none": "No site configured.",
+  "sites.enableSite": "Enable this site",
+  "sites.disableSite": "Disable this site",
+  "sites.deleteSite": "Delete this site",
 
   "notif.metaTitle": "Notifications · ReadingTK",
   "notif.title": "Notifications",
