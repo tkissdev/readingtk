@@ -240,19 +240,26 @@ Bouton toujours visible (pas de `opacity-0 group-hover:opacity-100`).
 Le scraping par titre nécessite l'extension ReadingTK installée dans le navigateur.  
 Si l'extension n'est pas disponible → toast `t("drawer.extUnavailable")`.
 
-**Versions publiées :** Chrome v1.1.0 (en attente d'approbation), Firefox v1.1.0 (approuvé et live)
+**Versions publiées :** Chrome v1.1.0 (en attente d'approbation), Firefox v1.1.0 (approuvé et live)  
+**Version prête à soumettre :** v1.1.1 (correctifs du statut "Down" des sites — voir `windows-app`/CHANGELOG du commit)
 
-**ZIPs :** `readingtk-chrome-1.1.0.zip` et `readingtk-firefox-1.1.0.zip` à la racine du projet.  
+**ZIPs :** `readingtk-chrome-X.X.X.zip` et `readingtk-firefox-X.X.X.zip` à la racine du projet.  
 **Recréer les ZIPs (Windows) :** utiliser Python pour forcer les forward slashes :
 ```python
 import zipfile, pathlib
 src = pathlib.Path('extension-firefox')
-with zipfile.ZipFile('readingtk-firefox-1.1.0.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+with zipfile.ZipFile('readingtk-firefox-X.X.X.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
     for file in src.rglob('*'):
         if file.is_file():
             zf.write(file, file.relative_to(src).as_posix())
 ```
 (Firefox AMO rejette les ZIPs avec des backslashes Windows)
+
+**⚠️ `extension/manifest.firefox.json`** est un fichier orphelin (v1.0.0, non référencé nulle part) laissé par une ancienne organisation du projet avant la création du dossier `extension-firefox/` séparé — à exclure du ZIP Chrome (déjà fait dans le script de packaging), et à supprimer un jour si confirmé inutile.
+
+**Soumission manuelle requise** (comptes développeur — ne peut pas être fait par Claude) :
+- Chrome Web Store Developer Dashboard → nouvelle version → uploader `readingtk-chrome-X.X.X.zip`
+- Firefox AMO Developer Hub → nouvelle version → uploader `readingtk-firefox-X.X.X.zip`
 
 ### Filtre anti-faux-positifs (v1.1.0)
 Dans `background.js` (Chrome et Firefox) et `checker.py` (Windows) :

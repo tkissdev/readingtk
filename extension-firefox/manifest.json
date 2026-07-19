@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "ReadingTK",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Détection automatique de nouveaux chapitres manga/manhua",
   "permissions": [
     "alarms",
