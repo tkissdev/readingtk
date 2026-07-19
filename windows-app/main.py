@@ -4,9 +4,20 @@ Vérification périodique des nouveaux chapitres manga/manhwa/manhua.
 """
 import logging
 import os
+import subprocess
 import sys
 import threading
 import time
+
+# Build --noconsole (pas de fenêtre de terminal) : sys.stdin/stdout/stderr valent None.
+# Sans ça, Node.js (utilisé en interne par patchright pour piloter Chromium) échoue à
+# lancer le navigateur avec une erreur "spawn UNKNOWN" faute de canaux valides à hériter.
+if sys.stdin is None:
+    sys.stdin = open(os.devnull, "r")
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w")
 import tkinter as tk
 import webbrowser
 
@@ -14,7 +25,7 @@ import pystray
 from PIL import Image, ImageDraw
 
 from supabase_client import supabase, DASHBOARD_URL
-from notifier import notify
+from notifier import notify, notify_simple
 import server as local_server
 
 log = logging.getLogger("rtk")
@@ -26,6 +37,32 @@ logging.basicConfig(
         logging.FileHandler(os.path.join(os.path.dirname(__file__), "readingtk.log"), encoding="utf-8"),
     ],
 )
+
+# Dossier persistant pour le navigateur Chromium (patchright) — sans ça, l'exécutable
+# packagé (--onefile) l'installerait dans un dossier temporaire supprimé à chaque fermeture,
+# forçant un nouveau téléchargement de ~150-300 Mo à chaque lancement.
+_BROWSERS_DIR = os.path.join(os.getenv("LOCALAPPDATA", os.path.expanduser("~")), "ReadingTK", "browsers")
+os.makedirs(_BROWSERS_DIR, exist_ok=True)
+os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", _BROWSERS_DIR)
+
+
+def _ensure_browser_installed():
+    """Télécharge Chromium pour patchright si absent (une seule fois, en arrière-plan)."""
+    try:
+        if any(name.startswith("chromium") for name in os.listdir(_BROWSERS_DIR)):
+            return  # déjà installé
+        log.info("Téléchargement du navigateur pour un meilleur support des sites JS...")
+        from patchright._impl._driver import compute_driver_executable, get_driver_env
+        driver_executable, driver_cli = compute_driver_executable()
+        subprocess.run(
+            [driver_executable, driver_cli, "install", "chromium"],
+            env=get_driver_env(), check=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        log.info("Navigateur installé avec succès.")
+        notify_simple("ReadingTK", "Navigateur téléchargé — davantage de sites sont maintenant supportés.")
+    except Exception as e:
+        log.warning("Installation automatique du navigateur échouée : %s", e)
 
 # ── État global ────────────────────────────────────────────────────────────────
 
@@ -391,6 +428,9 @@ def main():
 
     log.info("ReadingTK Windows démarré")
 
+    # Téléchargement du navigateur (Chromium) en arrière-plan si absent — ne bloque pas le démarrage
+    threading.Thread(target=_ensure_browser_installed, daemon=True).start()
+
     # tkinter sur le thread principal (obligatoire sur Windows / Python 3.14)
     _root = tk.Tk()
     _root.withdraw()
@@ -403,9 +443,9 @@ def main():
     _load_settings()
 
     # Serveur HTTP local (dashboard → app Windows)
-    def _local_check(title_id: str | None, auto_discover: bool):
+    def _local_check(title_id: str | None, auto_discover: bool) -> dict:
         from checker import run_check
-        run_check(
+        return run_check(
             on_new_chapter=_on_new_chapter,
             title_id=title_id,
             auto_discover_override=auto_discover if title_id else None,

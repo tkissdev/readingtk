@@ -45,3 +45,13 @@ def notify(title_name: str, chap_label: str, chap_url: str):
         toast.show()
     except Exception as e:
         log.error("Notification échouée: %s", e)
+
+
+def notify_simple(title: str, msg: str):
+    """Envoie une notification toast Windows générique (sans action)."""
+    icon = _ensure_icon()
+    try:
+        from winotify import Notification
+        Notification(app_id="ReadingTK", title=title, msg=msg, icon=icon or "", duration="short").show()
+    except Exception as e:
+        log.error("Notification échouée: %s", e)

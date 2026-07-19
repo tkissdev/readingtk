@@ -70,14 +70,19 @@ class _Handler(BaseHTTPRequestHandler):
             auto_discover = bool(body.get("auto_discover", False))
 
             if _check_callback:
-                threading.Thread(
-                    target=_check_callback,
-                    args=(title_id, auto_discover),
-                    daemon=True,
-                ).start()
+                try:
+                    result = _check_callback(title_id, auto_discover)
+                    resp = json.dumps({"status": "done", **(result or {})}).encode()
+                    status_code = 200
+                except Exception as e:
+                    log.error("Erreur pendant /check : %s", e)
+                    resp = json.dumps({"status": "error", "error": str(e)}).encode()
+                    status_code = 500
+            else:
+                resp = json.dumps({"status": "error", "error": "Non initialisé"}).encode()
+                status_code = 500
 
-            resp = json.dumps({"status": "started"}).encode()
-            self.send_response(200)
+            self.send_response(status_code)
             self._send_cors()
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(resp)))

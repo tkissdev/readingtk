@@ -470,20 +470,31 @@ function FilterGroup({ label, value, options, onChange, labelFn }: { label: stri
 
 // ── Title Drawer ───────────────────────────────────────────────────────────────
 
-// Tente de déclencher un check via l'app Windows locale (port 7842)
-async function tryWindowsApp(titleId: string, autoDiscover: boolean): Promise<boolean> {
+// Tente de déclencher un check via l'app Windows locale (port 7842).
+// La requête attend la fin réelle de la vérification (pas juste sa mise en route) —
+// le timeout est long pour laisser le temps au scraping de se terminer, mais si l'app
+// Windows n'est pas lancée, la connexion échoue immédiatement (pas d'attente inutile).
+type WindowsCheckResult =
+  | { status: "done"; detected: number; errors: number }
+  | { status: "error"; message: string }
+  | { status: "unavailable" };
+
+async function tryWindowsApp(titleId: string, autoDiscover: boolean): Promise<WindowsCheckResult> {
   try {
     const res = await fetch("http://127.0.0.1:7842/check", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title_id: titleId, auto_discover: autoDiscover }),
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(90000),
     });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return data.status === "started";
+    if (res.status === 401) return { status: "unavailable" }; // pas connecté à l'app Windows → laisser sa chance à l'extension
+    const data = await res.json().catch(() => null);
+    if (!data) return { status: "unavailable" };
+    if (data.status === "done") return { status: "done", detected: data.detected ?? 0, errors: data.errors ?? 0 };
+    if (data.status === "error") return { status: "error", message: data.error || "?" };
+    return { status: "unavailable" };
   } catch {
-    return false;
+    return { status: "unavailable" };
   }
 }
 
@@ -822,9 +833,13 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
                       e.stopPropagation();
                       setScraping(true);
                       try {
-                        const usedWindowsApp = await tryWindowsApp(titleId, autoDiscover);
-                        if (usedWindowsApp) {
+                        const winResult = await tryWindowsApp(titleId, autoDiscover);
+                        if (winResult.status === "done") {
                           toast.success(tr("drawer.scrapeDone"));
+                          qc.invalidateQueries({ queryKey: ["title-detail", titleId] });
+                          qc.invalidateQueries({ queryKey: ["titles"] });
+                        } else if (winResult.status === "error") {
+                          toast.error(tr("drawer.scrapeError", { message: winResult.message }));
                         } else {
                           const res = await sendToExtension({ type: "CHECK_TITLE_NOW", titleId, autoDiscover });
                           if (res?.error) {
