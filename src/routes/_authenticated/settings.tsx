@@ -90,7 +90,7 @@ function SettingsPage() {
             <label className="text-xs text-muted-foreground">{t("filter.type")}</label>
             <select value={form.default_type} onChange={(e) => update("default_type", e.target.value)}
               className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm">
-              {["manga", "manhua", "novel", "autre"].map((ty) => <option key={ty} value={ty}>{ty}</option>)}
+              {["manga", "manhua", "manhwa", "novel", "autre"].map((ty) => <option key={ty} value={ty}>{ty}</option>)}
             </select>
           </div>
           <div>

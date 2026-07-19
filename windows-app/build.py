@@ -12,6 +12,10 @@ cmd = [
     "--name", "ReadingTK",
     "--icon", os.path.join(HERE, "icon.ico"),
     "--add-data", f"{HERE};.",
+    # Fichiers de données nécessaires au fingerprinting réseau (scrapling/browserforge) —
+    # sans ça, chaque requête de scraping échoue silencieusement (fichier .zip introuvable).
+    "--collect-data", "browserforge",
+    "--collect-data", "apify_fingerprint_datapoints",
     os.path.join(HERE, "main.py"),
 ]
 

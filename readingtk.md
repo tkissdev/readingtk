@@ -46,6 +46,7 @@ src/
 │   ├── index.tsx          ← Landing page
 │   ├── auth.tsx           ← Page connexion/inscription
 │   ├── download.tsx       ← Téléchargements (extensions navigateur + app Windows)
+│   ├── how-it-works.tsx   ← Comment ça marche + section "Fonctionnalités en détail" (captures d'écran)
 │   ├── callback.tsx       ← OAuth callback
 │   └── _authenticated/
 │       ├── route.tsx      ← Layout sidebar (AuthedLayout)
@@ -301,9 +302,28 @@ Trois formats de distribution, générés dans `windows-app/dist/` (non versionn
 **Numéro de version du MSI :** `APP_VERSION` en haut de `windows-app/setup_msi.py`.  
 **Code de mise à niveau (upgrade_code) :** fixe, ne jamais changer — sinon les mises à jour du MSI n'écrasent pas l'ancienne version.
 
-Ces fichiers (.exe/.msi/.zip) sont trop lourds pour être commités sur GitHub — ils sont distribués via **GitHub Releases** (tag `windows-app-vX.X.X`) plutôt que le dépôt Git lui-même.
+Ces fichiers (.exe/.msi/.zip) sont trop lourds pour être commités sur GitHub — ils sont distribués via **GitHub Releases** (tag `windows-app-vX.X.X`).
 
-**Page de téléchargement :** `src/routes/download.tsx` (route `/download`) liste à la fois les extensions navigateur et l'app Windows, avec liens directs vers les assets de la release GitHub. Après un nouveau build, mettre à jour `RELEASE_BASE` et `WINDOWS_VERSION` dans ce fichier pour pointer vers la nouvelle release.
+**⚠️ Dépôt de release : `tkissdev/readingtk-releases` (public), PAS `tkissdev/readingtk` (privé).**  
+Le dépôt principal du code est privé — sur GitHub, les assets d'une release héritent toujours de la visibilité du dépôt qui les héberge. Une release créée sur `readingtk` (privé) est donc inaccessible à un visiteur non connecté, même si l'URL semble publique (404 silencieux). D'où ce dépôt séparé, public, qui ne contient que les releases (pas de code source).
+
+**Page de téléchargement :** `src/routes/download.tsx` (route `/download`) liste à la fois les extensions navigateur et l'app Windows, avec liens directs vers les assets de la release. Après un nouveau build, mettre à jour `RELEASE_BASE` et `WINDOWS_VERSION` dans ce fichier pour pointer vers la nouvelle release, et **toujours vérifier avec un `curl` sans authentification** que les liens sont bien publics avant de considérer la mise à jour terminée :
+```bash
+curl -sL -A "Mozilla/5.0" -o /dev/null -w "%{http_code}" "<url-du-fichier>"  # doit renvoyer 200
+```
+
+---
+
+## Page "Comment ça marche" (`src/routes/how-it-works.tsx`)
+
+Section **"Fonctionnalités en détail"** : une carte par page/fonctionnalité (bibliothèque, volet d'un titre, calendrier, sites, notifications, paramètres, ajout de titre, import/export), chacune avec 1-2 captures d'écran + texte explicatif (tableaux `FEATURES_FR` / `FEATURES_EN`).
+
+**Captures d'écran :** `public/screenshots/` (numérotées `01-...` à `12-...`). Ce sont de vraies captures de l'app en conditions réelles (pas des maquettes) — **toujours masquer l'email avant une nouvelle capture** :
+```js
+const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+// remplacer tous les nœuds texte + inputs contenant un email par "utilisateur@email.com"
+```
+Ce masquage est fait en direct dans le DOM (non persisté) — à refaire à chaque nouvelle session avant capture.
 
 ---
 

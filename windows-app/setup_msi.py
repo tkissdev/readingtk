@@ -2,12 +2,13 @@
 import sys
 from cx_Freeze import setup, Executable
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 build_exe_options = {
     "packages": [
         "tkinter", "pystray", "PIL", "keyring", "winotify", "requests",
         "scrapling", "curl_cffi", "patchright", "browserforge", "msgspec",
+        "apify_fingerprint_datapoints",
     ],
     "include_files": ["icon.ico", "icon.png"],
 }
