@@ -304,10 +304,18 @@ function parseLastChapter(html, baseUrl) {
   let baseHost = "";
   try { baseHost = new URL(baseUrl).hostname; } catch {}
 
-  const anchorRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  // Certains sites (ex. mangahub.io) placent un lien caché rel=nofollow/noindex
+  // juste à côté du vrai lien de chapitre, avec un numéro sans rapport (ID interne).
+  // On l'ignore pour éviter de le confondre avec le vrai dernier chapitre.
+  const anchorRe = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = anchorRe.exec(html)) !== null) {
-    const href = m[1];
+    const attrs = m[1];
+    const hrefM = /href=["']([^"']+)["']/i.exec(attrs);
+    if (!hrefM) continue;
+    const href = hrefM[1];
+    const relM = /rel=["']([^"']*)["']/i.exec(attrs);
+    if (relM && /nofollow|noindex/i.test(relM[1])) continue;
     const text = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     const km = chapterNumRe.exec(href) || chapterNumRe.exec(text);
     if (km) {
@@ -527,6 +535,7 @@ function injectedExtract() {
         const els = document.querySelectorAll(sel);
         if (els.length > 0) {
           for (const el of els) {
+            if (/nofollow|noindex/i.test(el.getAttribute("rel") || "")) continue;
             const text = (el.textContent || "").trim();
             const href = el.href || el.getAttribute("href") || "";
             const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
@@ -544,6 +553,7 @@ function injectedExtract() {
       }
       if (!allC.length) {
         document.querySelectorAll("a[href]").forEach((el) => {
+          if (/nofollow|noindex/i.test(el.getAttribute("rel") || "")) return;
           const text = (el.textContent || "").trim();
           const href = el.href || "";
           const m = chapterNumRe.exec(href) || chapterNumRe.exec(text);
@@ -882,10 +892,9 @@ async function runCheck() {
         const progress = await sbGet(`/reading_progress?title_id=eq.${title.id}&select=last_chapter_read`);
         const lastRead = parseFloat(progress[0]?.last_chapter_read ?? "") || -1;
 
-        // Accumule tous les nouveaux chapitres trouvés pour ce titre (toutes sources confondues)
-        const newChaptersList = [];
-        const allDetectedNums = [];
-        let bestCoverPriority = -1;
+        // Résultats en attente : on ne persiste rien avant d'avoir écarté les outliers
+        // (voir étape 3) — évite de polluer last_seen_chapter / l'affichage avec un faux positif.
+        const pending = [];
         let bestTypePriority = -1;
 
         // ── 1. Scraper les sources existantes ──────────────────────────────────
@@ -926,10 +935,6 @@ async function runCheck() {
               continue;
             }
 
-            // Succès : mettre à jour le chapitre et effacer toute erreur précédente
-            allDetectedNums.push(found.num);
-            await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
-
             // Le site répond de nouveau normalement — annule un éventuel marquage "Down" précédent
             if (src.sites?.is_down && src.site_id) {
               await sbPatch(`/sites?id=eq.${src.site_id}`, { is_down: false, enabled: true });
@@ -952,10 +957,9 @@ async function runCheck() {
               bestTypePriority = srcPriority;
             }
 
-            const { isNew, chapterId } = await saveChapter({
-              titleId: title.id, siteId: src.site_id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: src.url, publishedAt: found.publishedAt,
-            });
-            if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: src.site_id, publishedAt: found.publishedAt });
+            // Le numéro lui-même attend le filtre anti-faux-positifs (étape 3)
+            // avant d'être écrit dans last_seen_chapter / la table chapters.
+            pending.push({ kind: "existing", sourceId: src.id, siteId: src.site_id, sourceUrl: src.url, num: found.num, chapLabel, chapUrl: found.url, publishedAt: found.publishedAt });
           } catch (e) { console.error("[RTK] Source error:", e.message); errors++; }
         }
 
@@ -976,14 +980,6 @@ async function runCheck() {
 
             console.log(`[RTK] Auto-découverte: "${title.name}" sur ${site.name} (${templateUrl})`);
 
-            const newSrcArr = await sbPost("/title_sources", {
-              title_id: title.id,
-              site_id: site.id,
-              url: templateUrl,
-              is_primary: false,
-            });
-            const newSrc = newSrcArr[0];
-
             const chapLabel = format === "numeric" ? String(found.num) : `Chapter ${found.num}`;
 
             // Vérifier que le chapitre est accessible avant d'enregistrer la source
@@ -993,37 +989,66 @@ async function runCheck() {
               continue;
             }
 
-            if (newSrc?.id) {
-              await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
-              sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
-            }
-
-            const { isNew, chapterId } = await saveChapter({
-              titleId: title.id, siteId: site.id, chapLabel, chapUrl: found.url, lastRead, sourceUrl: templateUrl, publishedAt: found.publishedAt,
-            });
-            if (isNew) newChaptersList.push({ num: found.num, chapLabel, chapUrl: found.url, chapterId, siteId: site.id, publishedAt: found.publishedAt });
+            // Idem : la création de la source et l'écriture du chapitre attendent
+            // le filtre anti-faux-positifs (étape 3).
+            pending.push({ kind: "discover", site, templateUrl, num: found.num, chapLabel, chapUrl: found.url, publishedAt: found.publishedAt });
           } catch (e) { console.error("[RTK] Auto-discover error:", e.message); errors++; }
         }
 
-        // ── 3. Filtre anti-faux-positifs : exclure les outliers inter-sources ───
-        // Si ≥2 sources ont détecté un chapitre, un numéro > 1.3× la médiane est suspect
-        let filteredChapters = newChaptersList;
-        if (allDetectedNums.length >= 2 && newChaptersList.length > 0) {
-          const sorted = [...allDetectedNums].sort((a, b) => a - b);
+        // ── 3. Filtre anti-faux-positifs par consensus inter-sources ───────────
+        // Si ≥2 sources ont détecté un chapitre, un numéro > 1.3× la médiane est
+        // suspect. On l'écarte AVANT toute écriture en base, pour ne pas polluer
+        // last_seen_chapter / l'affichage "dernier chapitre détecté" (qui prend le
+        // maximum brut des sources, sans autre vérification).
+        let accepted = pending;
+        if (pending.length >= 2) {
+          const sorted = pending.map(p => p.num).sort((a, b) => a - b);
           const median = sorted[Math.floor(sorted.length / 2)];
           const threshold = median * 1.3;
-          const safe = newChaptersList.filter(c => c.num <= threshold);
-          if (safe.length > 0) filteredChapters = safe;
-          else console.log(`[RTK] Tous les chapitres suspects pour ${title.name}, on garde quand même`);
+          const safe = pending.filter(p => p.num <= threshold);
+          if (safe.length > 0) {
+            if (safe.length < pending.length) {
+              for (const o of pending) {
+                if (o.num > threshold) console.log(`[RTK] Chapitre ${o.num} ignoré pour "${title.name}" (faux positif probable, médiane=${median}, seuil=${threshold.toFixed(0)})`);
+              }
+            }
+            accepted = safe;
+          } else {
+            console.log(`[RTK] Tous les chapitres suspects pour ${title.name}, on garde quand même`);
+          }
         }
 
-        // ── 4. Une seule notification par titre avec le meilleur chapitre ───────
-        if (filteredChapters.length > 0) {
-          const best = pickBestChapter(filteredChapters);
+        // ── 4. Écriture en base des résultats retenus ───────────────────────────
+        const newChaptersList = [];
+        for (const p of accepted) {
+          if (p.kind === "existing") {
+            await sbPatch(`/title_sources?id=eq.${p.sourceId}`, { last_seen_chapter: p.chapLabel, last_error: null });
+            const { isNew, chapterId } = await saveChapter({
+              titleId: title.id, siteId: p.siteId, chapLabel: p.chapLabel, chapUrl: p.chapUrl, lastRead, sourceUrl: p.sourceUrl, publishedAt: p.publishedAt,
+            });
+            if (isNew) newChaptersList.push({ num: p.num, chapLabel: p.chapLabel, chapUrl: p.chapUrl, chapterId, siteId: p.siteId, publishedAt: p.publishedAt });
+          } else {
+            const site = p.site;
+            const newSrcArr = await sbPost("/title_sources", { title_id: title.id, site_id: site.id, url: p.templateUrl, is_primary: false });
+            const newSrc = newSrcArr[0];
+            if (newSrc?.id) {
+              await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: p.chapLabel });
+              sources.push({ id: newSrc.id, url: p.templateUrl, site_id: site.id, last_seen_chapter: p.chapLabel });
+            }
+            const { isNew, chapterId } = await saveChapter({
+              titleId: title.id, siteId: site.id, chapLabel: p.chapLabel, chapUrl: p.chapUrl, lastRead, sourceUrl: p.templateUrl, publishedAt: p.publishedAt,
+            });
+            if (isNew) newChaptersList.push({ num: p.num, chapLabel: p.chapLabel, chapUrl: p.chapUrl, chapterId, siteId: site.id, publishedAt: p.publishedAt });
+          }
+        }
+
+        // ── 5. Une seule notification par titre avec le meilleur chapitre ──────
+        if (newChaptersList.length > 0) {
+          const best = pickBestChapter(newChaptersList);
           detected++;
 
           // Mettre à jour l'horaire de parution du calendrier (si une date a été détectée)
-          const pub = best.publishedAt || filteredChapters.find((c) => c.publishedAt)?.publishedAt;
+          const pub = best.publishedAt || newChaptersList.find((c) => c.publishedAt)?.publishedAt;
           if (pub) await upsertSchedule({ userId: user_id, titleId: title.id, publishedAt: pub });
 
           if (notifyInApp && best.chapterId) {
@@ -1107,10 +1132,11 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
   const progress = await sbGet(`/reading_progress?title_id=eq.${titleId}&select=last_chapter_read`);
   const lastRead = parseFloat(progress[0]?.last_chapter_read ?? "") || -1;
 
-  let found = 0;
   let errors = 0;
-  let bestCoverPriority = -1;
   let bestTypePriority = -1;
+  // Résultats en attente : on ne persiste rien avant d'avoir écarté les outliers
+  // (voir le filtre plus bas) — évite de polluer last_seen_chapter / l'affichage.
+  const pending = [];
 
   for (const src of sources) {
     try {
@@ -1142,8 +1168,6 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
         continue;
       }
 
-      await sbPatch(`/title_sources?id=eq.${src.id}`, { last_seen_chapter: chapLabel, last_error: null });
-
       // Le site répond de nouveau normalement — annule un éventuel marquage "Down" précédent
       if (src.sites?.is_down && src.site_id) {
         await sbPatch(`/sites?id=eq.${src.site_id}`, { is_down: false, enabled: true });
@@ -1164,9 +1188,8 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
         bestTypePriority = srcPriority;
       }
 
-      await saveChapter({ titleId, siteId: src.site_id, chapLabel, chapUrl: chapter.url, lastRead, sourceUrl: src.url, publishedAt: chapter.publishedAt });
-      if (chapter.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chapter.publishedAt });
-      found++;
+      // Le numéro lui-même attend le filtre anti-faux-positifs, plus bas.
+      pending.push({ kind: "existing", sourceId: src.id, sourceUrl: src.url, siteId: src.site_id, num: chapter.num, chapLabel, chapUrl: chapter.url, publishedAt: chapter.publishedAt });
     } catch (e) { console.error("[RTK] checkSingleTitle source error:", e?.message); errors++; }
   }
 
@@ -1189,14 +1212,6 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
 
         console.log(`[RTK] Auto-découverte: "${title.name}" sur ${site.name} (${templateUrl})`);
 
-        const newSrcArr = await sbPost("/title_sources", {
-          title_id: title.id,
-          site_id: site.id,
-          url: templateUrl,
-          is_primary: false,
-        });
-        const newSrc = newSrcArr[0];
-
         const chapLabel = format === "numeric" ? String(chap.num) : `Chapter ${chap.num}`;
 
         // Vérifier que le chapitre est accessible avant d'enregistrer la source
@@ -1206,15 +1221,53 @@ async function checkSingleTitle(titleId, autoDiscover = false) {
           continue;
         }
 
-        if (newSrc?.id) {
-          await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: chapLabel });
-          sources.push({ id: newSrc.id, url: templateUrl, site_id: site.id, last_seen_chapter: chapLabel });
-        }
-
-        await saveChapter({ titleId, siteId: site.id, chapLabel, chapUrl: chap.url, lastRead, sourceUrl: templateUrl, publishedAt: chap.publishedAt });
-        if (chap.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: chap.publishedAt });
-        found++;
+        // Idem : la création de la source attend le filtre anti-faux-positifs.
+        pending.push({ kind: "discover", site, templateUrl, num: chap.num, chapLabel, chapUrl: chap.url, publishedAt: chap.publishedAt });
       } catch (e) { console.error("[RTK] Auto-discover error:", e?.message); errors++; }
+    }
+  }
+
+  // ── Filtre anti-faux-positifs par consensus inter-sources ────────────────────
+  // Même logique que runCheck() : un numéro > 1.3x la médiane des autres sources
+  // est probablement un faux positif (lien piège, sidebar, etc.) — on l'écarte
+  // avant toute écriture, pour ne pas polluer last_seen_chapter / l'affichage.
+  let accepted = pending;
+  if (pending.length >= 2) {
+    const sorted = pending.map(p => p.num).sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const threshold = median * 1.3;
+    const safe = pending.filter(p => p.num <= threshold);
+    if (safe.length > 0) {
+      if (safe.length < pending.length) {
+        for (const o of pending) {
+          if (o.num > threshold) console.log(`[RTK] Chapitre ${o.num} ignoré pour "${title.name}" (faux positif probable, médiane=${median}, seuil=${threshold.toFixed(0)})`);
+        }
+      }
+      accepted = safe;
+    } else {
+      console.log(`[RTK] Tous les chapitres suspects pour ${title.name}, on garde quand même`);
+    }
+  }
+
+  // ── Écriture en base des résultats retenus ────────────────────────────────────
+  let found = 0;
+  for (const p of accepted) {
+    if (p.kind === "existing") {
+      await sbPatch(`/title_sources?id=eq.${p.sourceId}`, { last_seen_chapter: p.chapLabel, last_error: null });
+      await saveChapter({ titleId, siteId: p.siteId, chapLabel: p.chapLabel, chapUrl: p.chapUrl, lastRead, sourceUrl: p.sourceUrl, publishedAt: p.publishedAt });
+      if (p.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: p.publishedAt });
+      found++;
+    } else {
+      const site = p.site;
+      const newSrcArr = await sbPost("/title_sources", { title_id: title.id, site_id: site.id, url: p.templateUrl, is_primary: false });
+      const newSrc = newSrcArr[0];
+      if (newSrc?.id) {
+        await sbPatch(`/title_sources?id=eq.${newSrc.id}`, { last_seen_chapter: p.chapLabel });
+        sources.push({ id: newSrc.id, url: p.templateUrl, site_id: site.id, last_seen_chapter: p.chapLabel });
+      }
+      await saveChapter({ titleId, siteId: site.id, chapLabel: p.chapLabel, chapUrl: p.chapUrl, lastRead, sourceUrl: p.templateUrl, publishedAt: p.publishedAt });
+      if (p.publishedAt) await upsertSchedule({ userId: user_id, titleId, publishedAt: p.publishedAt });
+      found++;
     }
   }
 

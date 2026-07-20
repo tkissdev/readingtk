@@ -241,7 +241,7 @@ Le scraping par titre nécessite l'extension ReadingTK installée dans le naviga
 Si l'extension n'est pas disponible → toast `t("drawer.extUnavailable")`.
 
 **Versions publiées :** Chrome v1.1.0 (en attente d'approbation), Firefox v1.1.0 (approuvé et live)  
-**Version prête à soumettre :** v1.1.1 (correctifs du statut "Down" des sites — voir `windows-app`/CHANGELOG du commit)
+**Version prête à soumettre :** v1.1.2 (correctif faux positifs mangahub.io — voir section ci-dessous ; inclut aussi le correctif du statut "Down" des sites de la v1.1.1)
 
 **ZIPs :** `readingtk-chrome-X.X.X.zip` et `readingtk-firefox-X.X.X.zip` à la racine du projet.  
 **Recréer les ZIPs (Windows) :** utiliser Python pour forcer les forward slashes :
@@ -259,11 +259,19 @@ with zipfile.ZipFile('readingtk-firefox-X.X.X.zip', 'w', zipfile.ZIP_DEFLATED) a
 - Chrome Web Store Developer Dashboard → nouvelle version → uploader `readingtk-chrome-X.X.X.zip`
 - Firefox AMO Developer Hub → nouvelle version → uploader `readingtk-firefox-X.X.X.zip`
 
-### Filtre anti-faux-positifs (v1.1.0)
-Dans `background.js` (Chrome et Firefox) et `checker.py` (Windows) :
-- Toutes les détections inter-sources sont collectées dans `allDetectedNums`
-- Si ≥2 sources ont détecté, les numéros > 1.3× la médiane sont ignorés (faux positifs)
-- Notification basée sur le chapitre le plus fréquent (`pickBestChapter`)
+### Filtre anti-faux-positifs (v1.1.0, renforcé en v1.1.2)
+Dans `background.js` (Chrome et Firefox), `checker.py`/`scraper.py` (Windows) :
+- Toutes les détections inter-sources sont collectées dans `pending` (avant toute écriture en base)
+- Si ≥2 sources ont détecté, les numéros > 1.3× la médiane sont écartés (faux positifs)
+- **v1.1.2 :** ce filtre protège désormais aussi `title_sources.last_seen_chapter` et la table
+  `chapters`, pas seulement la notification — avant, un faux positif détecté par une seule source
+  était filtré pour la notif mais quand même écrit en base, et l'UI ("dernier chapitre détecté" =
+  max brut des sources) l'affichait malgré tout. Toutes les écritures attendent maintenant le filtre.
+- **v1.1.2 :** `parseLastChapter()`/`parse_last_chapter()` ignorent aussi les liens `rel="nofollow"`
+  ou `rel="noindex"` — mangahub.io place un lien caché de ce type juste à côté du vrai lien de
+  chapitre, avec un ID interne sans rapport (ex: chapitre réel #820, lien caché vers "chapter-2227").
+  C'était la cause des faux positifs Hajime No Ippo (#2227) et Vinland Saga (#8523).
+- Notification basée sur le chapitre le plus fréquent parmi les résultats retenus (`pickBestChapter`)
 
 ### Filtre domaines externes
 `parseLastChapter()` / `parse_last_chapter()` ignorent les liens vers des domaines différents de la page source (boutons Twitter, Facebook, etc.)

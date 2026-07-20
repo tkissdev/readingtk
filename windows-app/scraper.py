@@ -39,6 +39,12 @@ CHAPTER_RE = re.compile(
 )
 MAX_CHAPTER = 9999
 
+def _is_nofollow(rel: str) -> bool:
+    """Certains sites (ex. mangahub.io) placent un lien caché rel=nofollow/noindex
+    juste à côté du vrai lien de chapitre, avec un numéro sans rapport (ID interne).
+    On l'ignore pour éviter de le confondre avec le vrai dernier chapitre."""
+    return bool(rel) and ("nofollow" in rel.lower() or "noindex" in rel.lower())
+
 # ── Parsing HTML (regex) ───────────────────────────────────────────────────────
 
 def parse_type(html: str) -> str | None:
@@ -141,8 +147,15 @@ def parse_last_chapter(html: str, base_url: str) -> dict | None:
     specific_candidates = []
 
     base_host = urlparse(base_url).hostname or ""
-    for am in re.finditer(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</a>', html, re.IGNORECASE):
-        href = am.group(1)
+    for am in re.finditer(r'<a\b([^>]*)>([\s\S]*?)</a>', html, re.IGNORECASE):
+        attrs = am.group(1)
+        href_m = re.search(r'href=["\']([^"\']+)["\']', attrs, re.IGNORECASE)
+        if not href_m:
+            continue
+        href = href_m.group(1)
+        rel_m = re.search(r'rel=["\']([^"\']*)["\']', attrs, re.IGNORECASE)
+        if _is_nofollow(rel_m.group(1) if rel_m else ""):
+            continue
         text = re.sub(r"<[^>]+>", " ", am.group(2)).strip()
         km = CHAPTER_RE.search(href) or CHAPTER_RE.search(text)
         if km:
@@ -325,6 +338,8 @@ def _extract_from_page(page, base_url: str) -> dict:
         if els:
             for el in els:
                 href = el.attrib.get("href", "") if hasattr(el, "attrib") else ""
+                if hasattr(el, "attrib") and _is_nofollow(el.attrib.get("rel", "")):
+                    continue
                 text = (el.text or "") if hasattr(el, "text") else ""
                 km = CHAPTER_RE.search(href) or CHAPTER_RE.search(text)
                 if km:
@@ -346,6 +361,8 @@ def _extract_from_page(page, base_url: str) -> dict:
         try:
             for el in (page.css("a[href]") or []):
                 href = el.attrib.get("href", "") if hasattr(el, "attrib") else ""
+                if hasattr(el, "attrib") and _is_nofollow(el.attrib.get("rel", "")):
+                    continue
                 text = (el.text or "") if hasattr(el, "text") else ""
                 km = CHAPTER_RE.search(href) or CHAPTER_RE.search(text)
                 if km:

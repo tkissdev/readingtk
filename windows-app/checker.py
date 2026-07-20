@@ -111,8 +111,7 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
         except (ValueError, TypeError):
             last_read = -1
 
-        new_chapters = []
-        all_detected_nums = []  # Tous les numéros détectés (pour détecter les outliers)
+        pending = []  # résultats détectés, en attente du filtre anti-outlier avant toute écriture
         best_type_priority = -1
 
         # ── 1. Sources existantes ──────────────────────────────────────────────
@@ -161,9 +160,6 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                     except Exception:
                         pass  # En cas d'erreur, ne pas bloquer
 
-                all_detected_nums.append(found["num"])
-                supabase.patch(f"/title_sources?id=eq.{src['id']}", {"last_seen_chapter": chap_label, "last_error": None})
-
                 # Le site répond de nouveau normalement — annule un éventuel marquage "Down" précédent
                 if (src.get("sites") or {}).get("is_down") and src.get("site_id"):
                     supabase.patch(f"/sites?id=eq.{src['site_id']}", {"is_down": False, "enabled": True})
@@ -184,14 +180,13 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                     title["type"] = title_type
                     best_type_priority = src_priority
 
-                # Sauvegarde
-                save_result = _save_chapter(
-                    title_id=title["id"], site_id=src["site_id"],
-                    chap_label=chap_label, chap_url=found["url"],
-                    last_read=last_read,
-                )
-                if save_result["is_new"] and found["num"] > last_read:
-                    new_chapters.append({"num": found["num"], "label": chap_label, "url": found["url"], "chapter_id": save_result["chapter_id"]})
+                # Le numéro de chapitre lui-même n'est pas encore écrit : on attend
+                # le filtre anti-faux-positifs (étape 3) pour éviter de polluer
+                # last_seen_chapter / l'affichage avec un outlier.
+                pending.append({
+                    "kind": "existing", "source_id": src["id"], "site_id": src.get("site_id"),
+                    "num": found["num"], "chap_label": chap_label, "url": found["url"],
+                })
 
             except Exception as e:
                 log.error("Erreur source %s : %s", src.get("url"), e)
@@ -232,43 +227,59 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                         except Exception:
                             pass
 
-                    new_src_rows = supabase.post("/title_sources", {
-                        "title_id": title["id"],
-                        "site_id": site["id"],
-                        "url": template_url,
-                        "is_primary": False,
+                    # Idem : la création de la source et l'écriture du chapitre
+                    # attendent le filtre anti-faux-positifs (étape 3).
+                    pending.append({
+                        "kind": "discover", "site": site, "template_url": template_url,
+                        "num": found["num"], "chap_label": chap_label, "url": found["url"],
                     })
-                    if new_src_rows and new_src_rows[0].get("id"):
-                        supabase.patch(f"/title_sources?id=eq.{new_src_rows[0]['id']}", {"last_seen_chapter": chap_label})
-                        sources.append({"id": new_src_rows[0]["id"], "url": template_url, "site_id": site["id"]})
-
-                    save_result = _save_chapter(
-                        title_id=title["id"], site_id=site["id"],
-                        chap_label=chap_label, chap_url=found["url"],
-                        last_read=last_read,
-                    )
-                    if save_result["is_new"] and found["num"] > last_read:
-                        new_chapters.append({"num": found["num"], "label": chap_label, "url": found["url"], "chapter_id": save_result["chapter_id"]})
 
                 except Exception as e:
                     log.error("Auto-découverte erreur %s / %s : %s", title["name"], site.get("name"), e)
 
         # ── 3. Filtre anti-faux-positifs par consensus inter-sources ──────────
         # Si plusieurs sources ont détecté des chapitres, un numéro très éloigné
-        # de la médiane (> 1.3x) est probablement un faux positif (lien sidebar, etc.)
-        if len(all_detected_nums) >= 2 and new_chapters:
-            sorted_nums = sorted(all_detected_nums)
+        # de la médiane (> 1.3x) est probablement un faux positif (lien piège,
+        # sidebar, etc.). On l'écarte AVANT toute écriture en base, pour ne pas
+        # polluer last_seen_chapter / l'affichage "dernier chapitre détecté"
+        # (qui prend le maximum brut des sources, sans autre vérification).
+        accepted = pending
+        if len(pending) >= 2:
+            sorted_nums = sorted(p["num"] for p in pending)
             median = sorted_nums[len(sorted_nums) // 2]
             threshold = median * 1.3
-            filtered = [c for c in new_chapters if c["num"] <= threshold]
-            if len(filtered) < len(new_chapters):
-                outliers = [c for c in new_chapters if c["num"] > threshold]
-                for o in outliers:
-                    log.warning("[%s] Chapitre %s ignoré (faux positif probable, médiane=%.0f, seuil=%.0f)",
-                                title.get("name"), o["num"], median, threshold)
-                new_chapters = filtered  # On garde uniquement les chapitres cohérents
+            accepted = [p for p in pending if p["num"] <= threshold]
+            if len(accepted) < len(pending):
+                for o in pending:
+                    if o["num"] > threshold:
+                        log.warning("[%s] Chapitre %s ignoré (faux positif probable, médiane=%.0f, seuil=%.0f)",
+                                    title.get("name"), o["num"], median, threshold)
 
-        # ── 4. Notification pour ce titre ─────────────────────────────────────
+        # ── 4. Écriture en base des résultats retenus ──────────────────────────
+        new_chapters = []
+        for p in accepted:
+            if p["kind"] == "existing":
+                supabase.patch(f"/title_sources?id=eq.{p['source_id']}", {"last_seen_chapter": p["chap_label"], "last_error": None})
+                save_result = _save_chapter(
+                    title_id=title["id"], site_id=p["site_id"],
+                    chap_label=p["chap_label"], chap_url=p["url"], last_read=last_read,
+                )
+            else:  # "discover"
+                site = p["site"]
+                new_src_rows = supabase.post("/title_sources", {
+                    "title_id": title["id"], "site_id": site["id"], "url": p["template_url"], "is_primary": False,
+                })
+                if new_src_rows and new_src_rows[0].get("id"):
+                    supabase.patch(f"/title_sources?id=eq.{new_src_rows[0]['id']}", {"last_seen_chapter": p["chap_label"]})
+                    sources.append({"id": new_src_rows[0]["id"], "url": p["template_url"], "site_id": site["id"]})
+                save_result = _save_chapter(
+                    title_id=title["id"], site_id=site["id"],
+                    chap_label=p["chap_label"], chap_url=p["url"], last_read=last_read,
+                )
+            if save_result["is_new"] and p["num"] > last_read:
+                new_chapters.append({"num": p["num"], "label": p["chap_label"], "url": p["url"], "chapter_id": save_result["chapter_id"]})
+
+        # ── 5. Notification pour ce titre ──────────────────────────────────────
         if new_chapters:
             detected += 1
             # Consensus : chapitre le plus fréquent, minimum en cas d'égalité
