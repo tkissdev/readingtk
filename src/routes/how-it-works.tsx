@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Bell, BookOpen, CalendarDays, Chrome, Globe, Search, Zap } from "lucide-react";
-import { useI18n, LanguageSwitcher } from "@/i18n";
+import { useI18n } from "@/i18n";
 import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/how-it-works")({
@@ -31,34 +31,11 @@ function slugify(s: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-// ── Shared header/footer ──────────────────────────────────────────────────────
+// ── Shared footer ──────────────────────────────────────────────────────────────
 
 function PageShell({ children }: { children: React.ReactNode }) {
-  const { t } = useI18n();
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border px-10 py-4">
-        <Link to="/">
-          <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 140, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
-        </Link>
-        <nav className="flex items-center gap-3">
-          <LanguageSwitcher className="mr-1" />
-          <Link to="/download" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
-            {t("landing.extensions")}
-          </Link>
-          <Link to="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
-            {t("landing.signin")}
-          </Link>
-          <Link
-            to="/auth"
-            search={{ mode: "signup" }}
-            className="rounded-md px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90"
-            style={{ background: "var(--gradient-primary)" }}
-          >
-            {t("landing.createAccount")}
-          </Link>
-        </nav>
-      </header>
       <main className="flex-1">{children}</main>
       <Footer />
     </div>
