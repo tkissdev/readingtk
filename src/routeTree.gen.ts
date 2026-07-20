@@ -13,6 +13,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DesktopAuthRouteImport } from './routes/desktop-auth'
+import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -44,6 +45,11 @@ const DownloadRoute = DownloadRouteImport.update({
 const DesktopAuthRoute = DesktopAuthRouteImport.update({
   id: '/desktop-auth',
   path: '/desktop-auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContributeRoute = ContributeRouteImport.update({
+  id: '/contribute',
+  path: '/contribute',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CallbackRoute = CallbackRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
+  '/contribute': typeof ContributeRoute
   '/desktop-auth': typeof DesktopAuthRoute
   '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
+  '/contribute': typeof ContributeRoute
   '/desktop-auth': typeof DesktopAuthRoute
   '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/callback': typeof CallbackRoute
+  '/contribute': typeof ContributeRoute
   '/desktop-auth': typeof DesktopAuthRoute
   '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/callback'
+    | '/contribute'
     | '/desktop-auth'
     | '/download'
     | '/how-it-works'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/callback'
+    | '/contribute'
     | '/desktop-auth'
     | '/download'
     | '/how-it-works'
@@ -201,6 +212,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/callback'
+    | '/contribute'
     | '/desktop-auth'
     | '/download'
     | '/how-it-works'
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   CallbackRoute: typeof CallbackRoute
+  ContributeRoute: typeof ContributeRoute
   DesktopAuthRoute: typeof DesktopAuthRoute
   DownloadRoute: typeof DownloadRoute
   HowItWorksRoute: typeof HowItWorksRoute
@@ -254,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/desktop-auth'
       fullPath: '/desktop-auth'
       preLoaderRoute: typeof DesktopAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contribute': {
+      id: '/contribute'
+      path: '/contribute'
+      fullPath: '/contribute'
+      preLoaderRoute: typeof ContributeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/callback': {
@@ -373,6 +393,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   CallbackRoute: CallbackRoute,
+  ContributeRoute: ContributeRoute,
   DesktopAuthRoute: DesktopAuthRoute,
   DownloadRoute: DownloadRoute,
   HowItWorksRoute: HowItWorksRoute,

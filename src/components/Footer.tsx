@@ -10,6 +10,8 @@ export function Footer() {
       <span>ReadingTK v{VERSION}</span>
       <span>·</span>
       <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
+      <span>·</span>
+      <Link to="/contribute" className="hover:text-foreground hover:underline">{t("landing.footerContribute")}</Link>
     </footer>
   );
 }

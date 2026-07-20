@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useRouter, useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutGrid, CalendarDays, Globe, Bell, Settings, Upload, Download, Plus, Puzzle, HelpCircle } from "lucide-react";
+import { LayoutGrid, CalendarDays, Globe, Bell, Settings, Upload, Download, Plus, Puzzle, HelpCircle, Heart } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -68,6 +68,7 @@ function AuthedLayout() {
     { to: "/settings",      label: t("nav.settings"),      icon: Settings },
     { to: "/download",      label: t("nav.download"),      icon: Puzzle },
     { to: "/how-it-works",  label: t("nav.howItWorks"),    icon: HelpCircle },
+    { to: "/contribute",    label: t("nav.contribute"),    icon: Heart },
   ] as const;
 
   const extraItems = [

@@ -53,6 +53,9 @@ function Landing() {
           <Link to="/download" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
             {t("landing.extensions")}
           </Link>
+          <Link to="/contribute" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
+            {t("landing.contribute")}
+          </Link>
           <Link to="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
             {t("landing.signin")}
           </Link>
