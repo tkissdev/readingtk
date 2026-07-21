@@ -134,7 +134,8 @@ const FEATURES_FR = [
     title: "Notifications",
     images: ["/screenshots/08-notifications.png"],
     body: [
-      "Chaque nouveau chapitre détecté génère une notification ici, avec un lien direct pour l'ouvrir. « Tout marquer comme lu » nettoie les indicateurs non lus en un clic. « Tout supprimer » demande une confirmation avant d'effacer tout l'historique.",
+      "Chaque nouveau chapitre détecté génère une notification ici : titre, numéro de chapitre et heure de détection, avec un bouton Ouvrir pour accéder directement au chapitre.",
+      "Le crochet à droite d'une notification la marque comme lue individuellement (il disparaît une fois lue). « Tout marquer comme lu » fait la même chose en un clic pour toute la liste. « Tout supprimer » demande une confirmation avant d'effacer tout l'historique.",
     ],
   },
   {
@@ -435,7 +436,8 @@ const FEATURES_EN = [
     title: "Notifications",
     images: ["/screenshots/08-notifications.png"],
     body: [
-      "Every newly detected chapter generates a notification here, with a direct link to open it. \"Mark all as read\" clears unread markers in one click. \"Delete all\" asks for confirmation before wiping the whole history.",
+      "Every newly detected chapter generates a notification here: title, chapter number, and detection time, with an Open button to jump straight to the chapter.",
+      "The checkmark on the right marks a single notification as read (it disappears once read). \"Mark all as read\" does the same for the whole list in one click. \"Delete all\" asks for confirmation before wiping the whole history.",
     ],
   },
   {
