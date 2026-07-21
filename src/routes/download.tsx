@@ -266,13 +266,13 @@ function DownloadPage() {
           </div>
 
           <div className="mb-10 grid gap-5 md:grid-cols-3">
-            <a href={`${RELEASE_BASE}/ReadingTK.exe`}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/60 p-6 text-center transition hover:border-accent/60"
+            <a href={`${RELEASE_BASE}/ReadingTK-Setup-${WINDOWS_VERSION}.exe`}
+              className="flex flex-col items-center gap-2 rounded-2xl border border-accent/60 bg-card/60 p-6 text-center transition hover:border-accent"
               style={{ boxShadow: "var(--shadow-card)" }}>
               <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent"><DownloadIcon /></div>
-              <div className="font-semibold">ReadingTK.exe</div>
+              <div className="font-semibold">{isFr ? "Installateur (recommandé)" : "Installer (recommended)"}</div>
               <div className="text-xs text-muted-foreground">
-                {isFr ? "Exécutable portable — aucune installation" : "Portable executable — no installation"}
+                {isFr ? "Assistant d'installation classique + désinstalleur" : "Classic install wizard + uninstaller"}
               </div>
             </a>
 

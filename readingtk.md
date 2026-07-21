@@ -302,15 +302,22 @@ Dans `background.js` (Chrome et Firefox), `checker.py`/`scraper.py` (Windows) :
 Si `icon.ico` existe déjà (ancien cercle bleu), le supprimer pour forcer la régénération.
 
 ### Génération des fichiers d'installation (.exe, .msi, .zip)
-Trois formats de distribution, générés dans `windows-app/dist/` (non versionné dans Git — fichiers trop volumineux, ~70-85 Mo chacun) :
+Quatre formats de distribution, générés dans `windows-app/dist/` (non versionné dans Git — fichiers trop volumineux, ~70-85 Mo chacun) :
 
 | Fichier | Commande | Description |
 |---|---|---|
-| `ReadingTK.exe` | `python build.py` (PyInstaller) | Exécutable autonome, portable, sans installation |
-| `ReadingTK-X.X.X-portable.zip` | zippe `dist/ReadingTK.exe` | Version zip du .exe portable |
-| `ReadingTK-X.X.X-win64.msi` | `python setup_msi.py bdist_msi` (cx_Freeze) | Installateur Windows classique (Programmes, menu Démarrer, désinstallation) |
+| `ReadingTK.exe` | `python build.py` (PyInstaller) | Exécutable autonome brut — sert de source aux autres formats, pas distribué tel quel |
+| `ReadingTK-Setup-X.X.X.exe` | `ISCC.exe /DAppVersion=X.X.X installer.iss` (Inno Setup) | **Installateur recommandé sur /download** : assistant classique, raccourcis menu Démarrer/bureau, désinstalleur dans "Applications" Windows. Installe par utilisateur (`%LOCALAPPDATA%`), aucun droit admin requis |
+| `ReadingTK-X.X.X-portable.zip` | zippe `dist/ReadingTK.exe` | Version zip du .exe portable (aucune installation) |
+| `ReadingTK-X.X.X-win64.msi` | `python setup_msi.py bdist_msi` (cx_Freeze) | Alternative installateur MSI (utile en contexte entreprise) |
 
-**Prérequis :** `pip install pyinstaller cx_Freeze` + générer `icon.ico` depuis `icon.png` si absent (voir section notification ci-dessus, ou lancer `notifier.py`).
+**Prérequis :** `pip install pyinstaller cx_Freeze` + Inno Setup 6/7 installé (`C:\Program Files\Inno Setup 7\ISCC.exe`) + générer `icon.ico` depuis `icon.png` si absent (voir section notification ci-dessus, ou lancer `notifier.py`).
+
+**Script Inno Setup :** `windows-app/installer.iss`. Attention en ligne de commande Git Bash : le flag `/DAppVersion=X.X.X` doit être précédé de `MSYS_NO_PATHCONV=1` sinon MSYS le réinterprète comme un chemin et casse la commande.
+```bash
+MSYS_NO_PATHCONV=1 "/c/Program Files/Inno Setup 7/ISCC.exe" "/DAppVersion=X.X.X" installer.iss
+```
+Note : la taille du `.exe` compressé par Inno Setup est quasi identique au `.exe` PyInstaller brut (~70 Mo) — le bundle PyInstaller est déjà compressé en interne, donc pas de gain de poids significatif. L'intérêt de cet installateur est l'expérience (assistant, désinstalleur), pas la taille.
 
 **Numéro de version du MSI :** `APP_VERSION` en haut de `windows-app/setup_msi.py`.  
 **Code de mise à niveau (upgrade_code) :** fixe, ne jamais changer — sinon les mises à jour du MSI n'écrasent pas l'ancienne version.
