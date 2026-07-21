@@ -306,5 +306,13 @@ def run_check(on_new_chapter=None, on_progress=None, stop_event=None,
                 except Exception as e:
                     log.warning("Callback notification erreur: %s", e)
 
+    # Horodatage du scan global (affiché sur /dashboard) — seulement pour un scan
+    # complet (title_id=None), pas pour une vérification d'un seul titre.
+    if title_id is None:
+        try:
+            supabase.patch(f"/user_settings?user_id=eq.{uid}", {"last_global_check_at": datetime.utcnow().isoformat()})
+        except Exception as e:
+            log.warning("Mise à jour last_global_check_at échouée: %s", e)
+
     log.info("Check terminé : %d nouveau(x), %d erreur(s)", detected, errors)
     return {"detected": detected, "errors": errors, "error_details": error_details}
