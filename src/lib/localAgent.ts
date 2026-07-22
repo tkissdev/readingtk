@@ -7,6 +7,7 @@ export function sendToExtension(payload: Record<string, unknown>): Promise<Recor
       resolve({ error: "Extension non disponible" });
     }, 120000);
     function handler(event: MessageEvent) {
+      if (event.source !== window) return;
       if (event.data?.source !== "readingtk-extension") return;
       if (event.data?.requestId !== requestId) return;
       clearTimeout(timeout);

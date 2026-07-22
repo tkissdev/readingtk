@@ -559,6 +559,7 @@ function TitleDrawer({ titleId, onClose }: { titleId: string; onClose: () => voi
     const requestId = Math.random().toString(36).slice(2);
     const timeout = setTimeout(() => window.removeEventListener("message", handler), 3000);
     function handler(event: MessageEvent) {
+      if (event.source !== window) return;
       if (event.data?.source !== "readingtk-extension") return;
       if (event.data?.requestId !== requestId) return;
       clearTimeout(timeout);
