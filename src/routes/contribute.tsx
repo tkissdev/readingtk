@@ -38,7 +38,7 @@ const DONATION_OPTIONS: DonationOption[] = [
   },
   { key: "kofi", label: "Ko-fi", color: "#FF5E5B", icon: <Coffee className="h-5 w-5" />, href: "https://ko-fi.com/tkissdev" },
   { key: "bmc", label: "Buy Me a Coffee", color: "#FFDD00", icon: <Coffee className="h-5 w-5" />, href: "https://buymeacoffee.com/tkissdev" },
-  { key: "stripe", label: "Stripe", color: "#635BFF", icon: <CreditCard className="h-5 w-5" />, href: "https://donate.stripe.com/bJeeVe4wt4IM7IkbAK24000" },
+  { key: "stripe", label: "Stripe", color: "#635BFF", icon: <CreditCard className="h-5 w-5" />, href: "https://donate.stripe.com/bJeeVe4wt41M7TkbAX24000" },
   { key: "liberapay", label: "Liberapay", color: "#F6C915", icon: <HeartHandshake className="h-5 w-5" />, href: "https://liberapay.com/TKissDev/donate" },
   { key: "patreon", label: "Patreon", color: "#FF424D", icon: <Heart className="h-5 w-5" />, href: "https://www.patreon.com/TKissDev" },
   { key: "ghsponsors", label: "GitHub Sponsors", color: "#EA4AAA", icon: <Github className="h-5 w-5" />, href: null },
