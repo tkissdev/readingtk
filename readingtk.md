@@ -324,8 +324,8 @@ Note : la taille du `.exe` compressé par Inno Setup est quasi identique au `.ex
 
 Ces fichiers (.exe/.msi/.zip) sont trop lourds pour être commités sur GitHub — ils sont distribués via **GitHub Releases** (tag `windows-app-vX.X.X`).
 
-**⚠️ Dépôt de release : `tkissdev/readingtk-releases` (public), PAS `tkissdev/readingtk` (privé).**  
-Le dépôt principal du code est privé — sur GitHub, les assets d'une release héritent toujours de la visibilité du dépôt qui les héberge. Une release créée sur `readingtk` (privé) est donc inaccessible à un visiteur non connecté, même si l'URL semble publique (404 silencieux). D'où ce dépôt séparé, public, qui ne contient que les releases (pas de code source).
+**Dépôt de release : `tkissdev/readingtk` (le dépôt principal, public depuis le 25/07/2026).**  
+Historique : tant que `readingtk` était privé, les releases devaient être créées sur un dépôt séparé (`tkissdev/readingtk-releases`), car sur GitHub les assets d'une release héritent toujours de la visibilité du dépôt qui les héberge — une release sur un dépôt privé est inaccessible à un visiteur non connecté, même si l'URL semble publique (404 silencieux). Depuis le passage en open source, ce n'est plus nécessaire : les releases se créent directement sur `readingtk`. `readingtk-releases` reste en ligne pour l'historique (anciennes versions) mais n'est plus utilisé pour les nouvelles.
 
 **Page de téléchargement :** `src/routes/download.tsx` (route `/download`) liste à la fois les extensions navigateur et l'app Windows, avec liens directs vers les assets de la release. Après un nouveau build, mettre à jour `RELEASE_BASE` et `WINDOWS_VERSION` dans ce fichier pour pointer vers la nouvelle release, et **toujours vérifier avec un `curl` sans authentification** que les liens sont bien publics avant de considérer la mise à jour terminée :
 ```bash

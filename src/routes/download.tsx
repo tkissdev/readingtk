@@ -12,7 +12,7 @@ export const Route = createFileRoute("/download")({
   component: DownloadPage,
 });
 
-const RELEASE_BASE = "https://github.com/tkissdev/readingtk-releases/releases/download/windows-app-v1.0.7";
+const RELEASE_BASE = "https://github.com/tkissdev/readingtk/releases/download/windows-app-v1.0.7";
 const WINDOWS_VERSION = "1.0.7";
 
 const ChromeIcon = () => (
