@@ -12,8 +12,8 @@ export const Route = createFileRoute("/download")({
   component: DownloadPage,
 });
 
-const RELEASE_BASE = "https://github.com/tkissdev/readingtk-releases/releases/download/windows-app-v1.0.6";
-const WINDOWS_VERSION = "1.0.6";
+const RELEASE_BASE = "https://github.com/tkissdev/readingtk-releases/releases/download/windows-app-v1.0.7";
+const WINDOWS_VERSION = "1.0.7";
 
 const ChromeIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none">

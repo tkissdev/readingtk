@@ -88,7 +88,7 @@ class SupabaseClient:
             raise ValueError(data.get("error_description") or data.get("msg") or "Identifiants incorrects")
         self._store_session(data)
 
-    def logout(self):
+    def _clear_session(self):
         self._access_token = None
         self._refresh_token = None
         self._user_id = None
@@ -99,8 +99,12 @@ class SupabaseClient:
         except Exception:
             pass
 
+    def logout(self):
+        self._clear_session()
+
     def _refresh(self) -> str:
         if not self._refresh_token:
+            self._clear_session()
             raise ValueError("Pas de refresh token — reconnectez-vous")
         res = requests.post(
             f"{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token",
@@ -109,6 +113,11 @@ class SupabaseClient:
             timeout=15,
         )
         if not res.ok:
+            # Le serveur a explicitement rejeté le refresh token (expiré/révoqué) : la session
+            # est morte, il faut effacer l'état local pour que is_logged_in reflète la réalité
+            # et que l'utilisateur puisse se reconnecter (sinon le menu reste bloqué sur "Connecté").
+            log.warning("Refresh token invalide ou expiré — session effacée")
+            self._clear_session()
             raise ValueError("Token refresh échoué — reconnectez-vous")
         data = res.json()
         self._access_token = data["access_token"]

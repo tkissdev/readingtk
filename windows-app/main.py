@@ -159,15 +159,20 @@ def _do_check():
                 if result["errors"]:
                     parts.append(f"{result['errors']} erreur(s)")
                 if _check_interval_minutes > 0:
-                    h, m = divmod(_check_interval_minutes, 60)
-                    interval_str = f"{h}h" if h and not m else f"{m}min" if not h else f"{h}h{m:02d}"
-                    parts.append(f"prochain dans {interval_str}")
+                    next_at = time.strftime("%H:%M", time.localtime(time.time() + _check_interval_minutes * 60))
+                    parts.append(f"prochain scan à {next_at}")
                 _tray_icon.title = "ReadingTK — " + " · ".join(parts)
     except Exception as e:
         log.error("Erreur check : %s", e)
         if _tray_icon:
             _tray_icon.icon = _make_icon("#ef4444")
-            _tray_icon.title = "ReadingTK — Erreur lors du dernier check"
+            if not supabase.is_logged_in:
+                _tray_icon.title = "ReadingTK — Session expirée, reconnectez-vous"
+            elif _check_interval_minutes > 0:
+                next_at = time.strftime("%H:%M", time.localtime(time.time() + _check_interval_minutes * 60))
+                _tray_icon.title = f"ReadingTK — Erreur lors du dernier check · prochain scan à {next_at}"
+            else:
+                _tray_icon.title = "ReadingTK — Erreur lors du dernier check"
     finally:
         with _check_lock:
             _is_checking = False
@@ -406,8 +411,8 @@ def _build_menu() -> pystray.Menu:
         ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(
-            "Connecté" if supabase.is_logged_in else "Se connecter…",
-            _menu_logout if supabase.is_logged_in else _menu_login,
+            lambda item: "Connecté" if supabase.is_logged_in else "Se reconnecter",
+            lambda icon, item: _menu_logout(icon, item) if supabase.is_logged_in else _menu_login(icon, item),
         ),
         pystray.MenuItem("Paramètres", _menu_settings),
         pystray.Menu.SEPARATOR,
