@@ -54,11 +54,15 @@ Voir `windows-app/` — build via PyInstaller (`build.py`), packaging via Inno S
 
 ## Contribuer
 
-Les contributions sont les bienvenues — voir [CONTRIBUTING.md](CONTRIBUTING.md).
+Les contributions sont les bienvenues — voir [CONTRIBUTING.md](CONTRIBUTING.md) et le [code de conduite](CODE_OF_CONDUCT.md).
 
 ## Sécurité
 
 Pour signaler une vulnérabilité, voir [SECURITY.md](SECURITY.md).
+
+## Historique des versions
+
+Voir [CHANGELOG.md](CHANGELOG.md).
 
 ## Soutenir le projet
 
