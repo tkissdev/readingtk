@@ -23,6 +23,12 @@ SolidCompression=yes
 SetupIconFile=icon.ico
 DisableProgramGroupPage=yes
 WizardStyle=modern
+; Detecte via Restart Manager si ReadingTK.exe tourne (systray, demarrage auto avec
+; Windows) et le ferme automatiquement avant d'ecraser le fichier, puis le relance
+; apres l'installation — sans ca, une mise a jour avec l'app deja lancee echoue
+; silencieusement (fichier verrouille).
+CloseApplications=force
+RestartApplications=yes
 
 [Languages]
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"

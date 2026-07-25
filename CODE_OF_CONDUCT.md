@@ -7,12 +7,14 @@ Dans l'intérêt de favoriser un environnement ouvert et accueillant, nous nous 
 ## Nos standards
 
 Comportements qui contribuent à un environnement positif :
+
 - Faire preuve d'empathie et de bienveillance
 - Respecter les avis, points de vue et expériences différents
 - Donner et accepter avec grâce les critiques constructives
 - Assumer ses erreurs et s'excuser auprès des personnes affectées
 
 Comportements inacceptables :
+
 - Langage ou images à caractère sexuel, attention ou avances sexuelles non désirées
 - Commentaires insultants ou dégradants, attaques personnelles ou politiques, trolling
 - Harcèlement public ou privé

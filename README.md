@@ -16,13 +16,13 @@ Tracker de lecture pour manga, manhwa, manhua et novels, avec détection automat
 
 ## Structure du dépôt
 
-| Dossier | Contenu |
-|---|---|
-| `src/` | Application web (TanStack Start + React 19 + Supabase) |
-| `extension/` | Extension navigateur Chrome (Manifest V3) |
-| `extension-firefox/` | Extension navigateur Firefox (Manifest V2) |
-| `windows-app/` | Application Windows (systray, Python) — détection en arrière-plan sans navigateur |
-| `supabase/` | Migrations et fonctions edge Supabase |
+| Dossier              | Contenu                                                                           |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `src/`               | Application web (TanStack Start + React 19 + Supabase)                            |
+| `extension/`         | Extension navigateur Chrome (Manifest V3)                                         |
+| `extension-firefox/` | Extension navigateur Firefox (Manifest V2)                                        |
+| `windows-app/`       | Application Windows (systray, Python) — détection en arrière-plan sans navigateur |
+| `supabase/`          | Migrations et fonctions edge Supabase                                             |
 
 ## Stack technique
 

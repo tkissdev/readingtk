@@ -39,7 +39,9 @@ function AuthCallback() {
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         subscription.unsubscribe();
         handleSession(session);
@@ -61,14 +63,26 @@ function AuthCallback() {
 
   if (desktopStatus === "done") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background" style={{ backgroundImage: "var(--gradient-hero)" }}>
-        <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card/80 p-8 backdrop-blur text-center" style={{ boxShadow: "var(--shadow-card)" }}>
+      <div
+        className="flex min-h-screen items-center justify-center bg-background"
+        style={{ backgroundImage: "var(--gradient-hero)" }}
+      >
+        <div
+          className="w-full max-w-md rounded-2xl border border-border/60 bg-card/80 p-8 backdrop-blur text-center"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
           <div className="mb-4 flex justify-center">
-            <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 140, height: "auto", mixBlendMode: "lighten" }} />
+            <img
+              src="/Logo RTK.png"
+              alt="ReadingTK"
+              style={{ width: 140, height: "auto", mixBlendMode: "lighten" }}
+            />
           </div>
           <div className="text-4xl mb-3">✓</div>
           <h1 className="text-xl font-semibold mb-2">Connecté !</h1>
-          <p className="text-sm text-muted-foreground">Vous pouvez fermer cet onglet et revenir à l'application Windows.</p>
+          <p className="text-sm text-muted-foreground">
+            Vous pouvez fermer cet onglet et revenir à l'application Windows.
+          </p>
         </div>
       </div>
     );

@@ -27,15 +27,21 @@ function SettingsPage() {
   const { t } = useI18n();
   const { data } = useQuery({
     queryKey: ["user-settings-full"],
-    queryFn: async () => (await supabase.from("user_settings").select("*").maybeSingle()).data as Settings | null,
+    queryFn: async () =>
+      (await supabase.from("user_settings").select("*").maybeSingle()).data as Settings | null,
   });
   const [form, setForm] = useState<Settings | null>(null);
-  useEffect(() => { if (data) setForm(data); }, [data]);
+  useEffect(() => {
+    if (data) setForm(data);
+  }, [data]);
 
   const save = useMutation({
     mutationFn: async (patch: Partial<Settings>) => {
       const { data: u } = await supabase.auth.getUser();
-      const { error } = await supabase.from("user_settings").update({ ...patch, updated_at: new Date().toISOString() }).eq("user_id", u.user!.id);
+      const { error } = await supabase
+        .from("user_settings")
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq("user_id", u.user!.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -65,10 +71,19 @@ function SettingsPage() {
         </div>
       </Section>
 
-<Section title={t("set.notifications")}>
-        <Toggle label={t("set.inApp")} value={form.in_app_notifications_enabled} onChange={(v) => update("in_app_notifications_enabled", v)} />
+      <Section title={t("set.notifications")}>
+        <Toggle
+          label={t("set.inApp")}
+          value={form.in_app_notifications_enabled}
+          onChange={(v) => update("in_app_notifications_enabled", v)}
+        />
         <div className="mt-3 flex items-center justify-between opacity-50">
-          <span className="text-sm">{t("set.emailNotif")} <span className="ml-2 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] uppercase">{t("set.comingSoon")}</span></span>
+          <span className="text-sm">
+            {t("set.emailNotif")}{" "}
+            <span className="ml-2 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] uppercase">
+              {t("set.comingSoon")}
+            </span>
+          </span>
         </div>
       </Section>
 
@@ -78,8 +93,13 @@ function SettingsPage() {
             { v: "numeric", l: t("set.formatNumeric") },
             { v: "text", l: t("set.formatText") },
           ].map((o) => (
-            <button key={o.v} onClick={() => update("chapter_format", o.v)}
-              className={`rounded-md px-3 py-2 text-xs ${form.chapter_format === o.v ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground"}`}>{o.l}</button>
+            <button
+              key={o.v}
+              onClick={() => update("chapter_format", o.v)}
+              className={`rounded-md px-3 py-2 text-xs ${form.chapter_format === o.v ? "bg-accent text-accent-foreground" : "bg-secondary/60 text-muted-foreground"}`}
+            >
+              {o.l}
+            </button>
           ))}
         </div>
       </Section>
@@ -88,23 +108,41 @@ function SettingsPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-muted-foreground">{t("filter.type")}</label>
-            <select value={form.default_type} onChange={(e) => update("default_type", e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm">
-              {["manga", "manhua", "manhwa", "novel", "autre"].map((ty) => <option key={ty} value={ty}>{ty}</option>)}
+            <select
+              value={form.default_type}
+              onChange={(e) => update("default_type", e.target.value)}
+              className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm"
+            >
+              {["manga", "manhua", "manhwa", "novel", "autre"].map((ty) => (
+                <option key={ty} value={ty}>
+                  {ty}
+                </option>
+              ))}
             </select>
           </div>
           <div>
             <label className="text-xs text-muted-foreground">{t("filter.status")}</label>
-            <select value={form.default_status} onChange={(e) => update("default_status", e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm">
-              {["ongoing", "paused", "dropped", "completed"].map((st) => <option key={st} value={st}>{st}</option>)}
+            <select
+              value={form.default_status}
+              onChange={(e) => update("default_status", e.target.value)}
+              className="mt-1 w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm"
+            >
+              {["ongoing", "paused", "dropped", "completed"].map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
             </select>
           </div>
         </div>
       </Section>
 
       <Section title={t("set.bookmarksImport")}>
-        <Toggle label={t("set.ignoreDuplicates")} value={form.bookmarks_ignore_duplicates} onChange={(v) => update("bookmarks_ignore_duplicates", v)} />
+        <Toggle
+          label={t("set.ignoreDuplicates")}
+          value={form.bookmarks_ignore_duplicates}
+          onChange={(v) => update("bookmarks_ignore_duplicates", v)}
+        />
       </Section>
     </div>
   );
@@ -133,18 +171,32 @@ function AccountSection() {
   }, []);
 
   async function submit() {
-    if (pw.length < 6) { toast.error(t("set.pwTooShort")); return; }
-    if (pw !== pw2) { toast.error(t("set.pwMismatch")); return; }
+    if (pw.length < 6) {
+      toast.error(t("set.pwTooShort"));
+      return;
+    }
+    if (pw !== pw2) {
+      toast.error(t("set.pwMismatch"));
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
     setSaving(false);
-    if (error) { toast.error(error.message || t("set.pwFail")); return; }
+    if (error) {
+      toast.error(error.message || t("set.pwFail"));
+      return;
+    }
     toast.success(t("set.pwSaved"));
-    setPw(""); setPw2(""); setHasPassword(true);
+    setPw("");
+    setPw2("");
+    setHasPassword(true);
   }
 
   const PROVIDER_LABELS: Record<string, string> = {
-    google: "Google", discord: "Discord", twitch: "Twitch", email: "Email",
+    google: "Google",
+    discord: "Discord",
+    twitch: "Twitch",
+    email: "Email",
   };
   const socialProviders = providers.filter((p) => p !== "email");
 
@@ -176,18 +228,25 @@ function AccountSection() {
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <input
-            type="password" placeholder={t("set.newPassword")} minLength={6}
-            value={pw} onChange={(e) => setPw(e.target.value)}
+            type="password"
+            placeholder={t("set.newPassword")}
+            minLength={6}
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
             className="w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
           <input
-            type="password" placeholder={t("set.confirmPassword")} minLength={6}
-            value={pw2} onChange={(e) => setPw2(e.target.value)}
+            type="password"
+            placeholder={t("set.confirmPassword")}
+            minLength={6}
+            value={pw2}
+            onChange={(e) => setPw2(e.target.value)}
             className="w-full rounded-md border border-input bg-input/50 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </div>
         <button
-          onClick={submit} disabled={saving || !pw || !pw2}
+          onClick={submit}
+          disabled={saving || !pw || !pw2}
           className="mt-3 rounded-md px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
           style={{ background: "var(--gradient-primary)" }}
         >
@@ -207,7 +266,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+function Toggle({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
   const { t } = useI18n();
   return (
     <div className="flex items-center justify-between">
@@ -217,7 +284,9 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
         title={value ? t("common.disable", { label }) : t("common.enable", { label })}
         className={`h-5 w-10 rounded-full ${value ? "bg-accent" : "bg-secondary"}`}
       >
-        <span className={`block h-4 w-4 rounded-full bg-background transition ${value ? "translate-x-5" : "translate-x-1"}`} />
+        <span
+          className={`block h-4 w-4 rounded-full bg-background transition ${value ? "translate-x-5" : "translate-x-1"}`}
+        />
       </button>
     </div>
   );

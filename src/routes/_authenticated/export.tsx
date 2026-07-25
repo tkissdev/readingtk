@@ -19,27 +19,40 @@ type TitleRow = {
   name: string;
   type: string | null;
   status: string | null;
-  title_sources: { id: string; url: string; last_seen_chapter: string | null; sites: { name: string } | null }[];
+  title_sources: {
+    id: string;
+    url: string;
+    last_seen_chapter: string | null;
+    sites: { name: string } | null;
+  }[];
 };
 
 type ChapterEntry = { num: number; url: string; siteName: string; chapLabel: string };
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
-const TYPES    = ["all", "manga", "manhua", "manhwa", "novel", "autre"];
+const TYPES = ["all", "manga", "manhua", "manhwa", "novel", "autre"];
 const STATUSES = ["all", "ongoing", "paused", "dropped", "completed"];
 
 const LINK_KEYS: Record<LinkFilter, string> = {
-  sources:  "export.linkSources",
+  sources: "export.linkSources",
   chapters: "export.linkChapters",
-  all:      "export.linkAll",
+  all: "export.linkAll",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function FilterGroup({
-  values, current, onChange, labelFn,
-}: { values: string[]; current: string; onChange: (v: string) => void; labelFn?: (v: string) => string }) {
+  values,
+  current,
+  onChange,
+  labelFn,
+}: {
+  values: string[];
+  current: string;
+  onChange: (v: string) => void;
+  labelFn?: (v: string) => string;
+}) {
   return (
     <div className="flex flex-wrap gap-1">
       {values.map((v) => (
@@ -52,7 +65,7 @@ function FilterGroup({
               : "bg-secondary/60 text-muted-foreground hover:bg-secondary"
           }`}
         >
-          {labelFn ? labelFn(v) : (v === "all" ? "Tous" : v.charAt(0).toUpperCase() + v.slice(1))}
+          {labelFn ? labelFn(v) : v === "all" ? "Tous" : v.charAt(0).toUpperCase() + v.slice(1)}
         </button>
       ))}
     </div>
@@ -63,10 +76,10 @@ function FilterGroup({
 
 function ExportPage() {
   const { t } = useI18n();
-  const [filterType,   setFilterType]   = useState("all");
+  const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterLinks,  setFilterLinks]  = useState<LinkFilter>("sources");
-  const [selected,     setSelected]     = useState<Set<string>>(new Set());
+  const [filterLinks, setFilterLinks] = useState<LinkFilter>("sources");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // ── Données ────────────────────────────────────────────────────────────────
 
@@ -101,9 +114,18 @@ function ExportPage() {
         if (isNaN(num) || num > MAX_CHAPTER) continue;
         seenUrls.add(ch.chapter_url);
         let siteName: string = ch.sites?.name ?? "";
-        if (!siteName) { try { siteName = new URL(ch.chapter_url).hostname; } catch {} }
+        if (!siteName) {
+          try {
+            siteName = new URL(ch.chapter_url).hostname;
+          } catch {}
+        }
         if (!map[ch.title_id]) map[ch.title_id] = [];
-        map[ch.title_id].push({ num, url: ch.chapter_url, chapLabel: ch.chapter_label ?? "", siteName });
+        map[ch.title_id].push({
+          num,
+          url: ch.chapter_url,
+          chapLabel: ch.chapter_label ?? "",
+          siteName,
+        });
       }
       return map;
     },
@@ -113,7 +135,7 @@ function ExportPage() {
 
   const filtered = useMemo(() => {
     return titles.filter((t) => {
-      if (filterType   !== "all" && t.type   !== filterType)   return false;
+      if (filterType !== "all" && t.type !== filterType) return false;
       if (filterStatus !== "all" && t.status !== filterStatus) return false;
       return true;
     });
@@ -145,7 +167,8 @@ function ExportPage() {
   function toggleOne(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -228,22 +251,36 @@ function ExportPage() {
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-bold">{t("export.title")}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {t("export.subtitle")}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{t("export.subtitle")}</p>
 
       {/* ── Filtres ── */}
       <div className="mt-6 space-y-3 rounded-xl border border-border/60 bg-card/40 p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">{t("filter.type")}</span>
-          <FilterGroup values={TYPES} current={filterType} onChange={setFilterType} labelFn={(v) => typeLabel(t, v)} />
+          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">
+            {t("filter.type")}
+          </span>
+          <FilterGroup
+            values={TYPES}
+            current={filterType}
+            onChange={setFilterType}
+            labelFn={(v) => typeLabel(t, v)}
+          />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">{t("filter.status")}</span>
-          <FilterGroup values={STATUSES} current={filterStatus} onChange={setFilterStatus} labelFn={(v) => statusLabel(t, v)} />
+          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">
+            {t("filter.status")}
+          </span>
+          <FilterGroup
+            values={STATUSES}
+            current={filterStatus}
+            onChange={setFilterStatus}
+            labelFn={(v) => statusLabel(t, v)}
+          />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">{t("export.links")}</span>
+          <span className="w-14 shrink-0 text-xs font-semibold text-muted-foreground uppercase">
+            {t("export.links")}
+          </span>
           <div className="flex flex-wrap gap-1">
             {(["sources", "chapters", "all"] as LinkFilter[]).map((v) => (
               <button
@@ -283,10 +320,14 @@ function ExportPage() {
         {/* Rows */}
         <div>
           {isLoading && (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("export.loading")}</p>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+              {t("export.loading")}
+            </p>
           )}
           {!isLoading && filtered.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("export.noTitles")}</p>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+              {t("export.noTitles")}
+            </p>
           )}
           {filtered.map((title) => {
             const links = getLinks(title);
@@ -331,7 +372,9 @@ function ExportPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground/50 italic">{t("export.noLinks")}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground/50 italic">
+                      {t("export.noLinks")}
+                    </p>
                   )}
                 </div>
               </label>

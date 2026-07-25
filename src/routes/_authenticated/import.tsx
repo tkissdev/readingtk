@@ -12,9 +12,9 @@ export const Route = createFileRoute("/_authenticated/import")({
 });
 
 type ParsedItem = {
-  url: string;             // URL originale (page chapitre)
-  sourceUrl: string;       // URL page manga (segment chapitre retiré)
-  title: string;           // titre propre (éditable)
+  url: string; // URL originale (page chapitre)
+  sourceUrl: string; // URL page manga (segment chapitre retiré)
+  title: string; // titre propre (éditable)
   chapterNum: string | null;
   selected: boolean;
   domain: string;
@@ -47,9 +47,12 @@ function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
     const chapterWordRe = /^(?:chapter|chapitre|chap|ch|episode|ep)$/i;
     let end = parts.length;
     for (let i = 0; i < parts.length; i++) {
-      if (chapterCombinedRe.test(parts[i]) ||
-        (chapterWordRe.test(parts[i]) && i + 1 < parts.length && /^\d/.test(parts[i + 1]))) {
-        end = i; break;
+      if (
+        chapterCombinedRe.test(parts[i]) ||
+        (chapterWordRe.test(parts[i]) && i + 1 < parts.length && /^\d/.test(parts[i + 1]))
+      ) {
+        end = i;
+        break;
       }
     }
     const titleParts = parts.slice(0, end);
@@ -67,14 +70,20 @@ function inferUrlTemplate(rawUrl: string, titleName: string): string | null {
       return `${u.origin}/${prefix ? prefix + "/" : ""}{slug}/`;
     }
     return null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Extrait titre propre, numéro de chapitre et URL manga depuis une URL de chapitre.
  * Gère : slugs avec chapitre intégré ("nano-machine-chapter-315"), suffixes hash/ID ("title056541").
  */
-function extractFromUrl(rawUrl: string): { cleanTitle: string | null; chapterNum: string | null; sourceUrl: string } {
+function extractFromUrl(rawUrl: string): {
+  cleanTitle: string | null;
+  chapterNum: string | null;
+  sourceUrl: string;
+} {
   try {
     const u = new URL(rawUrl);
     const segments = u.pathname.split("/").filter(Boolean);
@@ -87,12 +96,18 @@ function extractFromUrl(rawUrl: string): { cleanTitle: string | null; chapterNum
     for (let i = 0; i < segments.length; i++) {
       const m = segments[i].match(chapterRe);
       if (m) {
-        chapterNum = m[1]; chapterIdx = i;
+        chapterNum = m[1];
+        chapterIdx = i;
         titleSeg = i > 0 ? segments[i - 1] : null;
         break;
       }
-      if (chapterWordRe.test(segments[i]) && i + 1 < segments.length && /^\d+(\.\d+)?$/.test(segments[i + 1])) {
-        chapterNum = segments[i + 1]; chapterIdx = i;
+      if (
+        chapterWordRe.test(segments[i]) &&
+        i + 1 < segments.length &&
+        /^\d+(\.\d+)?$/.test(segments[i + 1])
+      ) {
+        chapterNum = segments[i + 1];
+        chapterIdx = i;
         titleSeg = i > 0 ? segments[i - 1] : null;
         break;
       }
@@ -142,10 +157,15 @@ function parseTitleFromText(rawText: string): { cleanTitle: string; chapterNum: 
     .replace(/\s*\[[^\]]*\]\s*$/, "")
     .trim();
 
-  const chapRe = /\s*[-–—]?\s*(?:chapter|chapitre|chap|ch\.?|episode|ep\.?)[\s\-_\/]?(\d+(?:\.\d+)?)/i;
+  const chapRe =
+    /\s*[-–—]?\s*(?:chapter|chapitre|chap|ch\.?|episode|ep\.?)[\s\-_\/]?(\d+(?:\.\d+)?)/i;
   const m = chapRe.exec(t);
   if (m) {
-    const cleanTitle = t.slice(0, m.index).trim().replace(/\s*[-–—]\s*$/, "").trim();
+    const cleanTitle = t
+      .slice(0, m.index)
+      .trim()
+      .replace(/\s*[-–—]\s*$/, "")
+      .trim();
     return { cleanTitle: cleanTitle || t, chapterNum: m[1] };
   }
   return { cleanTitle: t, chapterNum: null };
@@ -192,10 +212,19 @@ function ImportPage() {
       if (ignoreDup && seen.has(url)) continue;
       seen.add(url);
       let domain = "";
-      try { domain = new URL(url).hostname; } catch { continue; }
+      try {
+        domain = new URL(url).hostname;
+      } catch {
+        continue;
+      }
       if (whitelist?.length && !whitelist.some((w) => domain.includes(w))) continue;
 
-      const rawText = unescapeHtml(m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || url);
+      const rawText = unescapeHtml(
+        m[2]
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim() || url,
+      );
 
       const { cleanTitle: urlTitle, chapterNum: urlChapter, sourceUrl } = extractFromUrl(url);
       const { cleanTitle: textTitle, chapterNum: textChapter } = parseTitleFromText(rawText);
@@ -233,37 +262,58 @@ function ImportPage() {
 
       for (const [, groupItems] of groups) {
         // Nom affiché = le plus court (évite "The Infinite Mage" si "Infinite Mage" existe)
-        const titleName = groupItems.reduce((a, b) => a.title.length <= b.title.length ? a : b).title;
+        const titleName = groupItems.reduce((a, b) =>
+          a.title.length <= b.title.length ? a : b,
+        ).title;
 
         const { data: existing } = await supabase
-          .from("titles").select("id")
-          .eq("user_id", userId).ilike("name", titleName).maybeSingle();
+          .from("titles")
+          .select("id")
+          .eq("user_id", userId)
+          .ilike("name", titleName)
+          .maybeSingle();
 
         let titleId: string;
         if (existing) {
           titleId = existing.id;
         } else {
-          const { data: newTitle } = await supabase.from("titles").insert({
-            user_id: userId, name: titleName,
-            type: settings?.default_type ?? "manga",
-            status: settings?.default_status ?? "ongoing",
-          }).select("id").single();
+          const { data: newTitle } = await supabase
+            .from("titles")
+            .insert({
+              user_id: userId,
+              name: titleName,
+              type: settings?.default_type ?? "manga",
+              status: settings?.default_status ?? "ongoing",
+            })
+            .select("id")
+            .single();
           if (!newTitle) continue;
           titleId = newTitle.id;
         }
 
         // Sauvegarder le chapitre le plus élevé (sans écraser une progression existante supérieure)
-        const chapNums = groupItems.map(it => parseFloat(it.chapterNum ?? "")).filter(n => !isNaN(n));
+        const chapNums = groupItems
+          .map((it) => parseFloat(it.chapterNum ?? ""))
+          .filter((n) => !isNaN(n));
         if (chapNums.length > 0) {
           const maxChapter = Math.max(...chapNums);
           const { data: existingProg } = await supabase
-            .from("reading_progress").select("last_chapter_read").eq("title_id", titleId).maybeSingle();
+            .from("reading_progress")
+            .select("last_chapter_read")
+            .eq("title_id", titleId)
+            .maybeSingle();
           const existingNum = parseFloat(existingProg?.last_chapter_read ?? "");
           if (!existingProg || isNaN(existingNum) || maxChapter > existingNum) {
-            await supabase.from("reading_progress").upsert(
-              { title_id: titleId, last_chapter_read: String(maxChapter), last_read_at: new Date().toISOString() },
-              { onConflict: "title_id" }
-            );
+            await supabase
+              .from("reading_progress")
+              .upsert(
+                {
+                  title_id: titleId,
+                  last_chapter_read: String(maxChapter),
+                  last_read_at: new Date().toISOString(),
+                },
+                { onConflict: "title_id" },
+              );
           }
         }
 
@@ -282,61 +332,99 @@ function ImportPage() {
               siteId = siteCache.get(host)!;
             } else {
               const matchedSite = (sites ?? []).find((s) => {
-                try { return new URL(s.base_url).hostname === host; } catch { return false; }
+                try {
+                  return new URL(s.base_url).hostname === host;
+                } catch {
+                  return false;
+                }
               });
               if (matchedSite) {
                 siteId = matchedSite.id;
                 if (!(matchedSite as { url_template?: string | null }).url_template) {
                   const template = inferUrlTemplate(it.sourceUrl, titleName);
-                  if (template) await supabase.from("sites").update({ url_template: template }).eq("id", siteId);
+                  if (template)
+                    await supabase
+                      .from("sites")
+                      .update({ url_template: template })
+                      .eq("id", siteId);
                 }
               } else {
                 const raw = host.replace(/^www\./, "").split(".")[0];
                 const siteName = raw.charAt(0).toUpperCase() + raw.slice(1);
-                const { data: newSite } = await supabase.from("sites")
-                  .insert({ user_id: userId, name: siteName, base_url: `${u.protocol}//${host}`, url_template: inferUrlTemplate(it.sourceUrl, titleName), priority: 0, enabled: true })
-                  .select("id").single();
+                const { data: newSite } = await supabase
+                  .from("sites")
+                  .insert({
+                    user_id: userId,
+                    name: siteName,
+                    base_url: `${u.protocol}//${host}`,
+                    url_template: inferUrlTemplate(it.sourceUrl, titleName),
+                    priority: 0,
+                    enabled: true,
+                  })
+                  .select("id")
+                  .single();
                 siteId = newSite?.id ?? null;
               }
               if (siteId) siteCache.set(host, siteId);
             }
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
 
           await supabase.from("title_sources").insert({
-            title_id: titleId, site_id: siteId, url: it.sourceUrl, is_primary: true,
+            title_id: titleId,
+            site_id: siteId,
+            url: it.sourceUrl,
+            is_primary: true,
           });
         }
       }
 
       await supabase.from("imports").insert({
-        user_id: userId, source: "html_bookmarks", raw_json: { count: selected.length },
+        user_id: userId,
+        source: "html_bookmarks",
+        raw_json: { count: selected.length },
       });
       toast.success(t("import.imported", { titles: groups.size, count: selected.length }));
       navigate({ to: "/dashboard" });
-    } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="mx-auto max-w-4xl p-6">
       <h1 className="text-2xl font-bold">{t("import.title")}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {t("import.subtitle")}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{t("import.subtitle")}</p>
 
       <label className="mt-6 flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/60 bg-card/40 p-10 text-sm hover:bg-card/60">
         <Upload className="h-5 w-5 text-accent" />
         <span>{t("import.choose")}</span>
-        <input type="file" accept=".html,text/html" className="hidden"
-          onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+        <input
+          type="file"
+          accept=".html,text/html"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+        />
       </label>
 
       {items.length > 0 && (
         <>
           <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">{t("import.selectedCount", { a: items.filter((i) => i.selected).length, b: items.length })}</div>
-            <button onClick={doImport} disabled={loading}
+            <div className="text-sm text-muted-foreground">
+              {t("import.selectedCount", {
+                a: items.filter((i) => i.selected).length,
+                b: items.length,
+              })}
+            </div>
+            <button
+              onClick={doImport}
+              disabled={loading}
               className="rounded-md px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-              style={{ background: "var(--gradient-primary)" }}>
+              style={{ background: "var(--gradient-primary)" }}
+            >
               {loading ? "..." : t("import.importSelection")}
             </button>
           </div>
@@ -346,13 +434,28 @@ function ImportPage() {
                 {items.map((it, i) => (
                   <tr key={i} className="border-t border-border/40 hover:bg-secondary/30">
                     <td className="px-3 py-2 w-8">
-                      <input type="checkbox" checked={it.selected}
-                        onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, selected: e.target.checked } : x))} />
+                      <input
+                        type="checkbox"
+                        checked={it.selected}
+                        onChange={(e) =>
+                          setItems(
+                            items.map((x, j) =>
+                              j === i ? { ...x, selected: e.target.checked } : x,
+                            ),
+                          )
+                        }
+                      />
                     </td>
                     <td className="px-3 py-2">
-                      <input className="w-full rounded border border-input bg-input/30 px-2 py-1 text-xs"
+                      <input
+                        className="w-full rounded border border-input bg-input/30 px-2 py-1 text-xs"
                         value={it.title}
-                        onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} />
+                        onChange={(e) =>
+                          setItems(
+                            items.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)),
+                          )
+                        }
+                      />
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
                       {it.chapterNum ? t("import.chapShort", { n: it.chapterNum }) : ""}

@@ -5,9 +5,7 @@ import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/contribute")({
   head: () => ({
-    meta: [
-      { title: "Faire un don · ReadingTK" },
-    ],
+    meta: [{ title: "Faire un don · ReadingTK" }],
   }),
   component: ContributePage,
 });
@@ -36,18 +34,57 @@ const DONATION_OPTIONS: DonationOption[] = [
     icon: <PayPalIcon />,
     href: "https://www.paypal.com/donate/?hosted_button_id=WLS3B4QDPHU8N",
   },
-  { key: "kofi", label: "Ko-fi", color: "#FF5E5B", icon: <Coffee className="h-5 w-5" />, href: "https://ko-fi.com/tkissdev" },
-  { key: "bmc", label: "Buy Me a Coffee", color: "#FFDD00", icon: <Coffee className="h-5 w-5" />, href: "https://buymeacoffee.com/tkissdev" },
-  { key: "stripe", label: "Stripe", color: "#635BFF", icon: <CreditCard className="h-5 w-5" />, href: "https://donate.stripe.com/bJeeVe4wt41M7TkbAX24000" },
-  { key: "liberapay", label: "Liberapay", color: "#F6C915", icon: <HeartHandshake className="h-5 w-5" />, href: "https://liberapay.com/TKissDev/donate" },
-  { key: "patreon", label: "Patreon", color: "#FF424D", icon: <Heart className="h-5 w-5" />, href: "https://www.patreon.com/TKissDev" },
-  { key: "ghsponsors", label: "GitHub Sponsors", color: "#EA4AAA", icon: <Github className="h-5 w-5" />, href: null },
+  {
+    key: "kofi",
+    label: "Ko-fi",
+    color: "#FF5E5B",
+    icon: <Coffee className="h-5 w-5" />,
+    href: "https://ko-fi.com/tkissdev",
+  },
+  {
+    key: "bmc",
+    label: "Buy Me a Coffee",
+    color: "#FFDD00",
+    icon: <Coffee className="h-5 w-5" />,
+    href: "https://buymeacoffee.com/tkissdev",
+  },
+  {
+    key: "stripe",
+    label: "Stripe",
+    color: "#635BFF",
+    icon: <CreditCard className="h-5 w-5" />,
+    href: "https://donate.stripe.com/bJeeVe4wt41M7TkbAX24000",
+  },
+  {
+    key: "liberapay",
+    label: "Liberapay",
+    color: "#F6C915",
+    icon: <HeartHandshake className="h-5 w-5" />,
+    href: "https://liberapay.com/TKissDev/donate",
+  },
+  {
+    key: "patreon",
+    label: "Patreon",
+    color: "#FF424D",
+    icon: <Heart className="h-5 w-5" />,
+    href: "https://www.patreon.com/TKissDev",
+  },
+  {
+    key: "ghsponsors",
+    label: "GitHub Sponsors",
+    color: "#EA4AAA",
+    icon: <Github className="h-5 w-5" />,
+    href: null,
+  },
 ];
 
 function PayPalIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M7.5 20.5H4.8a.6.6 0 0 1-.6-.7l2.6-16.4a.9.9 0 0 1 .9-.75h6.4c3 0 5.1 1.6 4.6 4.6-.5 3.4-2.9 5-6.1 5H9.9l-1 6.5a.9.9 0 0 1-.9.75Z" fill="#fff" />
+      <path
+        d="M7.5 20.5H4.8a.6.6 0 0 1-.6-.7l2.6-16.4a.9.9 0 0 1 .9-.75h6.4c3 0 5.1 1.6 4.6 4.6-.5 3.4-2.9 5-6.1 5H9.9l-1 6.5a.9.9 0 0 1-.9.75Z"
+        fill="#fff"
+      />
     </svg>
   );
 }
@@ -66,9 +103,7 @@ function DonationGrid({ comingSoonLabel }: { comingSoonLabel: string }) {
             </div>
             <div>
               <div className="font-semibold">{opt.label}</div>
-              {!opt.href && (
-                <div className="text-xs text-muted-foreground">{comingSoonLabel}</div>
-              )}
+              {!opt.href && <div className="text-xs text-muted-foreground">{comingSoonLabel}</div>}
             </div>
           </>
         );
@@ -101,7 +136,10 @@ function ContributeFR() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <button
+          onClick={() => router.history.back()}
+          className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
           ← Retour
         </button>
 
@@ -111,8 +149,9 @@ function ContributeFR() {
         </div>
 
         <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
-          ReadingTK est un projet gratuit, développé et maintenu sur mon temps libre.
-          Si le service vous est utile et que vous souhaitez soutenir son développement, voici les moyens disponibles.
+          ReadingTK est un projet gratuit, développé et maintenu sur mon temps libre. Si le service
+          vous est utile et que vous souhaitez soutenir son développement, voici les moyens
+          disponibles.
         </p>
 
         <DonationGrid comingSoonLabel="Bientôt disponible" />
@@ -127,7 +166,10 @@ function ContributeEN() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <button
+          onClick={() => router.history.back()}
+          className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
           ← Back
         </button>
 
@@ -137,8 +179,8 @@ function ContributeEN() {
         </div>
 
         <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
-          ReadingTK is a free project, built and maintained in my spare time.
-          If the service is useful to you and you'd like to support its development, here are the available options.
+          ReadingTK is a free project, built and maintained in my spare time. If the service is
+          useful to you and you'd like to support its development, here are the available options.
         </p>
 
         <DonationGrid comingSoonLabel="Coming soon" />

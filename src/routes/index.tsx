@@ -7,12 +7,24 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "ReadingTK — Tracker manga, manhwa & novel | Suivi automatique des chapitres" },
-      { name: "description", content: "Suivez vos mangas, manhuas, manhwas et novels en un seul endroit. Détection automatique des nouveaux chapitres, notifications instantanées et calendrier de parution. Gratuit." },
-      { name: "keywords", content: "tracker manga, suivi manga, nouveau chapitre manga, notification manga, reading tracker, manhwa tracker, manhwa suivi, novel tracker, lecture manga, chapitre manga" },
+      {
+        name: "description",
+        content:
+          "Suivez vos mangas, manhuas, manhwas et novels en un seul endroit. Détection automatique des nouveaux chapitres, notifications instantanées et calendrier de parution. Gratuit.",
+      },
+      {
+        name: "keywords",
+        content:
+          "tracker manga, suivi manga, nouveau chapitre manga, notification manga, reading tracker, manhwa tracker, manhwa suivi, novel tracker, lecture manga, chapitre manga",
+      },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://readingtk.net/" },
       { property: "og:title", content: "ReadingTK — Tracker manga, manhwa & novel" },
-      { property: "og:description", content: "Suivez vos mangas, manhuas, manhwas et novels en un seul endroit. Notifications automatiques dès qu'un nouveau chapitre sort." },
+      {
+        property: "og:description",
+        content:
+          "Suivez vos mangas, manhuas, manhwas et novels en un seul endroit. Notifications automatiques dès qu'un nouveau chapitre sort.",
+      },
       { property: "og:image", content: "https://readingtk.net/og-image.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
@@ -20,7 +32,11 @@ export const Route = createFileRoute("/")({
       { property: "og:site_name", content: "ReadingTK" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "ReadingTK — Tracker manga, manhwa & novel" },
-      { name: "twitter:description", content: "Suivez vos mangas et manhwas. Notifications automatiques dès qu'un nouveau chapitre sort." },
+      {
+        name: "twitter:description",
+        content:
+          "Suivez vos mangas et manhwas. Notifications automatiques dès qu'un nouveau chapitre sort.",
+      },
       { name: "twitter:image", content: "https://readingtk.net/og-image.png" },
     ],
   }),
@@ -28,35 +44,55 @@ export const Route = createFileRoute("/")({
 });
 
 const FEATURES = [
-  { icon: BookOpen,     key: "track" },
-  { icon: Globe,        key: "sources" },
-  { icon: Zap,          key: "check" },
+  { icon: BookOpen, key: "track" },
+  { icon: Globe, key: "sources" },
+  { icon: Zap, key: "check" },
   { icon: CalendarDays, key: "calendar" },
-  { icon: Bell,         key: "notif" },
+  { icon: Bell, key: "notif" },
 ] as const;
 
 function Landing() {
   const { t } = useI18n();
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-10 py-4">
         <Link to="/">
-          <img src="/Logo RTK.png" alt="ReadingTK" style={{ width: 140, height: "auto", mixBlendMode: "lighten", clipPath: "inset(3px 3px 3px 3px)" }} />
+          <img
+            src="/Logo RTK.png"
+            alt="ReadingTK"
+            style={{
+              width: 140,
+              height: "auto",
+              mixBlendMode: "lighten",
+              clipPath: "inset(3px 3px 3px 3px)",
+            }}
+          />
         </Link>
         <nav className="flex items-center gap-3">
           <LanguageSwitcher className="mr-1" />
-          <Link to="/how-it-works" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
+          <Link
+            to="/how-it-works"
+            className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+          >
             {t("landing.howItWorks")}
           </Link>
-          <Link to="/download" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
+          <Link
+            to="/download"
+            className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+          >
             {t("landing.extensions")}
           </Link>
-          <Link to="/contribute" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
+          <Link
+            to="/contribute"
+            className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+          >
             {t("landing.contribute")}
           </Link>
-          <Link to="/auth" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground">
+          <Link
+            to="/auth"
+            className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+          >
             {t("landing.signin")}
           </Link>
           <Link
@@ -72,21 +108,31 @@ function Landing() {
 
       {/* Main */}
       <main className="flex flex-1 flex-col items-center gap-20 px-10 py-20">
-
         {/* Hero */}
         <section className="relative max-w-2xl text-center">
           <div
             className="pointer-events-none absolute left-1/2 top-[-80px] h-[300px] w-[500px] -translate-x-1/2"
-            style={{ background: "radial-gradient(ellipse at center, oklch(0.55 0.18 268 / 0.25) 0%, transparent 70%)" }}
+            style={{
+              background:
+                "radial-gradient(ellipse at center, oklch(0.55 0.18 268 / 0.25) 0%, transparent 70%)",
+            }}
           />
           <h1 className="mb-5 text-5xl font-extrabold leading-tight">
-            {t("landing.hero1")}<br />
-            <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(135deg, oklch(0.70 0.20 268), oklch(0.85 0.15 250))" }}>
+            {t("landing.hero1")}
+            <br />
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(135deg, oklch(0.70 0.20 268), oklch(0.85 0.15 250))",
+              }}
+            >
               {t("landing.hero2")}
             </span>
           </h1>
           <p className="mb-9 text-lg leading-relaxed text-muted-foreground">
-            {t("landing.heroSub1")}<br />
+            {t("landing.heroSub1")}
+            <br />
             {t("landing.heroSub2")}
           </p>
           <div className="flex justify-center gap-3">
@@ -125,7 +171,9 @@ function Landing() {
             >
               <Icon className="h-6 w-6 text-accent" />
               <h3 className="text-sm font-semibold">{t(`landing.f.${key}.t`)}</h3>
-              <p className="text-xs leading-relaxed text-muted-foreground">{t(`landing.f.${key}.d`)}</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {t(`landing.f.${key}.d`)}
+              </p>
             </div>
           ))}
         </section>

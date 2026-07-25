@@ -1,5 +1,7 @@
 // Communication avec l'extension navigateur ReadingTK, via le content script relay.
-export function sendToExtension(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+export function sendToExtension(
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
   return new Promise((resolve) => {
     const requestId = Math.random().toString(36).slice(2);
     const timeout = setTimeout(() => {

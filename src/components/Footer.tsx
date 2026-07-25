@@ -9,9 +9,13 @@ export function Footer() {
     <footer className="flex shrink-0 items-center justify-center gap-2 border-t border-border py-4 text-xs text-muted-foreground">
       <span>ReadingTK v{VERSION}</span>
       <span>·</span>
-      <Link to="/privacy" className="hover:text-foreground hover:underline">{t("landing.footerPrivacy")}</Link>
+      <Link to="/privacy" className="hover:text-foreground hover:underline">
+        {t("landing.footerPrivacy")}
+      </Link>
       <span>·</span>
-      <Link to="/contribute" className="hover:text-foreground hover:underline">{t("landing.footerContribute")}</Link>
+      <Link to="/contribute" className="hover:text-foreground hover:underline">
+        {t("landing.footerContribute")}
+      </Link>
     </footer>
   );
 }

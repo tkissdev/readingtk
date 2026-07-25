@@ -8,9 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/report-bug")({
   head: () => ({
-    meta: [
-      { title: "Déclarer un bug · ReadingTK" },
-    ],
+    meta: [{ title: "Déclarer un bug · ReadingTK" }],
   }),
   component: ReportBugPage,
 });
@@ -46,20 +44,35 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (areas.length === 0 || !title.trim() || !description.trim()) {
-      toast.error(isFr ? "Merci de remplir au moins la zone concernée, le titre et la description." : "Please fill in at least the area, title, and description.");
+      toast.error(
+        isFr
+          ? "Merci de remplir au moins la zone concernée, le titre et la description."
+          : "Please fill in at least the area, title, and description.",
+      );
       return;
     }
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke("report-bug", {
-        body: { areas, title, description, steps, expected, environment, windowsVersion, contactEmail },
+        body: {
+          areas,
+          title,
+          description,
+          steps,
+          expected,
+          environment,
+          windowsVersion,
+          contactEmail,
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setResult(data);
       toast.success(isFr ? "Signalement envoyé, merci !" : "Report sent, thank you!");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : (isFr ? "Échec de l'envoi." : "Failed to send."));
+      toast.error(
+        err instanceof Error ? err.message : isFr ? "Échec de l'envoi." : "Failed to send.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -68,7 +81,10 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <button
+          onClick={() => router.history.back()}
+          className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
           ← {isFr ? "Retour" : "Back"}
         </button>
 
@@ -88,14 +104,23 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
             <p className="mb-3 text-sm">
               {isFr ? "Ton signalement a été créé :" : "Your report has been created:"}
             </p>
-            <a href={result.url} target="_blank" rel="noreferrer" className="text-accent hover:underline">
-              {isFr ? `Voir l'issue #${result.number} sur GitHub →` : `View issue #${result.number} on GitHub →`}
+            <a
+              href={result.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent hover:underline"
+            >
+              {isFr
+                ? `Voir l'issue #${result.number} sur GitHub →`
+                : `View issue #${result.number} on GitHub →`}
             </a>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div>
-              <label className="mb-2 block text-sm font-medium">{isFr ? "Où ça se passe" : "Where it happens"}</label>
+              <label className="mb-2 block text-sm font-medium">
+                {isFr ? "Où ça se passe" : "Where it happens"}
+              </label>
               <div className="flex flex-wrap gap-2">
                 {areaOptions.map((area) => (
                   <button
@@ -121,7 +146,9 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">{isFr ? "Description du bug" : "Bug description"}</label>
+              <label className="mb-2 block text-sm font-medium">
+                {isFr ? "Description du bug" : "Bug description"}
+              </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -131,18 +158,24 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">{isFr ? "Étapes pour reproduire" : "Steps to reproduce"}</label>
+              <label className="mb-2 block text-sm font-medium">
+                {isFr ? "Étapes pour reproduire" : "Steps to reproduce"}
+              </label>
               <textarea
                 value={steps}
                 onChange={(e) => setSteps(e.target.value)}
                 rows={3}
-                placeholder={isFr ? "1. Aller sur...\n2. Cliquer sur..." : "1. Go to...\n2. Click on..."}
+                placeholder={
+                  isFr ? "1. Aller sur...\n2. Cliquer sur..." : "1. Go to...\n2. Click on..."
+                }
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">{isFr ? "Comportement attendu" : "Expected behavior"}</label>
+              <label className="mb-2 block text-sm font-medium">
+                {isFr ? "Comportement attendu" : "Expected behavior"}
+              </label>
               <textarea
                 value={expected}
                 onChange={(e) => setExpected(e.target.value)}
@@ -153,7 +186,9 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium">{isFr ? "Navigateur/OS" : "Browser/OS"}</label>
+                <label className="mb-2 block text-sm font-medium">
+                  {isFr ? "Navigateur/OS" : "Browser/OS"}
+                </label>
                 <input
                   value={environment}
                   onChange={(e) => setEnvironment(e.target.value)}
@@ -162,7 +197,9 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">{isFr ? "Version app Windows" : "Windows app version"}</label>
+                <label className="mb-2 block text-sm font-medium">
+                  {isFr ? "Version app Windows" : "Windows app version"}
+                </label>
                 <input
                   value={windowsVersion}
                   onChange={(e) => setWindowsVersion(e.target.value)}
@@ -173,7 +210,9 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">{isFr ? "Email de contact (facultatif)" : "Contact email (optional)"}</label>
+              <label className="mb-2 block text-sm font-medium">
+                {isFr ? "Email de contact (facultatif)" : "Contact email (optional)"}
+              </label>
               <input
                 type="email"
                 value={contactEmail}
@@ -189,7 +228,13 @@ function ReportBugForm({ lang }: { lang: "fr" | "en" }) {
               className="mt-2 rounded-md px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               style={{ background: "var(--gradient-primary)" }}
             >
-              {submitting ? (isFr ? "Envoi…" : "Sending…") : (isFr ? "Envoyer le signalement" : "Send report")}
+              {submitting
+                ? isFr
+                  ? "Envoi…"
+                  : "Sending…"
+                : isFr
+                  ? "Envoyer le signalement"
+                  : "Send report"}
             </button>
           </form>
         )}

@@ -9,58 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ReportBugRouteImport } from './routes/report-bug'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as HowItWorksRouteImport } from './routes/how-it-works'
-import { Route as DownloadRouteImport } from './routes/download'
-import { Route as DesktopAuthRouteImport } from './routes/desktop-auth'
-import { Route as ContributeRouteImport } from './routes/contribute'
-import { Route as CallbackRouteImport } from './routes/callback'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedSitesRouteImport } from './routes/_authenticated/sites'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
-import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
-import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CallbackRouteImport } from './routes/callback'
+import { Route as ContributeRouteImport } from './routes/contribute'
+import { Route as DesktopAuthRouteImport } from './routes/desktop-auth'
+import { Route as DownloadRouteImport } from './routes/download'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ReportBugRouteImport } from './routes/report-bug'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSitesRouteImport } from './routes/_authenticated/sites'
 import { Route as AuthenticatedTitlesAddRouteImport } from './routes/_authenticated/titles.add'
 
-const ReportBugRoute = ReportBugRouteImport.update({
-  id: '/report-bug',
-  path: '/report-bug',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HowItWorksRoute = HowItWorksRouteImport.update({
-  id: '/how-it-works',
-  path: '/how-it-works',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DownloadRoute = DownloadRouteImport.update({
-  id: '/download',
-  path: '/download',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesktopAuthRoute = DesktopAuthRouteImport.update({
-  id: '/desktop-auth',
-  path: '/desktop-auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContributeRoute = ContributeRouteImport.update({
-  id: '/contribute',
-  path: '/contribute',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CallbackRoute = CallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -68,23 +42,59 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const CallbackRoute = CallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ContributeRoute = ContributeRouteImport.update({
+  id: '/contribute',
+  path: '/contribute',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSitesRoute = AuthenticatedSitesRouteImport.update({
-  id: '/sites',
-  path: '/sites',
+const DesktopAuthRoute = DesktopAuthRouteImport.update({
+  id: '/desktop-auth',
+  path: '/desktop-auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportBugRoute = ReportBugRouteImport.update({
+  id: '/report-bug',
+  path: '/report-bug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExportRoute = AuthenticatedExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedNotificationsRoute =
@@ -93,24 +103,14 @@ const AuthenticatedNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
-  id: '/import',
-  path: '/import',
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedExportRoute = AuthenticatedExportRouteImport.update({
-  id: '/export',
-  path: '/export',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
+const AuthenticatedSitesRoute = AuthenticatedSitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTitlesAddRoute = AuthenticatedTitlesAddRouteImport.update({
@@ -254,60 +254,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/report-bug': {
-      id: '/report-bug'
-      path: '/report-bug'
-      fullPath: '/report-bug'
-      preLoaderRoute: typeof ReportBugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/how-it-works': {
-      id: '/how-it-works'
-      path: '/how-it-works'
-      fullPath: '/how-it-works'
-      preLoaderRoute: typeof HowItWorksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/download': {
-      id: '/download'
-      path: '/download'
-      fullPath: '/download'
-      preLoaderRoute: typeof DownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/desktop-auth': {
-      id: '/desktop-auth'
-      path: '/desktop-auth'
-      fullPath: '/desktop-auth'
-      preLoaderRoute: typeof DesktopAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contribute': {
-      id: '/contribute'
-      path: '/contribute'
-      fullPath: '/contribute'
-      preLoaderRoute: typeof ContributeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/callback': {
-      id: '/callback'
-      path: '/callback'
-      fullPath: '/callback'
-      preLoaderRoute: typeof CallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -317,46 +268,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/sites': {
-      id: '/_authenticated/sites'
-      path: '/sites'
-      fullPath: '/sites'
-      preLoaderRoute: typeof AuthenticatedSitesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/callback': {
+      id: '/callback'
+      path: '/callback'
+      fullPath: '/callback'
+      preLoaderRoute: typeof CallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/contribute': {
+      id: '/contribute'
+      path: '/contribute'
+      fullPath: '/contribute'
+      preLoaderRoute: typeof ContributeRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/notifications': {
-      id: '/_authenticated/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/desktop-auth': {
+      id: '/desktop-auth'
+      path: '/desktop-auth'
+      fullPath: '/desktop-auth'
+      preLoaderRoute: typeof DesktopAuthRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/import': {
-      id: '/_authenticated/import'
-      path: '/import'
-      fullPath: '/import'
-      preLoaderRoute: typeof AuthenticatedImportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/export': {
-      id: '/_authenticated/export'
-      path: '/export'
-      fullPath: '/export'
-      preLoaderRoute: typeof AuthenticatedExportRouteImport
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report-bug': {
+      id: '/report-bug'
+      path: '/report-bug'
+      fullPath: '/report-bug'
+      preLoaderRoute: typeof ReportBugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/calendar': {
+      id: '/_authenticated/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -366,11 +338,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/calendar': {
-      id: '/_authenticated/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+    '/_authenticated/export': {
+      id: '/_authenticated/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof AuthenticatedExportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sites': {
+      id: '/_authenticated/sites'
+      path: '/sites'
+      fullPath: '/sites'
+      preLoaderRoute: typeof AuthenticatedSitesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/titles/add': {

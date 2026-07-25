@@ -53,13 +53,15 @@ const fr: Dict = {
 
   // Landing
   "landing.metaTitle": "ReadingTK — Votre bibliothèque de lecture, enfin intelligent",
-  "landing.metaDesc": "Suivez vos mangas, manhuas, manhwas et novels. Centralisez vos sources et soyez notifié à chaque nouveau chapitre.",
+  "landing.metaDesc":
+    "Suivez vos mangas, manhuas, manhwas et novels. Centralisez vos sources et soyez notifié à chaque nouveau chapitre.",
   "landing.signin": "Connexion",
   "landing.createAccount": "Créer un compte",
   "landing.hero1": "Votre tracker de lecture,",
   "landing.hero2": "enfin intelligent",
   "landing.heroSub1": "Suivez la progression de vos mangas, manhuas, manhwas et novels.",
-  "landing.heroSub2": "Centralisez vos liens de lecture et soyez notifié dès qu'un nouveau chapitre sort.",
+  "landing.heroSub2":
+    "Centralisez vos liens de lecture et soyez notifié dès qu'un nouveau chapitre sort.",
   "landing.start": "Commencer maintenant",
   "landing.f.track.t": "Suivi par titre",
   "landing.f.track.d": "Dernier chapitre lu, statut — tout au même endroit.",
@@ -68,7 +70,8 @@ const fr: Dict = {
   "landing.f.check.t": "Check à la demande",
   "landing.f.check.d": "Détection heuristique des nouveaux chapitres en un clic.",
   "landing.f.calendar.t": "Calendrier automatique",
-  "landing.f.calendar.d": "Jour et heure de parution de chaque titre, projetés semaine après semaine.",
+  "landing.f.calendar.d":
+    "Jour et heure de parution de chaque titre, projetés semaine après semaine.",
   "landing.f.notif.t": "Notifications",
   "landing.f.notif.d": "Un badge dès qu'un nouveau chapitre apparaît.",
   "landing.footerSelfHosted": "Prêt pour l'auto-hébergement",
@@ -98,7 +101,8 @@ const fr: Dict = {
   "auth.toLogin": "Se connecter",
   "auth.created": "Compte créé !",
   "auth.createdConfirm": "Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse.",
-  "auth.emailInUse": "Cet email est déjà utilisé (Google, Discord ou Twitch). Connectez-vous avec ce service, puis définissez un mot de passe dans Paramètres.",
+  "auth.emailInUse":
+    "Cet email est déjà utilisé (Google, Discord ou Twitch). Connectez-vous avec ce service, puis définissez un mot de passe dans Paramètres.",
   "auth.connected": "Connecté",
   "auth.errOAuth": "Erreur de connexion",
   "auth.errGeneric": "Erreur d'authentification",
@@ -138,7 +142,8 @@ const fr: Dict = {
 
   // Merge modal
   "merge.title": "Fusionner les titres",
-  "merge.desc": "Choisissez le nom principal. Les autres seront conservés comme variantes de recherche.",
+  "merge.desc":
+    "Choisissez le nom principal. Les autres seront conservés comme variantes de recherche.",
   "merge.variants": "variantes : {list}",
   "merge.willKeep": "Seront conservés comme variantes : {list}",
 
@@ -148,7 +153,8 @@ const fr: Dict = {
   "drawer.renameTitle": "Renommer le titre",
   "drawer.confirmRename": "Valider le nouveau nom",
   "drawer.renameFail": "Erreur lors du renommage",
-  "drawer.scrapeNow": "Vérifier les chapitres de ce titre\n\nSi aucune source n'est configurée, une auto-découverte est lancée automatiquement.\nAvec 'Auto-découverte' activée, cherche aussi sur tous les sites connus.",
+  "drawer.scrapeNow":
+    "Vérifier les chapitres de ce titre\n\nSi aucune source n'est configurée, une auto-découverte est lancée automatiquement.\nAvec 'Auto-découverte' activée, cherche aussi sur tous les sites connus.",
   "drawer.autoDiscover": "Auto-découverte",
   "drawer.extUnavailable": "Extension non disponible — installez l'extension ReadingTK",
   "drawer.scrapeDone": "Scraping terminé",
@@ -189,7 +195,8 @@ const fr: Dict = {
   // Calendrier
   "cal.metaTitle": "Calendrier · ReadingTK",
   "cal.title": "Calendrier",
-  "cal.subtitle": "Jour et heure de parution de chaque titre, chaque semaine. Cliquez pour ajouter ou modifier.",
+  "cal.subtitle":
+    "Jour et heure de parution de chaque titre, chaque semaine. Cliquez pour ajouter ou modifier.",
   "cal.today": "Aujourd'hui",
   "cal.prevWeek": "Semaine précédente",
   "cal.nextWeek": "Semaine suivante",
@@ -223,7 +230,8 @@ const fr: Dict = {
   "set.changePassword": "Modifier le mot de passe",
   "set.setPassword": "Définir un mot de passe",
   "set.changePasswordDesc": "Choisissez un nouveau mot de passe pour la connexion par email.",
-  "set.setPasswordDesc": "Ajoutez un mot de passe pour pouvoir vous connecter aussi avec votre email, en plus des autres services.",
+  "set.setPasswordDesc":
+    "Ajoutez un mot de passe pour pouvoir vous connecter aussi avec votre email, en plus des autres services.",
   "set.newPassword": "Nouveau mot de passe",
   "set.confirmPassword": "Confirmer le mot de passe",
   "set.setPasswordBtn": "Définir le mot de passe",
@@ -256,7 +264,8 @@ const fr: Dict = {
   "sites.enabled": "Activé",
   "sites.templateUrl": "Template URL",
   "sites.templatePh": "Template URL (optionnel) — ex : https://site.com/series/{slug}/",
-  "sites.templateHelp": "Si renseigné, le scraper cherchera automatiquement chaque titre sur ce site en remplaçant {code} par le nom du titre (ex : \"The Shepherd Wizard\" → \"the-shepherd-wizard\").",
+  "sites.templateHelp":
+    'Si renseigné, le scraper cherchera automatiquement chaque titre sur ce site en remplaçant {code} par le nom du titre (ex : "The Shepherd Wizard" → "the-shepherd-wizard").',
   "sites.addBtn": "Ajouter le site",
   "sites.created": "Site créé",
   "sites.down": "Down",
@@ -284,7 +293,8 @@ const fr: Dict = {
   // Import
   "import.metaTitle": "Import bookmarks · ReadingTK",
   "import.title": "Importer des bookmarks",
-  "import.subtitle": "Exportez vos favoris au format HTML depuis votre navigateur (Chrome/Firefox : Gérer les favoris → Exporter).",
+  "import.subtitle":
+    "Exportez vos favoris au format HTML depuis votre navigateur (Chrome/Firefox : Gérer les favoris → Exporter).",
   "import.choose": "Cliquer pour choisir un fichier HTML",
   "import.linksFound": "{n} liens trouvés",
   "import.selectedCount": "{a} / {b} sélectionnés",
@@ -295,7 +305,8 @@ const fr: Dict = {
   // Export
   "export.metaTitle": "Exporter bookmarks · ReadingTK",
   "export.title": "Exporter bookmarks",
-  "export.subtitle": "Sélectionnez les titres et le type de liens à exporter au format HTML (importable dans tous les navigateurs).",
+  "export.subtitle":
+    "Sélectionnez les titres et le type de liens à exporter au format HTML (importable dans tous les navigateurs).",
   "export.links": "Liens",
   "export.linkSources": "Sources",
   "export.linkChapters": "Dernier chapitre détecté",
@@ -315,7 +326,8 @@ const fr: Dict = {
   "add.tabUrls": "Ajout via URLs",
   "add.tabManual": "Ajout manuel",
   "add.manualHelp": "Un titre par ligne.",
-  "add.urlsHelp": "Une URL par ligne. Le domaine sera associé automatiquement à un site existant, et le template d'URL sera déduit.",
+  "add.urlsHelp":
+    "Une URL par ligne. Le domaine sera associé automatiquement à un site existant, et le template d'URL sera déduit.",
   "add.created": "{n} titre(s) créé(s)",
   "add.urlsImported": "{n} URL(s) importée(s) ✓",
   "add.sameTitleToggle": "Toutes les URLs sont pour le même titre",
@@ -365,13 +377,15 @@ const en: Dict = {
   "nav.loggedOut": "Logged out",
 
   "landing.metaTitle": "ReadingTK — Your reading library, finally smart",
-  "landing.metaDesc": "Track your mangas, manhuas and novels. Centralize your sources and get notified on every new chapter.",
+  "landing.metaDesc":
+    "Track your mangas, manhuas and novels. Centralize your sources and get notified on every new chapter.",
   "landing.signin": "Sign in",
   "landing.createAccount": "Create account",
   "landing.hero1": "Your library,",
   "landing.hero2": "finally smart",
   "landing.heroSub1": "Track the progress of your mangas, manhuas and novels.",
-  "landing.heroSub2": "Centralize your reading links and get notified as soon as a new chapter is out.",
+  "landing.heroSub2":
+    "Centralize your reading links and get notified as soon as a new chapter is out.",
   "landing.start": "Get started",
   "landing.f.track.t": "Per-title tracking",
   "landing.f.track.d": "Last chapter read, status — all in one place.",
@@ -409,7 +423,8 @@ const en: Dict = {
   "auth.toLogin": "Sign in",
   "auth.created": "Account created!",
   "auth.createdConfirm": "Account created! Check your inbox to confirm your address.",
-  "auth.emailInUse": "This email is already in use (Google, Discord or Twitch). Sign in with that service, then set a password in Settings.",
+  "auth.emailInUse":
+    "This email is already in use (Google, Discord or Twitch). Sign in with that service, then set a password in Settings.",
   "auth.connected": "Signed in",
   "auth.errOAuth": "Sign-in error",
   "auth.errGeneric": "Authentication error",
@@ -454,7 +469,8 @@ const en: Dict = {
   "drawer.renameTitle": "Rename title",
   "drawer.confirmRename": "Confirm new name",
   "drawer.renameFail": "Error renaming title",
-  "drawer.scrapeNow": "Check chapters for this title\n\nIf no source is configured, auto-discovery runs automatically.\nWith 'Auto-discover' enabled, also searches all known sites.",
+  "drawer.scrapeNow":
+    "Check chapters for this title\n\nIf no source is configured, auto-discovery runs automatically.\nWith 'Auto-discover' enabled, also searches all known sites.",
   "drawer.autoDiscover": "Auto-discover",
   "drawer.extUnavailable": "Extension unavailable — install the ReadingTK extension",
   "drawer.scrapeDone": "Scraping done",
@@ -527,7 +543,8 @@ const en: Dict = {
   "set.changePassword": "Change password",
   "set.setPassword": "Set a password",
   "set.changePasswordDesc": "Choose a new password for email sign-in.",
-  "set.setPasswordDesc": "Add a password so you can also sign in with your email, in addition to the other services.",
+  "set.setPasswordDesc":
+    "Add a password so you can also sign in with your email, in addition to the other services.",
   "set.newPassword": "New password",
   "set.confirmPassword": "Confirm password",
   "set.setPasswordBtn": "Set password",
@@ -559,7 +576,8 @@ const en: Dict = {
   "sites.enabled": "Enabled",
   "sites.templateUrl": "URL template",
   "sites.templatePh": "URL template (optional) — e.g. https://site.com/series/{slug}/",
-  "sites.templateHelp": "If set, the scraper will automatically look up each title on this site by replacing {code} with the title name (e.g. \"The Shepherd Wizard\" → \"the-shepherd-wizard\").",
+  "sites.templateHelp":
+    'If set, the scraper will automatically look up each title on this site by replacing {code} with the title name (e.g. "The Shepherd Wizard" → "the-shepherd-wizard").',
   "sites.addBtn": "Add site",
   "sites.created": "Site created",
   "sites.down": "Down",
@@ -585,7 +603,8 @@ const en: Dict = {
 
   "import.metaTitle": "Import bookmarks · ReadingTK",
   "import.title": "Import bookmarks",
-  "import.subtitle": "Export your bookmarks as HTML from your browser (Chrome/Firefox: Manage bookmarks → Export).",
+  "import.subtitle":
+    "Export your bookmarks as HTML from your browser (Chrome/Firefox: Manage bookmarks → Export).",
   "import.choose": "Click to choose an HTML file",
   "import.linksFound": "{n} links found",
   "import.selectedCount": "{a} / {b} selected",
@@ -595,7 +614,8 @@ const en: Dict = {
 
   "export.metaTitle": "Export bookmarks · ReadingTK",
   "export.title": "Export bookmarks",
-  "export.subtitle": "Select the titles and the type of links to export as HTML (importable in all browsers).",
+  "export.subtitle":
+    "Select the titles and the type of links to export as HTML (importable in all browsers).",
   "export.links": "Links",
   "export.linkSources": "Sources",
   "export.linkChapters": "Last detected chapter",
@@ -614,7 +634,8 @@ const en: Dict = {
   "add.tabUrls": "Add via URLs",
   "add.tabManual": "Manual add",
   "add.manualHelp": "One title per line.",
-  "add.urlsHelp": "One URL per line. The domain will be matched automatically to an existing site, and the URL template will be inferred.",
+  "add.urlsHelp":
+    "One URL per line. The domain will be matched automatically to an existing site, and the URL template will be inferred.",
   "add.created": "{n} title(s) created",
   "add.urlsImported": "{n} URL(s) imported ✓",
   "add.sameTitleToggle": "All URLs are for the same title",
@@ -655,7 +676,8 @@ function detectInitial(): Lang {
     const saved = localStorage.getItem("rtk-lang");
     if (saved === "fr" || saved === "en") return saved;
   }
-  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("en")) return "en";
+  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("en"))
+    return "en";
   return "fr";
 }
 
@@ -666,13 +688,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initial = detectInitial();
     setLangState(initial);
-    try { document.documentElement.lang = initial; } catch {}
+    try {
+      document.documentElement.lang = initial;
+    } catch {}
   }, []);
 
   const setLang = (l: Lang) => {
     setLangState(l);
-    try { localStorage.setItem("rtk-lang", l); } catch {}
-    try { document.documentElement.lang = l; } catch {}
+    try {
+      localStorage.setItem("rtk-lang", l);
+    } catch {}
+    try {
+      document.documentElement.lang = l;
+    } catch {}
   };
 
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
@@ -722,7 +750,13 @@ function FlagGB({ size = 18 }: { size?: number }) {
   );
 }
 
-export function LanguageSwitcher({ size = 18, className = "" }: { size?: number; className?: string }) {
+export function LanguageSwitcher({
+  size = 18,
+  className = "",
+}: {
+  size?: number;
+  className?: string;
+}) {
   const { lang, setLang } = useI18n();
   const langs: { id: Lang; flag: ReactNode; label: string }[] = [
     { id: "fr", flag: <FlagFR size={size} />, label: "Français" },

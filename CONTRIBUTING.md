@@ -5,6 +5,7 @@ Merci de l'intérêt porté à ReadingTK ! Ce guide résume comment proposer un 
 ## Signaler un bug
 
 Ouvrez une [issue](https://github.com/tkissdev/readingtk/issues) avec :
+
 - Ce que vous attendiez / ce qui s'est passé
 - Les étapes pour reproduire
 - Navigateur/OS, et si le bug vient de l'extension ou de l'app Windows

@@ -7,12 +7,24 @@ export const Route = createFileRoute("/how-it-works")({
   head: () => ({
     meta: [
       { title: "Comment ça marche · ReadingTK — Tracker manga & manhwa" },
-      { name: "description", content: "Découvrez comment ReadingTK détecte automatiquement les nouveaux chapitres de manga, manhwa et manhua. Ajoutez vos titres, connectez vos sites de lecture et recevez des notifications instantanées." },
-      { name: "keywords", content: "comment tracker manga, suivi chapitre manga automatique, notification nouveau chapitre, extension manga chrome firefox, tracker manhwa gratuit, suivi lecture manga" },
+      {
+        name: "description",
+        content:
+          "Découvrez comment ReadingTK détecte automatiquement les nouveaux chapitres de manga, manhwa et manhua. Ajoutez vos titres, connectez vos sites de lecture et recevez des notifications instantanées.",
+      },
+      {
+        name: "keywords",
+        content:
+          "comment tracker manga, suivi chapitre manga automatique, notification nouveau chapitre, extension manga chrome firefox, tracker manhwa gratuit, suivi lecture manga",
+      },
       { property: "og:type", content: "article" },
       { property: "og:url", content: "https://readingtk.net/how-it-works" },
       { property: "og:title", content: "Comment ça marche · ReadingTK" },
-      { property: "og:description", content: "Comment ReadingTK détecte automatiquement les nouveaux chapitres de vos mangas et manhwas préférés." },
+      {
+        property: "og:description",
+        content:
+          "Comment ReadingTK détecte automatiquement les nouveaux chapitres de vos mangas et manhwas préférés.",
+      },
       { property: "og:image", content: "https://readingtk.net/og-image.png" },
     ],
   }),
@@ -201,7 +213,10 @@ function HowItWorksFR() {
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 py-16">
-        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <button
+          onClick={() => router.history.back()}
+          className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
           ← Retour
         </button>
 
@@ -209,14 +224,20 @@ function HowItWorksFR() {
         <div className="mb-16 text-center">
           <h1 className="mb-4 text-4xl font-extrabold leading-tight">
             Comment fonctionne{" "}
-            <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(135deg, oklch(0.70 0.20 268), oklch(0.85 0.15 250))" }}>
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(135deg, oklch(0.70 0.20 268), oklch(0.85 0.15 250))",
+              }}
+            >
               ReadingTK
             </span>
           </h1>
           <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            ReadingTK surveille automatiquement vos lectures manga, manhwa et manhua.
-            Plus besoin de vérifier manuellement chaque site — l'extension le fait pour vous
-            et vous prévient dès qu'un nouveau chapitre est disponible.
+            ReadingTK surveille automatiquement vos lectures manga, manhwa et manhua. Plus besoin de
+            vérifier manuellement chaque site — l'extension le fait pour vous et vous prévient dès
+            qu'un nouveau chapitre est disponible.
           </p>
           <a
             href="https://github.com/tkissdev/readingtk"
@@ -233,7 +254,10 @@ function HowItWorksFR() {
           <h2 className="mb-8 text-2xl font-bold">Les étapes en détail</h2>
           <div className="space-y-6">
             {STEPS_FR.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="flex gap-5 rounded-xl border border-border bg-card/60 p-6 backdrop-blur">
+              <div
+                key={title}
+                className="flex gap-5 rounded-xl border border-border bg-card/60 p-6 backdrop-blur"
+              >
                 <div className="mt-0.5 shrink-0 rounded-lg border border-accent/20 bg-accent/10 p-2.5">
                   <Icon className="h-5 w-5 text-accent" />
                 </div>
@@ -251,11 +275,13 @@ function HowItWorksFR() {
           <div className="flex items-start gap-4">
             <Chrome className="mt-1 h-8 w-8 shrink-0 text-accent" />
             <div>
-              <h2 className="mb-3 text-xl font-bold">L'extension navigateur — le cœur de ReadingTK</h2>
+              <h2 className="mb-3 text-xl font-bold">
+                L'extension navigateur — le cœur de ReadingTK
+              </h2>
               <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                L'extension Chrome et Firefox est ce qui permet la détection automatique des chapitres.
-                Elle s'exécute en arrière-plan toutes les heures, visite les pages de vos mangas
-                et compare le dernier chapitre disponible avec celui que vous avez lu.
+                L'extension Chrome et Firefox est ce qui permet la détection automatique des
+                chapitres. Elle s'exécute en arrière-plan toutes les heures, visite les pages de vos
+                mangas et compare le dernier chapitre disponible avec celui que vous avez lu.
               </p>
               <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
                 Elle se connecte automatiquement à votre compte ReadingTK — il suffit d'être
@@ -276,14 +302,15 @@ function HowItWorksFR() {
         <section className="mb-20">
           <h2 className="mb-4 text-2xl font-bold">Auto-découverte de sites</h2>
           <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-            Quand vous activez l'<strong className="text-foreground">auto-découverte</strong>, ReadingTK ne se contente pas
-            de vérifier les sources déjà connues — il teste automatiquement votre titre sur tous les
-            sites de lecture que vous avez configurés, pour trouver de nouvelles sources disponibles.
+            Quand vous activez l'<strong className="text-foreground">auto-découverte</strong>,
+            ReadingTK ne se contente pas de vérifier les sources déjà connues — il teste
+            automatiquement votre titre sur tous les sites de lecture que vous avez configurés, pour
+            trouver de nouvelles sources disponibles.
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Cette fonctionnalité est particulièrement utile pour les titres récents qui n'ont pas encore
-            de sources renseignées, ou pour découvrir si un titre est disponible sur un site que vous
-            n'aviez pas encore vérifié.
+            Cette fonctionnalité est particulièrement utile pour les titres récents qui n'ont pas
+            encore de sources renseignées, ou pour découvrir si un titre est disponible sur un site
+            que vous n'aviez pas encore vérifié.
           </p>
         </section>
 
@@ -306,15 +333,27 @@ function HowItWorksFR() {
           </div>
           <div className="space-y-6">
             {FEATURES_FR.map((f) => (
-              <div key={f.title} id={slugify(f.title)} className="scroll-mt-20 rounded-2xl border border-border bg-card/60 p-6 backdrop-blur">
+              <div
+                key={f.title}
+                id={slugify(f.title)}
+                className="scroll-mt-20 rounded-2xl border border-border bg-card/60 p-6 backdrop-blur"
+              >
                 <h3 className="mb-4 text-lg font-semibold">{f.title}</h3>
                 <div className={`mb-4 grid gap-3 ${f.images.length > 1 ? "sm:grid-cols-2" : ""}`}>
                   {f.images.map((src) => (
-                    <img key={src} src={src} alt={f.title} className="w-full rounded-lg border border-border" loading="lazy" />
+                    <img
+                      key={src}
+                      src={src}
+                      alt={f.title}
+                      className="w-full rounded-lg border border-border"
+                      loading="lazy"
+                    />
                   ))}
                 </div>
                 <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                  {f.body.map((p, i) => <p key={i}>{p}</p>)}
+                  {f.body.map((p, i) => (
+                    <p key={i}>{p}</p>
+                  ))}
                 </div>
               </div>
             ))}
@@ -337,7 +376,9 @@ function HowItWorksFR() {
         {/* CTA */}
         <div className="rounded-2xl border border-border bg-card/60 p-10 text-center">
           <h2 className="mb-3 text-2xl font-bold">Prêt à ne plus rater un seul chapitre ?</h2>
-          <p className="mb-7 text-muted-foreground">Gratuit, sans publicité, sans limite de titres.</p>
+          <p className="mb-7 text-muted-foreground">
+            Gratuit, sans publicité, sans limite de titres.
+          </p>
           <Link
             to="/auth"
             search={{ mode: "signup" }}
@@ -411,16 +452,16 @@ const FEATURES_EN = [
     images: ["/screenshots/03-drawer-progress.png"],
     body: [
       "Adjust your last read chapter with the −1 / +1 buttons, or type a number directly and click Save.",
-      "The Type and Status pills let you classify the title manually. Clicking a type locks it (shown as \"manual\") so automatic detection no longer overwrites it; clicking the same type again unlocks automatic detection.",
+      'The Type and Status pills let you classify the title manually. Clicking a type locks it (shown as "manual") so automatic detection no longer overwrites it; clicking the same type again unlocks automatic detection.',
     ],
   },
   {
     title: "Detected chapter and sources",
     images: ["/screenshots/04-drawer-sources.png"],
     body: [
-      "\"Last detected chapter\" shows the most recent chapter found across all your sources. The pencil lets you correct it manually, and the Google icon searches for that specific chapter. Below, any direct links found to that chapter are clickable (and removable via the trash icon).",
+      '"Last detected chapter" shows the most recent chapter found across all your sources. The pencil lets you correct it manually, and the Google icon searches for that specific chapter. Below, any direct links found to that chapter are clickable (and removable via the trash icon).',
       "The Sources section lists every site where this title is available: its priority (the highest-priority site is used as the reference when sources disagree), its direct link, the last chapter detected on that specific site with its own Google search shortcut. The + button adds a new source — paste a URL and ReadingTK recognizes or automatically creates the matching site. The pencil edits the saved link or chapter, the trash icon removes the source (confirmation required).",
-      "At the very bottom, \"Delete this title\" permanently removes the title from your library (confirmation required).",
+      'At the very bottom, "Delete this title" permanently removes the title from your library (confirmation required).',
     ],
   },
   {
@@ -437,7 +478,7 @@ const FEATURES_EN = [
     images: ["/screenshots/07-sites.png"],
     body: [
       "This page lists every site ReadingTK knows how to scrape. The form at the top lets you add one manually (name, base URL, and optionally a URL template using {slug} so the scraper can automatically locate a title on that site).",
-      "In the table: priority determines which site is used as the reference when sources report different chapters, the Enabled toggle lets you disable a site without deleting it, and a \"Down\" badge appears if the site is currently unreachable. The trash icon deletes the site immediately, with no confirmation — check that no active source still points to it before doing so.",
+      'In the table: priority determines which site is used as the reference when sources report different chapters, the Enabled toggle lets you disable a site without deleting it, and a "Down" badge appears if the site is currently unreachable. The trash icon deletes the site immediately, with no confirmation — check that no active source still points to it before doing so.',
     ],
   },
   {
@@ -445,7 +486,7 @@ const FEATURES_EN = [
     images: ["/screenshots/08-notifications.png"],
     body: [
       "Every newly detected chapter generates a notification here: title, chapter number, and detection time, with an Open button to jump straight to the chapter.",
-      "The checkmark on the right marks a single notification as read (it disappears once read). \"Mark all as read\" does the same for the whole list in one click. \"Delete all\" asks for confirmation before wiping the whole history.",
+      'The checkmark on the right marks a single notification as read (it disappears once read). "Mark all as read" does the same for the whole list in one click. "Delete all" asks for confirmation before wiping the whole history.',
     ],
   },
   {
@@ -454,7 +495,7 @@ const FEATURES_EN = [
     body: [
       "Your email and connected providers (Google, Discord, Twitch) are shown at the top. If you signed up via one of those services, you can set a password here to also sign in with your email.",
       "Choose the interface language, toggle in-app notifications (email notifications are coming soon), and pick the chapter display format (numeric or text).",
-      "The default values (type and status) automatically apply to any new title created via Add a title or an import. \"Ignore duplicates\" prevents recreating a title that already exists when importing bookmarks.",
+      'The default values (type and status) automatically apply to any new title created via Add a title or an import. "Ignore duplicates" prevents recreating a title that already exists when importing bookmarks.',
       "Every setting on this page saves automatically as soon as you change it.",
     ],
   },
@@ -462,8 +503,8 @@ const FEATURES_EN = [
     title: "Add a title",
     images: ["/screenshots/10-titles-add.png"],
     body: [
-      "\"Add via URLs\" tab: paste one or more reading-page URLs (one per line) — ReadingTK guesses the title name, the site, and the chapter number from each link. Enable \"All URLs are for the same title\" if you're pasting several links (across different sites) for a single series.",
-      "\"Manual add\" tab: just type one title name per line, no URL needed — useful for adding a series to track before you've even found where to read it.",
+      '"Add via URLs" tab: paste one or more reading-page URLs (one per line) — ReadingTK guesses the title name, the site, and the chapter number from each link. Enable "All URLs are for the same title" if you\'re pasting several links (across different sites) for a single series.',
+      '"Manual add" tab: just type one title name per line, no URL needed — useful for adding a series to track before you\'ve even found where to read it.',
     ],
   },
   {
@@ -511,22 +552,31 @@ function HowItWorksEN() {
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl px-6 py-16">
-        <button onClick={() => router.history.back()} className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <button
+          onClick={() => router.history.back()}
+          className="mb-10 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
           ← Back
         </button>
 
         <div className="mb-16 text-center">
           <h1 className="mb-4 text-4xl font-extrabold leading-tight">
             How{" "}
-            <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(135deg, oklch(0.70 0.20 268), oklch(0.85 0.15 250))" }}>
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(135deg, oklch(0.70 0.20 268), oklch(0.85 0.15 250))",
+              }}
+            >
               ReadingTK
-            </span>
-            {" "}works
+            </span>{" "}
+            works
           </h1>
           <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            ReadingTK automatically monitors your manga, manhwa, and manhua reading.
-            No more manually checking every site — the extension does it for you
-            and alerts you as soon as a new chapter is available.
+            ReadingTK automatically monitors your manga, manhwa, and manhua reading. No more
+            manually checking every site — the extension does it for you and alerts you as soon as a
+            new chapter is available.
           </p>
           <a
             href="https://github.com/tkissdev/readingtk"
@@ -542,7 +592,10 @@ function HowItWorksEN() {
           <h2 className="mb-8 text-2xl font-bold">Step by step</h2>
           <div className="space-y-6">
             {STEPS_EN.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="flex gap-5 rounded-xl border border-border bg-card/60 p-6 backdrop-blur">
+              <div
+                key={title}
+                className="flex gap-5 rounded-xl border border-border bg-card/60 p-6 backdrop-blur"
+              >
                 <div className="mt-0.5 shrink-0 rounded-lg border border-accent/20 bg-accent/10 p-2.5">
                   <Icon className="h-5 w-5 text-accent" />
                 </div>
@@ -561,13 +614,13 @@ function HowItWorksEN() {
             <div>
               <h2 className="mb-3 text-xl font-bold">The browser extension — ReadingTK's core</h2>
               <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                The Chrome and Firefox extension is what enables automatic chapter detection.
-                It runs in the background every hour, visits your manga pages,
-                and compares the latest available chapter with the one you've read.
+                The Chrome and Firefox extension is what enables automatic chapter detection. It
+                runs in the background every hour, visits your manga pages, and compares the latest
+                available chapter with the one you've read.
               </p>
               <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
-                It connects automatically to your ReadingTK account — just be logged in
-                on readingtk.net and the extension syncs everything in real time.
+                It connects automatically to your ReadingTK account — just be logged in on
+                readingtk.net and the extension syncs everything in real time.
               </p>
               <Link
                 to="/download"
@@ -583,13 +636,13 @@ function HowItWorksEN() {
         <section className="mb-20">
           <h2 className="mb-4 text-2xl font-bold">Site auto-discovery</h2>
           <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-            When you enable <strong className="text-foreground">auto-discovery</strong>, ReadingTK doesn't just check
-            already-known sources — it automatically tests your title across all configured reading
-            sites to find new available sources.
+            When you enable <strong className="text-foreground">auto-discovery</strong>, ReadingTK
+            doesn't just check already-known sources — it automatically tests your title across all
+            configured reading sites to find new available sources.
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            This feature is especially useful for new titles that don't have sources yet,
-            or to discover if a title is available on a site you haven't checked before.
+            This feature is especially useful for new titles that don't have sources yet, or to
+            discover if a title is available on a site you haven't checked before.
           </p>
         </section>
 
@@ -612,15 +665,27 @@ function HowItWorksEN() {
           </div>
           <div className="space-y-6">
             {FEATURES_EN.map((f) => (
-              <div key={f.title} id={slugify(f.title)} className="scroll-mt-20 rounded-2xl border border-border bg-card/60 p-6 backdrop-blur">
+              <div
+                key={f.title}
+                id={slugify(f.title)}
+                className="scroll-mt-20 rounded-2xl border border-border bg-card/60 p-6 backdrop-blur"
+              >
                 <h3 className="mb-4 text-lg font-semibold">{f.title}</h3>
                 <div className={`mb-4 grid gap-3 ${f.images.length > 1 ? "sm:grid-cols-2" : ""}`}>
                   {f.images.map((src) => (
-                    <img key={src} src={src} alt={f.title} className="w-full rounded-lg border border-border" loading="lazy" />
+                    <img
+                      key={src}
+                      src={src}
+                      alt={f.title}
+                      className="w-full rounded-lg border border-border"
+                      loading="lazy"
+                    />
                   ))}
                 </div>
                 <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                  {f.body.map((p, i) => <p key={i}>{p}</p>)}
+                  {f.body.map((p, i) => (
+                    <p key={i}>{p}</p>
+                  ))}
                 </div>
               </div>
             ))}

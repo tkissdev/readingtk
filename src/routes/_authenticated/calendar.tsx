@@ -33,9 +33,9 @@ type Draft = {
 };
 
 type TitleInfo = {
-  num: number | null;       // dernier numéro de chapitre détecté
+  num: number | null; // dernier numéro de chapitre détecté
   chapterUrl: string | null; // lien vers ce chapitre
-  sourceUrl: string | null;  // lien vers la page de la série (repli)
+  sourceUrl: string | null; // lien vers la page de la série (repli)
 };
 
 // ── Constantes ───────────────────────────────────────────────────────────────
@@ -49,7 +49,16 @@ function fmtDay(locale: string, mondayIdx: number, opt: "short" | "long"): strin
 const EVENT_MIN_H = 36; // hauteur minimale d'un événement en px
 const BLOCK_MIN = 55; // écart visuel (minutes) pour le calcul des collisions
 
-const PALETTE = ["#6366f1", "#0ea5e9", "#f59e0b", "#ec4899", "#10b981", "#8b5cf6", "#ef4444", "#14b8a6"];
+const PALETTE = [
+  "#6366f1",
+  "#0ea5e9",
+  "#f59e0b",
+  "#ec4899",
+  "#10b981",
+  "#8b5cf6",
+  "#ef4444",
+  "#14b8a6",
+];
 function colorFor(key: string): string {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
@@ -79,13 +88,20 @@ function hhmm(t: string): string {
   return `${(h || "00").padStart(2, "0")}:${(m || "00").padStart(2, "0")}`;
 }
 function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 // Construit le lien d'un chapitre cible en remplaçant le numéro dans l'URL du chapitre de base.
 // Heuristique : les URLs de chapitres se terminent en général par le numéro (…/chapter-52).
 function chapterUrlForNum(
-  chapterUrl: string | null, baseNum: number | null, targetNum: number, sourceUrl: string | null,
+  chapterUrl: string | null,
+  baseNum: number | null,
+  targetNum: number,
+  sourceUrl: string | null,
 ): string | null {
   if (chapterUrl && baseNum != null) {
     if (targetNum === baseNum) return chapterUrl;
@@ -105,7 +121,10 @@ function layoutDay(events: (Schedule & { min: number })[]): Laid[] {
   const laneEnds: number[] = [];
   const withLane = evs.map((e) => {
     let lane = laneEnds.findIndex((end) => end <= e.min);
-    if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(0);
+    }
     laneEnds[lane] = e.min + BLOCK_MIN;
     return { e, lane };
   });
@@ -134,8 +153,14 @@ function CalendarPage() {
   const qc = useQueryClient();
   const { t, lang } = useI18n();
   const locale = lang === "fr" ? "fr-FR" : "en-US";
-  const dayShort = useMemo(() => Array.from({ length: 7 }, (_, i) => fmtDay(locale, i, "short")), [locale]);
-  const dayFull = useMemo(() => Array.from({ length: 7 }, (_, i) => fmtDay(locale, i, "long")), [locale]);
+  const dayShort = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => fmtDay(locale, i, "short")),
+    [locale],
+  );
+  const dayFull = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => fmtDay(locale, i, "long")),
+    [locale],
+  );
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [draft, setDraft] = useState<Draft | null>(null);
 
@@ -188,7 +213,8 @@ function CalendarPage() {
         if (!c.chapter_url) continue;
         const target = numByTitle[c.title_id];
         if (target == null || chapUrlByTitle[c.title_id]) continue;
-        if (parseFloat(c.chapter_label ?? "") === target) chapUrlByTitle[c.title_id] = c.chapter_url;
+        if (parseFloat(c.chapter_label ?? "") === target)
+          chapUrlByTitle[c.title_id] = c.chapter_url;
       }
 
       const map: Record<string, TitleInfo> = {};
@@ -218,7 +244,9 @@ function CalendarPage() {
         qc.invalidateQueries({ queryKey: ["calendar-title-info"] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [qc]);
 
   // Événements répartis par jour avec gestion des chevauchements
@@ -274,12 +302,17 @@ function CalendarPage() {
     };
     try {
       if (draft.id) {
-        const { error } = await supabase.from("release_schedules").update(payload).eq("id", draft.id);
+        const { error } = await supabase
+          .from("release_schedules")
+          .update(payload)
+          .eq("id", draft.id);
         if (error) throw error;
         toast.success(t("cal.modified"));
       } else {
         const { data: u } = await supabase.auth.getUser();
-        const { error } = await supabase.from("release_schedules").insert({ ...payload, user_id: u.user!.id });
+        const { error } = await supabase
+          .from("release_schedules")
+          .insert({ ...payload, user_id: u.user!.id });
         if (error) throw error;
         toast.success(t("cal.added"));
       }
@@ -312,9 +345,7 @@ function CalendarPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{t("cal.title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("cal.subtitle")}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("cal.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -330,7 +361,9 @@ function CalendarPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="min-w-[150px] text-center text-sm font-medium capitalize">{monthLabel}</span>
+          <span className="min-w-[150px] text-center text-sm font-medium capitalize">
+            {monthLabel}
+          </span>
           <button
             onClick={() => setWeekStart((w) => addDays(w, 7))}
             className="rounded-md border border-border p-1.5 text-muted-foreground transition hover:bg-secondary/40 hover:text-foreground"
@@ -370,7 +403,9 @@ function CalendarPage() {
           <div className="flex w-14 shrink-0 flex-col">
             {Array.from({ length: 25 }, (_, h) => (
               <div key={h} className="relative flex-1 border-b border-border/20">
-                <span className={`absolute right-1.5 text-[10px] text-muted-foreground ${h === 0 ? "top-0.5" : "-top-2"}`}>
+                <span
+                  className={`absolute right-1.5 text-[10px] text-muted-foreground ${h === 0 ? "top-0.5" : "-top-2"}`}
+                >
                   {h === 24 ? "00:00" : `${String(h).padStart(2, "0")}:00`}
                 </span>
               </div>
@@ -410,7 +445,15 @@ function CalendarPage() {
                 // Date/heure réelle de cette occurrence → passé ou futur
                 const [hH, mM] = e.release_time.split(":").map((x) => parseInt(x, 10) || 0);
                 const occBase = addDays(weekStart, d);
-                const occDateTime = new Date(occBase.getFullYear(), occBase.getMonth(), occBase.getDate(), hH, mM, 0, 0);
+                const occDateTime = new Date(
+                  occBase.getFullYear(),
+                  occBase.getMonth(),
+                  occBase.getDate(),
+                  hH,
+                  mM,
+                  0,
+                  0,
+                );
                 const isFuture = occDateTime.getTime() > now.getTime();
 
                 const info = e.title_id ? titleInfo[e.title_id] : undefined;
@@ -425,22 +468,36 @@ function CalendarPage() {
                   let ref = addDays(curWeek, e.day_of_week);
                   ref = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), hH, mM, 0, 0);
                   if (ref.getTime() > now.getTime()) ref = addDays(ref, -7);
-                  const weeksDiff = Math.round((occDateTime.getTime() - ref.getTime()) / (7 * 86400000));
+                  const weeksDiff = Math.round(
+                    (occDateTime.getTime() - ref.getTime()) / (7 * 86400000),
+                  );
                   const n = baseNum + weeksDiff;
                   if (n >= 1) {
                     chapNum = n;
-                    link = chapterUrlForNum(info?.chapterUrl ?? null, baseNum, n, info?.sourceUrl ?? null);
+                    link = chapterUrlForNum(
+                      info?.chapterUrl ?? null,
+                      baseNum,
+                      n,
+                      info?.sourceUrl ?? null,
+                    );
                   } else {
                     link = info?.sourceUrl ?? info?.chapterUrl ?? null;
                   }
                 }
-                const sub = chapNum != null ? `Ch. ${chapNum} · ${hhmm(e.release_time)}` : hhmm(e.release_time);
+                const sub =
+                  chapNum != null
+                    ? `Ch. ${chapNum} · ${hhmm(e.release_time)}`
+                    : hhmm(e.release_time);
                 // Futur = grisé + non cliquable (sauf la roue dentelée) ; passé = cliquable vers le site
                 const bodyClickable = !isFuture && !!link;
                 const Body = (
                   <>
-                    <div className="truncate pr-4 text-[11px] font-semibold leading-tight text-foreground">{name}</div>
-                    <div className="truncate text-[10px] leading-tight text-muted-foreground">{sub}</div>
+                    <div className="truncate pr-4 text-[11px] font-semibold leading-tight text-foreground">
+                      {name}
+                    </div>
+                    <div className="truncate text-[10px] leading-tight text-muted-foreground">
+                      {sub}
+                    </div>
                   </>
                 );
                 return (
@@ -466,14 +523,21 @@ function CalendarPage() {
                         rel="noreferrer"
                         onClick={(ev) => ev.stopPropagation()}
                         className="flex h-full flex-col justify-center px-1.5 no-underline"
-                        title={t("cal.openOnSite", { name, chap: chapNum != null ? t("cal.chapterOf", { n: chapNum }) : "" })}
+                        title={t("cal.openOnSite", {
+                          name,
+                          chap: chapNum != null ? t("cal.chapterOf", { n: chapNum }) : "",
+                        })}
                       >
                         {Body}
                       </a>
                     ) : (
                       <div
                         className="flex h-full cursor-default flex-col justify-center px-1.5"
-                        title={isFuture ? t("cal.upcoming", { name }) : `${name} — ${hhmm(e.release_time)}`}
+                        title={
+                          isFuture
+                            ? t("cal.upcoming", { name })
+                            : `${name} — ${hhmm(e.release_time)}`
+                        }
                       >
                         {Body}
                       </div>
@@ -481,7 +545,11 @@ function CalendarPage() {
 
                     {/* Roue dentelée : modifier l'entrée */}
                     <button
-                      onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); openEdit(e); }}
+                      onClick={(ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        openEdit(e);
+                      }}
                       className="absolute right-0.5 top-0.5 z-30 rounded p-0.5 text-muted-foreground opacity-60 transition hover:bg-background/70 hover:text-foreground group-hover:opacity-100"
                       title={t("cal.editEntry")}
                     >
@@ -514,7 +582,13 @@ function CalendarPage() {
 // ── Dialogue ─────────────────────────────────────────────────────────────────
 
 function ScheduleDialog({
-  draft, titles, dayFull, onChange, onSave, onDelete, onClose,
+  draft,
+  titles,
+  dayFull,
+  onChange,
+  onSave,
+  onDelete,
+  onClose,
 }: {
   draft: Draft;
   titles: { id: string; name: string }[];
@@ -529,14 +603,23 @@ function ScheduleDialog({
   const isCustom = !draft.title_id;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">{draft.id ? t("cal.editEntryTitle") : t("cal.addEntry")}</h2>
-          <button onClick={onClose} title={t("common.close")} className="rounded p-1 text-muted-foreground hover:bg-secondary/40 hover:text-foreground">
+          <h2 className="text-lg font-bold">
+            {draft.id ? t("cal.editEntryTitle") : t("cal.addEntry")}
+          </h2>
+          <button
+            onClick={onClose}
+            title={t("common.close")}
+            className="rounded p-1 text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -544,14 +627,18 @@ function ScheduleDialog({
         <div className="mt-4 space-y-4">
           {/* Titre */}
           <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t("cal.titleField")}</label>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+              {t("cal.titleField")}
+            </label>
             <select
               value={draft.title_id}
               onChange={(e) => onChange({ ...draft, title_id: e.target.value })}
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
             >
               {titles.map((ti) => (
-                <option key={ti.id} value={ti.id}>{ti.name}</option>
+                <option key={ti.id} value={ti.id}>
+                  {ti.name}
+                </option>
               ))}
               <option value="">{t("cal.customName")}</option>
             </select>
@@ -560,7 +647,9 @@ function ScheduleDialog({
           {/* Nom personnalisé */}
           {isCustom && (
             <div>
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t("cal.name")}</label>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                {t("cal.name")}
+              </label>
               <input
                 type="text"
                 value={draft.label}
@@ -575,19 +664,25 @@ function ScheduleDialog({
           {/* Jour + heure */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t("cal.day")}</label>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                {t("cal.day")}
+              </label>
               <select
                 value={draft.day_of_week}
                 onChange={(e) => onChange({ ...draft, day_of_week: parseInt(e.target.value, 10) })}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
               >
                 {dayFull.map((name, i) => (
-                  <option key={i} value={i}>{name}</option>
+                  <option key={i} value={i}>
+                    {name}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="w-32">
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t("cal.time")}</label>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                {t("cal.time")}
+              </label>
               <input
                 type="time"
                 value={draft.time}
@@ -606,13 +701,22 @@ function ScheduleDialog({
             >
               <Trash2 className="h-4 w-4" /> {t("common.delete")}
             </button>
-          ) : <span />}
+          ) : (
+            <span />
+          )}
           <div className="flex gap-2">
-            <button onClick={onClose} className="rounded-md px-4 py-2 text-sm text-muted-foreground transition hover:bg-secondary/40">
+            <button
+              onClick={onClose}
+              className="rounded-md px-4 py-2 text-sm text-muted-foreground transition hover:bg-secondary/40"
+            >
               {t("common.cancel")}
             </button>
             <button
-              onClick={async () => { setSaving(true); await onSave(); setSaving(false); }}
+              onClick={async () => {
+                setSaving(true);
+                await onSave();
+                setSaving(false);
+              }}
               disabled={saving}
               className="inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
               style={{ background: "var(--gradient-primary)" }}
