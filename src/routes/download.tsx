@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { Github } from "lucide-react";
 import { useI18n } from "@/i18n";
 import { Footer } from "@/components/Footer";
 
@@ -331,6 +332,25 @@ function DownloadPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card/60 p-6" style={{ boxShadow: "var(--shadow-card)" }}>
+          <div>
+            <h2 className="text-lg font-bold">{isFr ? "Code source" : "Source code"}</h2>
+            <p className="text-sm text-muted-foreground">
+              {isFr
+                ? "ReadingTK est open source (licence MIT) — site web, extensions et application Windows."
+                : "ReadingTK is open source (MIT license) — website, extensions, and Windows app."}
+            </p>
+          </div>
+          <a
+            href="https://github.com/tkissdev/readingtk"
+            target="_blank"
+            rel="noreferrer"
+            className="flex shrink-0 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium transition hover:bg-card"
+          >
+            <Github className="h-4 w-4" /> GitHub
+          </a>
         </section>
 
       </div>

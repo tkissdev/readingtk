@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReportBugRouteImport } from './routes/report-bug'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as DownloadRouteImport } from './routes/download'
@@ -27,6 +28,11 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedTitlesAddRouteImport } from './routes/_authenticated/titles.add'
 
+const ReportBugRoute = ReportBugRouteImport.update({
+  id: '/report-bug',
+  path: '/report-bug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
+  '/report-bug': typeof ReportBugRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/export': typeof AuthenticatedExportRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
+  '/report-bug': typeof ReportBugRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/export': typeof AuthenticatedExportRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/download': typeof DownloadRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
+  '/report-bug': typeof ReportBugRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/export': typeof AuthenticatedExportRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/how-it-works'
     | '/privacy'
+    | '/report-bug'
     | '/calendar'
     | '/dashboard'
     | '/export'
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/how-it-works'
     | '/privacy'
+    | '/report-bug'
     | '/calendar'
     | '/dashboard'
     | '/export'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/how-it-works'
     | '/privacy'
+    | '/report-bug'
     | '/_authenticated/calendar'
     | '/_authenticated/dashboard'
     | '/_authenticated/export'
@@ -237,10 +249,18 @@ export interface RootRouteChildren {
   DownloadRoute: typeof DownloadRoute
   HowItWorksRoute: typeof HowItWorksRoute
   PrivacyRoute: typeof PrivacyRoute
+  ReportBugRoute: typeof ReportBugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/report-bug': {
+      id: '/report-bug'
+      path: '/report-bug'
+      fullPath: '/report-bug'
+      preLoaderRoute: typeof ReportBugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -398,6 +418,7 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadRoute: DownloadRoute,
   HowItWorksRoute: HowItWorksRoute,
   PrivacyRoute: PrivacyRoute,
+  ReportBugRoute: ReportBugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

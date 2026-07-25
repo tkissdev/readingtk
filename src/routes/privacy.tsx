@@ -37,6 +37,8 @@ function PrivacyFR() {
               ReadingTK est un service de suivi de lectures (mangas, manhuas, novels) accessible à l'adresse{" "}
               <a href="https://readingtk.net" className="text-accent hover:underline">readingtk.net</a>.
               Le service est opéré par <strong className="text-foreground">TKISSDev</strong> (contact : contact@tkissdev.com).
+              ReadingTK est un projet open source (licence MIT) — le code source est disponible sur{" "}
+              <a href="https://github.com/tkissdev/readingtk" target="_blank" rel="noreferrer" className="text-accent hover:underline">GitHub</a>.
             </p>
           </section>
 
@@ -174,6 +176,8 @@ function PrivacyEN() {
               ReadingTK is a reading tracker for manga, manhwa, and novels, available at{" "}
               <a href="https://readingtk.net" className="text-accent hover:underline">readingtk.net</a>.
               The service is operated by <strong className="text-foreground">TKISSDev</strong> (contact: contact@tkissdev.com).
+              ReadingTK is an open source project (MIT license) — the source code is available on{" "}
+              <a href="https://github.com/tkissdev/readingtk" target="_blank" rel="noreferrer" className="text-accent hover:underline">GitHub</a>.
             </p>
           </section>
 

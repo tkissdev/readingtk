@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Bell, BookOpen, CalendarDays, Chrome, Globe, Search, Zap } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, Chrome, Globe, Search, Zap, Github } from "lucide-react";
 import { useI18n } from "@/i18n";
 import { Footer } from "@/components/Footer";
 
@@ -218,6 +218,14 @@ function HowItWorksFR() {
             Plus besoin de vérifier manuellement chaque site — l'extension le fait pour vous
             et vous prévient dès qu'un nouveau chapitre est disponible.
           </p>
+          <a
+            href="https://github.com/tkissdev/readingtk"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
+          >
+            <Github className="h-3.5 w-3.5" /> Projet open source — voir le code sur GitHub
+          </a>
         </div>
 
         {/* Steps */}
@@ -520,6 +528,14 @@ function HowItWorksEN() {
             No more manually checking every site — the extension does it for you
             and alerts you as soon as a new chapter is available.
           </p>
+          <a
+            href="https://github.com/tkissdev/readingtk"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
+          >
+            <Github className="h-3.5 w-3.5" /> Open source project — view the code on GitHub
+          </a>
         </div>
 
         <section className="mb-20">

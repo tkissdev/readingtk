@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, BookOpen, CalendarDays, Globe, Zap } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, Globe, Zap, Github } from "lucide-react";
 import { useI18n, LanguageSwitcher } from "@/i18n";
 import { Footer } from "@/components/Footer";
 
@@ -105,6 +105,14 @@ function Landing() {
               {t("landing.signin")}
             </Link>
           </div>
+          <a
+            href="https://github.com/tkissdev/readingtk"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
+          >
+            <Github className="h-3.5 w-3.5" /> {t("landing.openSource")}
+          </a>
         </section>
 
         {/* Feature cards */}
