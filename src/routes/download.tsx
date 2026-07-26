@@ -19,6 +19,7 @@ export const Route = createFileRoute("/download")({
 
 const RELEASE_BASE = "https://github.com/tkissdev/readingtk/releases/download/windows-app-v1.0.8";
 const WINDOWS_VERSION = "1.0.8";
+const EXTENSION_VERSION = "1.1.2";
 
 const ChromeIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
@@ -321,7 +322,9 @@ function DownloadPage() {
                 <ChromeIcon />
                 <div>
                   <div className="font-semibold">Chrome</div>
-                  <div className="text-xs text-muted-foreground">Manifest V3</div>
+                  <div className="text-xs text-muted-foreground">
+                    Manifest V3 · v{EXTENSION_VERSION}
+                  </div>
                 </div>
               </div>
               {CHROME_STORE_URL ? (
@@ -361,7 +364,9 @@ function DownloadPage() {
                 <FirefoxIcon />
                 <div>
                   <div className="font-semibold">Firefox</div>
-                  <div className="text-xs text-muted-foreground">Manifest V2</div>
+                  <div className="text-xs text-muted-foreground">
+                    Manifest V2 · v{EXTENSION_VERSION}
+                  </div>
                 </div>
               </div>
               <a
@@ -482,6 +487,7 @@ function DownloadPage() {
                   ? "Assistant d'installation classique + désinstalleur"
                   : "Classic install wizard + uninstaller"}
               </div>
+              <div className="text-xs text-muted-foreground/70">v{WINDOWS_VERSION}</div>
             </a>
 
             <a
@@ -498,6 +504,7 @@ function DownloadPage() {
                   ? "Installation classique + menu Démarrer"
                   : "Classic install + Start Menu shortcut"}
               </div>
+              <div className="text-xs text-muted-foreground/70">v{WINDOWS_VERSION}</div>
             </a>
 
             <a
@@ -514,6 +521,7 @@ function DownloadPage() {
                   ? "Archive contenant l'exécutable portable"
                   : "Archive containing the portable executable"}
               </div>
+              <div className="text-xs text-muted-foreground/70">v{WINDOWS_VERSION}</div>
             </a>
           </div>
 
