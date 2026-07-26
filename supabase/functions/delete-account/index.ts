@@ -1,13 +1,28 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -20,7 +35,10 @@ Deno.serve(async (req: Request) => {
   });
   const { data: userData, error: userError } = await callerClient.auth.getUser();
   if (userError || !userData?.user) {
-    return new Response(JSON.stringify({ error: "Session invalide" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "Session invalide" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
   const userId = userData.user.id;
 
@@ -47,10 +65,13 @@ Deno.serve(async (req: Request) => {
   // sans jamais toucher aux données d'un autre utilisateur.
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
   if (deleteError) {
-    return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: deleteError.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   return new Response(JSON.stringify({ success: true }), {
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
