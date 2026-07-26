@@ -78,7 +78,7 @@ _last_check_report: dict | None = None  # {"time": str, "detected": int, "errors
 
 # ── Icône systray ──────────────────────────────────────────────────────────────
 
-def _make_icon(color: str = "#6366f1") -> Image.Image:
+def _make_icon(color: str = "#2c47b7") -> Image.Image:
     """Charge le favicon RTK et colorise le fond avec la couleur d'état."""
     r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
 
@@ -126,7 +126,7 @@ def _do_check():
         _stop_event.clear()
 
     if _tray_icon:
-        _tray_icon.icon = _make_icon("#f59e0b")
+        _tray_icon.icon = _make_icon("#22c55e")
         _tray_icon.title = "ReadingTK — Vérification en cours…"
         _tray_icon.update_menu()
 
@@ -165,14 +165,16 @@ def _do_check():
     except Exception as e:
         log.error("Erreur check : %s", e)
         if _tray_icon:
-            _tray_icon.icon = _make_icon("#ef4444")
             if not supabase.is_logged_in:
+                _tray_icon.icon = _make_icon("#ef4444")
                 _tray_icon.title = "ReadingTK — Session expirée, reconnectez-vous"
-            elif _check_interval_minutes > 0:
-                next_at = time.strftime("%H:%M", time.localtime(time.time() + _check_interval_minutes * 60))
-                _tray_icon.title = f"ReadingTK — Erreur lors du dernier check · prochain scan à {next_at}"
             else:
-                _tray_icon.title = "ReadingTK — Erreur lors du dernier check"
+                _tray_icon.icon = _make_icon("#f59e0b")
+                if _check_interval_minutes > 0:
+                    next_at = time.strftime("%H:%M", time.localtime(time.time() + _check_interval_minutes * 60))
+                    _tray_icon.title = f"ReadingTK — Erreur lors du dernier check · prochain scan à {next_at}"
+                else:
+                    _tray_icon.title = "ReadingTK — Erreur lors du dernier check"
     finally:
         with _check_lock:
             _is_checking = False
