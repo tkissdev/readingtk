@@ -253,6 +253,15 @@ const fr: Dict = {
   "set.ignoreDuplicates": "Ignorer les doublons",
   "set.saved": "Paramètres enregistrés",
   "set.loading": "Chargement…",
+  "set.dangerZone": "Zone dangereuse",
+  "set.deleteAccount": "Supprimer mon compte",
+  "set.deleteAccountDesc":
+    "Cette action est définitive. Toutes vos données (titres, sites, chapitres, notifications, réglages) seront supprimées et ne pourront pas être récupérées.",
+  "set.deleteAccountConfirmTitle": "Supprimer définitivement votre compte ?",
+  "set.deleteAccountConfirmDesc":
+    "Vous êtes sur le point de supprimer votre compte ReadingTK ainsi que toutes les données associées (bibliothèque, sites, chapitres, notifications, réglages). Cette action est irréversible.",
+  "set.deleteAccountConfirmBtn": "Oui, supprimer définitivement",
+  "set.deleteAccountFail": "Échec de la suppression du compte",
 
   // Sites
   "sites.metaTitle": "Sites · ReadingTK",
@@ -566,6 +575,15 @@ const en: Dict = {
   "set.ignoreDuplicates": "Ignore duplicates",
   "set.saved": "Settings saved",
   "set.loading": "Loading…",
+  "set.dangerZone": "Danger zone",
+  "set.deleteAccount": "Delete my account",
+  "set.deleteAccountDesc":
+    "This action is permanent. All your data (titles, sites, chapters, notifications, settings) will be deleted and cannot be recovered.",
+  "set.deleteAccountConfirmTitle": "Permanently delete your account?",
+  "set.deleteAccountConfirmDesc":
+    "You're about to delete your ReadingTK account and all associated data (library, sites, chapters, notifications, settings). This action cannot be undone.",
+  "set.deleteAccountConfirmBtn": "Yes, delete permanently",
+  "set.deleteAccountFail": "Failed to delete the account",
 
   "sites.metaTitle": "Sites · ReadingTK",
   "sites.title": "Sites to scrape",

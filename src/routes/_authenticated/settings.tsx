@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
@@ -144,7 +144,90 @@ function SettingsPage() {
           onChange={(v) => update("bookmarks_ignore_duplicates", v)}
         />
       </Section>
+
+      <DangerZone />
     </div>
+  );
+}
+
+// Zone dangereuse : suppression définitive du compte et de toutes ses données.
+function DangerZone() {
+  const { t } = useI18n();
+  const router = useRouter();
+  const qc = useQueryClient();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      const { data, error } = await supabase.functions.invoke("delete-account", {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      await qc.cancelQueries();
+      qc.clear();
+      await supabase.auth.signOut();
+      toast.success(t("set.deleteAccount"));
+      router.navigate({ to: "/", replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("set.deleteAccountFail"));
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="mt-6 rounded-xl border border-destructive/50 bg-destructive/5 p-5">
+        <h2 className="text-sm font-semibold text-destructive">{t("set.dangerZone")}</h2>
+        <p className="mt-2 text-xs text-muted-foreground">{t("set.deleteAccountDesc")}</p>
+        <button
+          onClick={() => setShowConfirm(true)}
+          className="mt-4 rounded-md border border-destructive px-4 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive/10"
+        >
+          {t("set.deleteAccount")}
+        </button>
+      </div>
+
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => !deleting && setShowConfirm(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-destructive">
+              {t("set.deleteAccountConfirmTitle")}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t("set.deleteAccountConfirmDesc")}
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                disabled={deleting}
+                className="rounded-md px-4 py-2 text-sm text-muted-foreground hover:bg-secondary/40 transition disabled:opacity-60"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded-md bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground disabled:opacity-60"
+              >
+                {deleting ? "..." : t("set.deleteAccountConfirmBtn")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
