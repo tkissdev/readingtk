@@ -199,16 +199,14 @@ function AddTitles() {
         }
 
         if (chapterNum) {
-          await supabase
-            .from("reading_progress")
-            .upsert(
-              {
-                title_id: titleId,
-                last_chapter_read: chapterNum,
-                last_read_at: new Date().toISOString(),
-              },
-              { onConflict: "title_id" },
-            );
+          await supabase.from("reading_progress").upsert(
+            {
+              title_id: titleId,
+              last_chapter_read: chapterNum,
+              last_read_at: new Date().toISOString(),
+            },
+            { onConflict: "title_id" },
+          );
         }
 
         let siteId: string | null = null;
@@ -355,16 +353,14 @@ function AddTitles() {
 
         // ── 3. Save chapter read if extracted ──────────────────────────────
         if (chapterNum) {
-          await supabase
-            .from("reading_progress")
-            .upsert(
-              {
-                title_id: titleId,
-                last_chapter_read: chapterNum,
-                last_read_at: new Date().toISOString(),
-              },
-              { onConflict: "title_id" },
-            );
+          await supabase.from("reading_progress").upsert(
+            {
+              title_id: titleId,
+              last_chapter_read: chapterNum,
+              last_read_at: new Date().toISOString(),
+            },
+            { onConflict: "title_id" },
+          );
         }
 
         // ── 4. Match site by domain, or create it ──────────────────────────

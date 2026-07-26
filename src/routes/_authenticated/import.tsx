@@ -304,16 +304,14 @@ function ImportPage() {
             .maybeSingle();
           const existingNum = parseFloat(existingProg?.last_chapter_read ?? "");
           if (!existingProg || isNaN(existingNum) || maxChapter > existingNum) {
-            await supabase
-              .from("reading_progress")
-              .upsert(
-                {
-                  title_id: titleId,
-                  last_chapter_read: String(maxChapter),
-                  last_read_at: new Date().toISOString(),
-                },
-                { onConflict: "title_id" },
-              );
+            await supabase.from("reading_progress").upsert(
+              {
+                title_id: titleId,
+                last_chapter_read: String(maxChapter),
+                last_read_at: new Date().toISOString(),
+              },
+              { onConflict: "title_id" },
+            );
           }
         }
 

@@ -143,16 +143,14 @@ function Dashboard() {
           const secNum = parseFloat(secProg.last_chapter_read);
           const priNum = parseFloat(priProg?.last_chapter_read ?? "");
           if (!isNaN(secNum) && (isNaN(priNum) || secNum > priNum)) {
-            await supabase
-              .from("reading_progress")
-              .upsert(
-                {
-                  title_id: primaryId,
-                  last_chapter_read: secProg.last_chapter_read,
-                  last_read_at: new Date().toISOString(),
-                },
-                { onConflict: "title_id" },
-              );
+            await supabase.from("reading_progress").upsert(
+              {
+                title_id: primaryId,
+                last_chapter_read: secProg.last_chapter_read,
+                last_read_at: new Date().toISOString(),
+              },
+              { onConflict: "title_id" },
+            );
           }
         }
 
