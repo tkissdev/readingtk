@@ -203,6 +203,9 @@ function Dashboard() {
         .maybeSingle();
       return data?.last_global_check_at ?? null;
     },
+    // Filet de sécurité si le temps réel Supabase ne déclenche pas l'invalidation
+    // (ex. table hors publication realtime) : on repasse dessus régulièrement.
+    refetchInterval: 60000,
   });
 
   const { data: titles, isLoading } = useQuery({
